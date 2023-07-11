@@ -19,3 +19,17 @@ MIMIC_CXR_TEST_CSV = MIMIC_CXR_ROOT_DIR / "test.csv" #test split
 MIMIC_CXR_MASTER_CSV = MIMIC_CXR_ROOT_DIR / "master.csv"
 MIMIC_CXR_PATH_COL = "Path"
 MIMIC_CXR_SPLIT_COL = "split"
+
+
+# #############################################
+#          RSNA Pneumonia constants           #
+# #############################################
+
+# RSNA Pneumonia
+PNEUMONIA_ROOT_DIR = Path("/home/faith/datasets/rsna-pneumonia/")
+PNEUMONIA_ORIGINAL_TRAIN_CSV = PNEUMONIA_ROOT_DIR / "stage_2_train_labels.csv"
+PNEUMONIA_IMG_DIR = PNEUMONIA_ROOT_DIR / "stage_2_train_images"
+PNEUMONIA_TRAIN_CSV = PNEUMONIA_ROOT_DIR / "train.csv"
+PNEUMONIA_VALID_CSV = PNEUMONIA_ROOT_DIR / "val.csv"
+PNEUMONIA_TEST_CSV = PNEUMONIA_ROOT_DIR / "test.csv"
+PNEUMONIA_TRAIN_PCT = 0.7

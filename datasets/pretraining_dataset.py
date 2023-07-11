@@ -10,12 +10,13 @@ from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
 from PIL import Image
 from ..constants import *
+from .utils import *
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class MultimodalPretrainingDataset(Dataset):
-    def __init__(self, split="train", transform=None, data_pct=1.0):
+    def __init__(self, split="train", transform=None, data_pct=1.0, imsize=224):
         super().__init__()
         
         if not os.path.exists(MIMIC_CXR_ROOT_DIR):
@@ -27,6 +28,7 @@ class MultimodalPretrainingDataset(Dataset):
             )
         
         self.transform = transform
+        self.imsize = imsize
         
         # Load data
         self.df = pd.read_csv(MIMIC_CXR_MASTER_CSV)
@@ -147,26 +149,21 @@ class MultimodalPretrainingDataset(Dataset):
         sent = " ".join(series_sents) 
 
         return sent
-    
-    # TODO: Standardized resizing function
-    def resize_img(x, scale):
-        return
 
     def get_img(self, img_path, scale, transform = None):
         x = cv2.imread(str(img_path), 0)
         # transform images
-        x = self.resize_img(x, scale)
+        x = resize_img(x, scale)
         img = Image.fromarray(x).convert("RGB")
         if transform is not None:
             img = transform(img)
-
         return img
 
     def __get_item__(self, index):
         path_key = self.filenames[index]
-        caption = self.get_caption(path_key)
-        imgs = self.get_img(path_key, self.imsize, self.transform)
-        return imgs, caption, path_key
+        report_content = self.get_caption(path_key)
+        img = self.get_img(path_key, self.imsize, self.transform)
+        return img, report_content, path_key
 
     
 #For testing
