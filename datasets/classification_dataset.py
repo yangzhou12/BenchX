@@ -1,11 +1,13 @@
 import os
 import torch
-import cv2
 import pandas as pd
-from PIL import Image
 from torch.utils.data import Dataset
-from ..constants import *
-from .utils import *
+
+import sys
+from pathlib import Path
+path_root = Path(__file__).parents[1]
+from constants import *
+from datasets.utils import *
 
 
 class BaseImageDataset(Dataset):
@@ -13,7 +15,7 @@ class BaseImageDataset(Dataset):
         super().__init__()
 
         self.split = split
-        self.transform = transform
+        self.transform = transform()
 
     def __getitem__(self, index):
         raise NotImplementedError
@@ -58,8 +60,10 @@ class RSNAImageDataset(BaseImageDataset):
         # get image
         img_path = row["Path"]
         x = read_from_dicom(
-            img_path, self.imsize, self.transform)
+            img_path, imsize=self.imsize, transform=self.transform) 
+
         y = float(row["Target"])
         y = torch.tensor([y])
 
-        return x, y
+        return {'image': x,
+                'label': y}

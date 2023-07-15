@@ -24,7 +24,7 @@ class MultimodalPretrainingDataset(Dataset):
                 "MIMIC-CXR does not exist!\n"
                 + "Make sure to download data from:\n"
                 + "    https://physionet.org/content/mimic-cxr/2.0.0/"
-                + f" and update MIMIC_ROOT_DIR in ./constants.py"
+                + " and update MIMIC_ROOT_DIR in ./constants.py"
             )
         
         self.transform = transform

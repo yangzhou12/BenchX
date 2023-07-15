@@ -1,0 +1,41 @@
+Variable,Text
+Edema,Increased fluid in the alveolar wall indicates pulmonary edema.
+Cardiomegaly,Cardiomegaly is present.
+Atelectasis,Atelectasis is present.
+Consolidation,Consolidation is present.
+Edema,Edema is present.
+Pneumothorax,An apical pneumothorax is present.
+Pneumothorax,A basilar pneumothorax is seen.
+Pneumothorax,A medial pneumothorax is present adjacent to the heart.
+Pneumothorax,A lateral pleural line suggests pneumothorax.
+Pneumothorax,Pleural air is present.
+Pneumonia,A consolidation at the base likely represents pneumonia.
+Pneumonia,Pneumonia is present.
+Pneumonia,The presence of air bronchograms suggest pneumonia.
+Pneumonia,A fluffy opacity suggests pneumonia.
+Pneumonia,A pulmonary opacity with ill defined borders likely represents pneumonia.
+Fracture,An angulated fracture is present.
+Fracture,An oblique radiolucent line suggests a fracture.
+Fracture,A cortical step off indicates the presence of a fracture.
+Fracture,A communuted displaced fracture is present.
+Fracture,A fracture is present.
+Cardiomegaly,The heart shadow is enlarged.
+Cardiomegaly,The cardiac silhouette is enlarged.
+Pleural Effusion,Blunting of the costophrenic angles represents pleural effusions.
+Pleural Effusion,The pleural space is filled with fluid.
+Pleural Effusion,Layering pleural effusions are present.
+Atelectasis,Atelectasis is present.
+Atelectasis,Basilar opacity and volume loss is likely due to atelectasis.
+No Finding,The lungs are clear.
+No Finding,No abnormalities are present.
+No Finding,The chest is normal.
+No Finding,No clinically significant radiographic abnormalities.
+No Finding,No radiographically visible abnormalities in the chest.
+Consolidation,Dense white area of right lung indicative of consolidation.
+Left Lung,The left lung can be seen.
+Right Lung,The right lung can be seen.
+Heart,The heart can be seen.
+covid19,Prevalent right lung disease with diffuse reticular-nodular thickening of peribroncho-vascular interstitium. 
+covid19,Ground glass opacities and consolidation with bilateral and peripheral distribution.
+covid19custom,Ground glass opacities and consolidation with peripheral distribution with fine reticular opacity and vascular thickening.
+Pneumoniacustom,Pleural effusion present with lymphadenopathy and consolidation with central distribution.
