@@ -4,8 +4,6 @@ import argparse
 import torch
 print("CUDA Available: " + str(torch.cuda.is_available()))
 from utils import *
-import sys
-sys.path.insert(0, '/n/data2/hms/XXXX-9/XXXX-4/XXXX-1/Med_ImageText_Embedding/src/evaluate/')
 from os.path import exists
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
