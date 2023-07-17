@@ -16,7 +16,7 @@ MIMIC_CXR_TEXT_CSV = MIMIC_CXR_ROOT_DIR / "mimic_cxr_sectioned.csv" #created aft
 MIMIC_CXR_TRAIN_CSV = MIMIC_CXR_ROOT_DIR / "train.csv" #train split
 MIMIC_CXR_VALID_CSV = MIMIC_CXR_ROOT_DIR / "valid.csv" #valid split
 MIMIC_CXR_TEST_CSV = MIMIC_CXR_ROOT_DIR / "test.csv" #test split
-MIMIC_CXR_MASTER_CSV = MIMIC_CXR_ROOT_DIR / "master.csv"
+MIMIC_CXR_MASTER_CSV = MIMIC_CXR_ROOT_DIR / "master_data.csv"
 MIMIC_CXR_PATH_COL = "Path"
 MIMIC_CXR_SPLIT_COL = "split"
 

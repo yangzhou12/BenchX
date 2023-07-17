@@ -239,9 +239,9 @@ def main(args):
     split_df = pd.read_csv(MIMIC_CXR_SPLIT_CSV)
     split_df = split_df.astype(str)
     split_df["study_id"] = split_df["study_id"].apply(lambda x: "s"+x)
-    # FIX: removed merging of validate and test into test.
-    # split_df["split"] = split_df["split"].apply(
-    #     lambda x: "valid" if x == "validate" or x == "test" else x)
+    # Merging of validate and test into test.
+    split_df["split"] = split_df["split"].apply(
+        lambda x: "valid" if x == "validate" or x == "test" else x)
 
     chexpert_df = pd.read_csv(MIMIC_CXR_CHEX_CSV)
     chexpert_df[["subject_id", "study_id"]] = chexpert_df[[

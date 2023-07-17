@@ -3,4 +3,5 @@ python classification_finetuner.py \
     --dataset rsna_pneumonia \
     --model_name biovil \
     --output_dir /home/faith/projects/unified-framework/data \
-    --num_epochs 30
+    --num_epochs 50 \
+    --data_pct 0.1

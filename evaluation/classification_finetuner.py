@@ -146,6 +146,9 @@ def main(args):
     # Load specified dataset
     print("Creating dataset")
     train_dataloader, val_dataloader, test_dataloader, num_classes = build_dataloaders('rsna_pneumonia', args)
+    
+    # Load model
+    print("Loading model")
     model = build_ssl_classifier(args, num_classes) 
     params = list(model.parameters())
     optimizer = torch.optim.AdamW(params, lr=args.learning_rate, weight_decay=args.weight_decay)
@@ -162,7 +165,7 @@ def main(args):
 
     start_time = time.time()
     best_val_loss = 10000
-    writer = SummaryWriter(os.path.join(exp_path,  'log'))
+    writer = SummaryWriter(os.path.join(exp_path, 'log'))
 
     for epoch in range(start_epoch, max_epochs):
         if epoch > 0:
@@ -203,7 +206,7 @@ def main(args):
             best_val_loss = val_loss
             args.model_path = os.path.join(exp_path, 'best_valid.pth')
             test_auc = test(model, test_dataloader, device, num_classes)
-            with open(os.path.join(exp_path, "log.txt"),"a") as f:
+            with open(os.path.join(exp_path, "log.txt"), "a") as f:
                 f.write('The average AUROC is {AUROC_avg:.4f}'.format(AUROC_avg=test_auc) + "\n")
         
         if (epoch+1) % 10 == 0 and epoch > 1:
@@ -230,11 +233,11 @@ if __name__ == "__main__":
     parser.add_argument('--data_pct', type=float, default=1.)
     parser.add_argument('--batch_size', type=int, default=48)
     parser.add_argument('--image_res', type=int, default=256)
-
     parser.add_argument('--num_epochs', type=int, default=50)
     parser.add_argument('--learning_rate', type=float, default=1e-6)
     parser.add_argument('--weight_decay', type=float, default=0.02)
     parser.add_argument('--warmup_epochs', type=int, default=20)
+    parser.add_argument('--seed', type=int, default=42)
 
     # To be configured based on hardware/directory
     parser.add_argument('--checkpoint', default='') 
@@ -242,16 +245,18 @@ if __name__ == "__main__":
     parser.add_argument('--pretrain_path', default='Path/To/checkpoint.pth')
     parser.add_argument('--output_dir', default='Path/To/Outputdir')
     parser.add_argument('--device', default='cuda')
-    parser.add_argument('--gpu', type=str,default='0', help='gpu')
+    parser.add_argument('--gpu', type=str, default='0', help='gpu')
     parser.add_argument('--num_workers', type=int, default=4)
     
     args = parser.parse_args()
 
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    if args.output_dir:
+        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     torch.cuda.current_device()
     torch.cuda._initialized = True
+    torch.manual_seed(args.seed)
 
     # Set downstream task to classification
     args.phase = 'classification'

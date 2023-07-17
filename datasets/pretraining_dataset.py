@@ -7,16 +7,22 @@ import numpy as np
 import cv2
 from torch.utils.data import Dataset
 from nltk.tokenize import RegexpTokenizer
+from transformers import BertTokenizer
 from tqdm import tqdm
 from PIL import Image
-from ..constants import *
-from .utils import *
+
+import sys
+from pathlib import Path
+path_root = Path(__file__).parents[1]
+sys.path.append(str(path_root))
+from constants import *
+from datasets.utils import *
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class MultimodalPretrainingDataset(Dataset):
-    def __init__(self, split="train", transform=None, data_pct=1.0, imsize=224):
+    def __init__(self, split="train", transform=None, data_pct=1.0, imsize=224, max_words=112):
         super().__init__()
         
         if not os.path.exists(MIMIC_CXR_ROOT_DIR):
@@ -27,13 +33,13 @@ class MultimodalPretrainingDataset(Dataset):
                 + " and update MIMIC_ROOT_DIR in ./constants.py"
             )
         
-        self.transform = transform
+        self.transform = transform(is_train=(split=="train"))
         self.imsize = imsize
-        
+
         # Load data
-        self.df = pd.read_csv(MIMIC_CXR_MASTER_CSV)
+        self.df = pd.read_csv(MIMIC_CXR_MASTER_CSV, dtype=str) #cols: Path, impression, findings
         self.df[MIMIC_CXR_PATH_COL] = self.df[MIMIC_CXR_PATH_COL].apply(
-            lambda x: os.path.join(MIMIC_CXR_ROOT_DIR, "/".join(x.split("/")[1:])))
+            lambda x: os.path.join(MIMIC_CXR_ROOT_DIR, "files", "/".join(x.split("/")[1:])))
         
         # Load studies and study to text mappings
         self.filenames, self.path2sent = self.load_text_data(split)
@@ -43,6 +49,11 @@ class MultimodalPretrainingDataset(Dataset):
         if data_pct != 1.0 and split == "train":
             self.df = self.df.sample(frac=data_pct, random_state=42)
         self.df.reset_index(drop=True, inplace=True)
+
+        # Load tokenizer
+        self.tokenizer = BertTokenizer.from_pretrained(
+            "emilyalsentzer/Bio_ClinicalBERT") #Bio_ClinicalBERT tokenizer as default
+        self.max_words = max_words
 
     def load_text_data(self, split):
         # get study to captions mapping
@@ -142,13 +153,21 @@ class MultimodalPretrainingDataset(Dataset):
         if len(series_sents) == 0:
             raise Exception("no sentence for path") #pre-processing step failed
 
-        # separate different sentences
-        series_sents = list(filter(lambda x: x != "", series_sents))
-
         # piece sentences together for each report
+        series_sents = list(filter(lambda x: x != "", series_sents))
         sent = " ".join(series_sents) 
 
-        return sent
+        # tokenize report
+        tokens = self.tokenizer(
+            sent,
+            return_tensors="pt", 
+            truncation=True,
+            padding="max_length",
+            max_length=self.max_words
+        )
+        x_len = len([t for t in tokens["input_ids"][0] if t != 0])
+
+        return tokens, x_len
 
     def get_img(self, img_path, scale, transform = None):
         x = cv2.imread(str(img_path), 0)
@@ -159,11 +178,48 @@ class MultimodalPretrainingDataset(Dataset):
             img = transform(img)
         return img
 
-    def __get_item__(self, index):
+    def __getitem__(self, index):
         path_key = self.filenames[index]
-        report_content = self.get_caption(path_key)
+        caps, cap_len = self.get_caption(path_key)
         img = self.get_img(path_key, self.imsize, self.transform)
-        return img, report_content, path_key
+        return img, caps, cap_len, path_key
+
+
+def multimodal_collate_fn(batch):
+    """sort sequence"""
+    imgs, cap_len, ids, tokens, attention = [], [], [], [], []
+    path = []
+    for b in batch:
+        img, cap, cap_l, p = b
+        imgs.append(img)
+        cap_len.append(cap_l)
+        ids.append(cap["input_ids"])
+        tokens.append(cap["token_type_ids"])
+        attention.append(cap["attention_mask"])
+        path.append(p)
+
+    # stack
+    imgs = torch.stack(imgs)
+    ids = torch.stack(ids).squeeze()
+    tokens = torch.stack(tokens).squeeze()
+    attention = torch.stack(attention).squeeze()
+
+    # sort and add to dictionary
+    sorted_cap_lens, sorted_cap_indices = torch.sort(
+        torch.tensor(cap_len), 0, True)
+
+    path = np.array(path)
+
+    return_dict = {
+        "caption_ids": ids[sorted_cap_indices],
+        "token_type_ids": tokens[sorted_cap_indices],
+        "attention_mask": attention[sorted_cap_indices],
+        "imgs": imgs[sorted_cap_indices],
+        "cap_lens": sorted_cap_lens,
+        "path": path[sorted_cap_indices]
+    }
+    return return_dict
+
 
     
 #For testing

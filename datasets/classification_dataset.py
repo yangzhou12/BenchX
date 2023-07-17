@@ -15,7 +15,11 @@ class BaseImageDataset(Dataset):
         super().__init__()
 
         self.split = split
-        self.transform = transform()
+
+        if split == "train":
+            self.transform = transform(is_train=True)
+        else:
+            self.transform = transform(is_train=False)
 
     def __getitem__(self, index):
         raise NotImplementedError
