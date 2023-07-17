@@ -1,8 +1,0 @@
-numpy==1.24.3
-pandas==1.5.3
-Pillow==9.5.0
-regex==2022.7.9
-scikit_learn==1.2.2
-#torch==2.0.1
-#torchvision==0.15.2
-transformers==4.30.2
