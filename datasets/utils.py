@@ -28,6 +28,9 @@ def read_from_jpg(img_path, imsize=None, transform=None):
 
     x = cv2.imread(str(img_path), 0)
 
+    x = cv2.convertScaleAbs(x, alpha=(255.0 / x.max()))
+    x = cv2.bitwise_not(x)
+
     # tranform images
     if imsize is not None:
         x = resize_img(x, imsize)

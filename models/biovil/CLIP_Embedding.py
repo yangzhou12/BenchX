@@ -1,10 +1,15 @@
 from torch import nn
 import pandas as pd
 import torch
-import Vision_Model
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+import sys
+from pathlib import Path
+path_root = Path(__file__).parents[0]
+sys.path.append(str(path_root))
+import Vision_Model
 
 
 filename = '/home/faith/projects/unified-framework/models/biovil/query_custom_anil.csv'

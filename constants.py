@@ -26,10 +26,17 @@ MIMIC_CXR_SPLIT_COL = "split"
 # #############################################
 
 # RSNA Pneumonia
-PNEUMONIA_ROOT_DIR = Path("/home/faith/datasets/rsna-pneumonia/")
+PNEUMONIA_ROOT_DIR = Path("/home/faith/datasets/rsna_pneumonia/")
 PNEUMONIA_ORIGINAL_TRAIN_CSV = PNEUMONIA_ROOT_DIR / "stage_2_train_labels.csv"
 PNEUMONIA_IMG_DIR = PNEUMONIA_ROOT_DIR / "stage_2_train_images"
 PNEUMONIA_TRAIN_CSV = PNEUMONIA_ROOT_DIR / "train.csv"
 PNEUMONIA_VALID_CSV = PNEUMONIA_ROOT_DIR / "val.csv"
 PNEUMONIA_TEST_CSV = PNEUMONIA_ROOT_DIR / "test.csv"
 PNEUMONIA_TRAIN_PCT = 0.7
+
+
+# #############################################
+#          NIH CHEST X-RAY constants          #
+# #############################################
+
+NIH_CHEST_ROOT_DIR = Path("/data/faith/datasets/nih_chest_xray")

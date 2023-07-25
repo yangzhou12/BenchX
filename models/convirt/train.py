@@ -37,22 +37,24 @@ def train_one_epoch(model, train_dataloader, optimizer, epoch, warmup_steps, dev
     for data_iter_step, batch in enumerate(metric_logger.log_every(train_dataloader, print_freq, header)):
 
         optimizer.zero_grad()
-        imgs = batch["imgs"].to(device)
-        caption_ids = batch["caption_ids"].to(device)
-        attention_mask = batch["attention_mask"].to(device)
-        token_type_ids = batch["token_type_ids"].to(device)
-        img_emb, sent_emb = model(imgs, caption_ids, attention_mask, token_type_ids) 
 
-        loss = model.info_nce_loss(img_emb, sent_emb)
-        loss.backward()
-        optimizer.step()    
-        writer.add_scalar('loss/loss', loss, scalar_step)
-        scalar_step += 1
+        with torch.cuda.amp.autocast():
+            imgs = batch["imgs"].to(device)
+            caption_ids = batch["caption_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
+            token_type_ids = batch["token_type_ids"].to(device)
+            img_emb, sent_emb = model(imgs, caption_ids, attention_mask, token_type_ids) 
 
-        metric_logger.update(loss=loss.item())
-        if epoch == 0 and data_iter_step % step_size == 0 and data_iter_step <= warmup_iterations: 
-            lr_scheduler.step(data_iter_step // step_size)         
-        metric_logger.update(lr=lr_scheduler._get_lr(epoch)[0])
+            loss = model.info_nce_loss(img_emb, sent_emb)
+            loss.backward()
+            optimizer.step()    
+            writer.add_scalar('loss/loss', loss, scalar_step)
+            scalar_step += 1
+
+            metric_logger.update(loss=loss.item())
+            if epoch == 0 and data_iter_step % step_size == 0 and data_iter_step <= warmup_iterations: 
+                lr_scheduler.step(data_iter_step // step_size)         
+            metric_logger.update(lr=lr_scheduler._get_lr(epoch)[0])
     
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
