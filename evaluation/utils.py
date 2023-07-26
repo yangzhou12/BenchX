@@ -13,7 +13,6 @@ from models.builders import *
 from datasets.classification_dataset import *
 from evaluation.ssl_classifier import *
 from datasets.transforms import DataTransforms
-from datasets.transforms import MRMTransforms
 from evaluation.backbones import cnn_backbones, vit_backbones
 
 
@@ -68,7 +67,7 @@ def build_dataloaders(args):
             "Run --help to see datasets available for downstream task."
         )
 
-    train_dataset = dataset_class('train', MRMTransforms, 
+    train_dataset = dataset_class('train', DataTransforms, 
                                          args.phase, args.data_pct, args.image_res)
     train_dataloader = DataLoader(
             train_dataset,
@@ -81,7 +80,7 @@ def build_dataloaders(args):
             drop_last=True,
         )
     
-    val_dataset = dataset_class('valid', MRMTransforms,
+    val_dataset = dataset_class('valid', DataTransforms,
                                        args.phase, args.data_pct, args.image_res)
     val_dataloader = DataLoader(
             val_dataset,
@@ -94,7 +93,7 @@ def build_dataloaders(args):
             drop_last=False,
         )
     
-    test_dataset = dataset_class('test', MRMTransforms, 
+    test_dataset = dataset_class('test', DataTransforms, 
                                         args.phase, args.data_pct, args.image_res)
     test_dataloader = DataLoader(
             test_dataset,

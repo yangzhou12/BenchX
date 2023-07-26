@@ -64,8 +64,11 @@ class RSNAImageDataset(BaseImageDataset):
         row = self.df.iloc[index]
         # get image
         img_path = row["Path"]
+        # x = read_from_dicom(
+        #    img_path, imsize=self.imsize, transform=self.transform) 
         x = read_from_dicom(
-            img_path, imsize=self.imsize, transform=self.transform) 
+            img_path, transform=self.transform
+        )
 
         y = float(row["Target"])
         y = torch.tensor([y])
