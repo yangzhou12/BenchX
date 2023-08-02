@@ -25,7 +25,7 @@ class MedCLIPTextModel(nn.Module):
         self.tokenizer = AutoTokenizer.from_pretrained(self.bert_type)
         self.projection_head = nn.Linear(768, proj_dim, bias=proj_bias)
 
-    def forward(self, input_ids, attention_mask):
+    def forward(self, input_ids, attention_mask, **kwargs):
         output = self.model(input_ids=input_ids, attention_mask=attention_mask)
         # take the average of last four layers
         # last_hidden_states = torch.stack(output['hidden_states'][-self.last_n_layer:]) # n_layer, batch, seqlen, emb_dim

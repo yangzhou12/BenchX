@@ -36,19 +36,19 @@ def build_img_classifier(args, num_classes):
     if args.model_name == "biovil":
         model = build_biovil_model(args, eval=True)
         img_backbone = model.cnn.encoder
-        ssl_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
+        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
     elif args.model_name == "mrm":
-        ssl_classifier = build_mrm_classifier(args, num_classes)
+        img_classifier = build_mrm_classifier(args, num_classes)
     elif args.model_name == "gloria":
         img_backbone = build_gloria_encoder(args)
-        ssl_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
+        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
     elif args.model_name == "convirt":
         img_backbone = build_convirt_encoder(args)
-        ssl_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
+        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
     else:
         raise RuntimeError("Model not found")
     
-    return ssl_classifier
+    return img_classifier
 
 
 def compute_AUCs(gt, pred, n_class):

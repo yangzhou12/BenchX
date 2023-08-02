@@ -60,6 +60,7 @@ def load_training_setup(args, exp_path, model):
 
     if args.resume and args.resume > 0:
         # Resume training from checkpoint 
+        print(f"Resuming from {exp_path} checkpoint")
         checkpoint_path = os.path.join(exp_path, "checkpoint_state.pth")
         checkpoint_model = torch.load(checkpoint_path, map_location='cpu')
         model.load_state_dict(checkpoint_model['model'])

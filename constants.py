@@ -38,6 +38,28 @@ PNEUMONIA_TRAIN_PCT = 0.
 
 PNEUMONIA_TASKS = ['Pneumonia']
 
+PNEUMONIA_CLASS_PROMPTS = {
+    'Pneumonia': {
+        'adjective': ['round', 'early', 'focal', 'multifocal', 'small', ''],
+        'subtype': ['bacterial', 'viral', 'mycoplasma', ''],
+        "location": [
+            "at the mid lung zone",
+            "at the upper lung zone",
+            "at the right lung zone",
+            "at the left lung zone",
+            "at the lung bases",
+            "at the right lung base",
+            "at the left lung base",
+            "at the bilateral lung bases",
+            "at the left lower lobe",
+            "at the right lower lobe",
+            "at the left middle lobe",
+            "at the right middle lobe",
+            ""
+        ]
+    }
+}
+
 
 # ############################################
 #          NIH Chest X-Ray constants         #

@@ -1,62 +1,72 @@
 import torch
 import argparse
 import os
-import random
 import numpy as np
 from pathlib import Path
 from PIL import Image
-from sklearn.metrics import accuracy_score, classification_report
+from transformers import AutoTokenizer
+from sklearn.metrics import classification_report
 
 import sys
 path_root = Path(__file__).parents[2]
 sys.path.append(str(path_root))
 from evaluation.utils import *
 from evaluation.classification.classifier_head import PromptClassifier
-from models.medclip.prompts import *
-from models.medclip.dataset import MedCLIPProcessor
-from models.medclip.modeling_medclip import MedCLIPModel, MedCLIPVisionModel
+from evaluation.classification.prompts import *
+from datasets.transforms import DataTransforms
+from models.builders import *
 
 
-def generate_chexpert_class_prompts(n: int = 5):
-    prompts = {}    
-    for k, v in CHEXPERT_CLASS_PROMPTS.items():
-        cls_prompts = []
-        keys = list(v.keys())
 
-        # severity
-        for k0 in v[keys[0]]:
-            # subtype
-            for k1 in v[keys[1]]:
-                # location
-                for k2 in v[keys[2]]:
-                    cls_prompts.append(f"{k0} {k1} {k2}")
-
-        if n is not None and n < len(cls_prompts):
-            prompts[k] = random.sample(cls_prompts, n)
-        else:
-            prompts[k] = cls_prompts
-    return prompts
-
-
-def process_inputs(args, cls_prompts, img_path_list, device):
+def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
+    cls_prompt_inputs = {}
     
-    if args.model_name == 'gloria':
+    for cls_name, cls_text in cls_prompts.items():
+
+        text_inputs = tokenizer(cls_text, truncation=True, padding="max_length", return_tensors='pt', max_length=max_length)
+        for k, v in text_inputs.items():
+            text_inputs[k] = v.to(device)
+
+        # print(cls_text)
+        cap_lens = []
+        for txt in cls_text:
+            cap_lens.append(len([w for w in txt if not w.startswith("[")]))
+        text_inputs['cap_lens'] = cap_lens
+
+        cls_prompt_inputs[cls_name] = text_inputs
+
+    return cls_prompt_inputs
+
+
+def process_imgs(paths, device):
+    transform = DataTransforms(is_train=False)
+    
+    if type(paths) == str: #input is one img path
+        paths = [paths]
+
+    all_imgs = []
+    for p in paths:
+
+        x = cv2.imread(str(p), 0)
+
+        # transform images
+        img = Image.fromarray(x).convert("RGB")
+        img = transform(img)
+        all_imgs.append(torch.tensor(img))
+
+    all_imgs = torch.stack(all_imgs).to(device)
+
+    return all_imgs
+
+
+def build_prompt_classifier(args, device):
+    if args.model_name == "gloria":
         gloria_model = load_gloria(args, device=device)
-        processed_txt = gloria_model.process_class_prompts(cls_prompts, device)
-        processed_imgs = gloria_model.process_img(img_path_list, device)
-        zeroshot_model = PromptClassifier(gloria_model.image_encoder_forward, gloria_model.text_encoder_forward, 
-                        gloria_model.get_global_similarities, gloria_model.get_local_similarities)
-
-    elif args.model_name == 'medclip':
-        processor = MedCLIPProcessor()
-        medclip_model = MedCLIPModel(vision_cls=MedCLIPVisionModel)
-        medclip_model.from_pretrained()
-        processed_txt = process_class_prompts(cls_prompts)
-        imgs = img_path_list.map(lambda x: Image.open(x))
-        processed_imgs = processor(images=imgs, return_tensors="pt")
-        #zeroshot_model = PromptClassifier(medclip_model.encode_image, medclip_model.encode_text, )
-
-    return processed_txt, processed_imgs, zeroshot_model
+        model = PromptClassifier(gloria_model.image_encoder_forward, gloria_model.text_encoder_forward, 
+                                 get_local_similarities=gloria_model.get_local_similarities, similarity_type=args.similarity_type)
+    elif args.model_name == "medclip":
+        model = PromptClassifier()
+    return model
 
 
 def main(args):
@@ -75,8 +85,13 @@ def main(args):
     # Generate input class text prompts
     cls_prompts = generate_chexpert_class_prompts()
     
+    # Build model and tokenizer
+    model = build_prompt_classifier(args, device)
+    tokenizer = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+
     # Process input images and class prompts
-    processed_txt, processed_imgs, model = process_inputs(args, cls_prompts, df['Path'].tolist(), device)
+    processed_txt = process_class_prompts(cls_prompts, tokenizer, device)
+    processed_imgs = process_imgs(df['Path'].tolist(), device)
 
     # Zero-shot classification on 1000 images
     output = model(processed_imgs, processed_txt)
@@ -96,6 +111,7 @@ if __name__ == "__main__":
     
     # Customizable model training settings
     parser.add_argument('--model_name', type=str, default='', help='model name')
+    parser.add_argument('--similarity_type', default='global', type=str, choices=['global', 'local', 'both'])
 
     # To be configured based on hardware/directory
     parser.add_argument('--pretrain_path', default='Path/To/checkpoint.pth')
