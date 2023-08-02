@@ -2,6 +2,8 @@ import pandas as pd
 from ..constants import *
 from sklearn.model_selection import train_test_split
 
+import os
+
 def preprocess_pneumonia_data(test_fac=0.15):
 
     try:

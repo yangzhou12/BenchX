@@ -1,59 +1,36 @@
-from pathlib import Path
+'''drawn from Gloria github: https://github.com/marshuang80/gloria
+'''
 
+BERT_TYPE = 'emilyalsentzer/Bio_ClinicalBERT'
+VIT_TYPE = 'microsoft/swin-tiny-patch4-window7-224'
 
+IMG_SIZE = 224
+IMG_MEAN = .5862785803043838
+IMG_STD = .27950088968644304
 
-# #############################################
-#          MIMIC-CXR-JPG constants            #
-# #############################################
-
-# MIMIC user constants
-MIMIC_CXR_ROOT_DIR = Path("/home/faith/datasets/mimic_512") #change this to your root data directory for MIMIC-CXR
-MIMIC_CXR_META_CSV = MIMIC_CXR_ROOT_DIR / "mimic-cxr-2.0.0-metadata.csv"
-MIMIC_CXR_SPLIT_CSV = MIMIC_CXR_ROOT_DIR / "mimic-cxr-2.0.0-split.csv"
-MIMIC_CXR_CHEX_CSV = MIMIC_CXR_ROOT_DIR / "mimic-cxr-2.0.0-chexpert.csv"
-MIMIC_REPORTS_DIR = MIMIC_CXR_ROOT_DIR / "files"
-
-# MIMIC fixed constants
-MIMIC_CXR_TEXT_CSV = MIMIC_CXR_ROOT_DIR / "mimic_cxr_sectioned.csv" #created after running preprocessing code
-MIMIC_CXR_TRAIN_CSV = MIMIC_CXR_ROOT_DIR / "train.csv" #train split
-MIMIC_CXR_VALID_CSV = MIMIC_CXR_ROOT_DIR / "valid.csv" #valid split
-MIMIC_CXR_TEST_CSV = MIMIC_CXR_ROOT_DIR / "test.csv" #test split
-MIMIC_CXR_MASTER_CSV = MIMIC_CXR_ROOT_DIR / "master_data.csv"
-MIMIC_CXR_PATH_COL = "Path"
-MIMIC_CXR_SPLIT_COL = "split"
-
-
-# #############################################
-#          RSNA Pneumonia constants           #
-# #############################################
-
-# RSNA Pneumonia
-PNEUMONIA_ROOT_DIR = Path("/home/faith/datasets/rsna_pneumonia/")  #change this to your root data directory for RSNA Pneumonia
-PNEUMONIA_ORIGINAL_TRAIN_CSV = PNEUMONIA_ROOT_DIR / "stage_2_train_labels.csv"
-PNEUMONIA_IMG_DIR = PNEUMONIA_ROOT_DIR / "stage_2_train_images"
-PNEUMONIA_TRAIN_CSV = PNEUMONIA_ROOT_DIR / "train.csv"
-PNEUMONIA_VALID_CSV = PNEUMONIA_ROOT_DIR / "val.csv"
-PNEUMONIA_TEST_CSV = PNEUMONIA_ROOT_DIR / "test.csv"
-PNEUMONIA_TRAIN_PCT = 0.
-
-PNEUMONIA_TASKS = ['Pneumonia']
-
-
-# ############################################
-#          NIH Chest X-Ray constants         #
-# ############################################
-
-NIH_CHEST_ROOT_DIR = Path("/data/faith/datasets/nih_chest_xray") #change this to your root data directory for NIH Chest X-ray
-
-NIH_CHEST_XRAY_TASKS =  ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass', 'Nodule', 'Pneumonia',
-                         'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia']
-
-
-# #############################################
-#         CheXpert (small) constants          #
-# #############################################
-
-# CheXpert class prompts
+CHEXPERT_TASKS = [
+    "No Finding",
+    "Enlarged Cardiomediastinum",
+    "Cardiomegaly",
+    "Lung Lesion",
+    "Lung Opacity",
+    "Edema",
+    "Consolidation",
+    "Pneumonia",
+    "Atelectasis",
+    "Pneumothorax",
+    "Pleural Effusion",
+    "Pleural Other",
+    "Fracture",
+    "Support Devices",
+]
+CHEXPERT_COMPETITION_TASKS = [
+    "Atelectasis",
+    "Cardiomegaly",
+    "Consolidation",
+    "Edema",
+    "Pleural Effusion",
+]
 CHEXPERT_CLASS_PROMPTS = {
     "Atelectasis": {
         "severity": ["", "mild", "minimal"],
@@ -148,31 +125,47 @@ CHEXPERT_CLASS_PROMPTS = {
     },
 }
 
-# CheXpert competition tasks (5x200)
-CHEXPERT_COMPETITION_TASKS = [
-    "Atelectasis",
-    "Cardiomegaly",
-    "Consolidation",
-    "Edema",
-    "Pleural Effusion",
+COVID_TASKS = [
+    'Normal',
+    'COVID',
 ]
-
-# CheXpert constants
-CHEXPERT_DATA_DIR = Path("/data/faith/datasets/CheXpert-v1.0-small") #change this to your data directory for CheXpert small dataset
-CHEXPERT_ORIGINAL_TRAIN_CSV = CHEXPERT_DATA_DIR / "train.csv"
-CHEXPERT_TEST_CSV = (
-    CHEXPERT_DATA_DIR / "valid.csv"
-)  # using expert-labelled validation set as test set (test set label hidden)
-CHEXPERT_5x200 = CHEXPERT_DATA_DIR / "chexpert_5x200.csv"
-
-
-
-# ############################################
-#          Downstream Task Constants         #
-# ############################################
-
-# Classification constants
-DATASET_CLASSES = {
-    'rsna_pneumonia': PNEUMONIA_TASKS,
-    'nih_chest_xray': NIH_CHEST_XRAY_TASKS
+COVID_CLASS_PROMPTS = {
+    'COVID': {
+        'adjective': ['patchy','confluent'],
+        'description': ['ground glass'],
+        'subtype': ['opacity', 'consolidation'],
+        'location': ['in peripheral', 'in mid', 'in lower'],
+    }
 }
+
+RSNA_TASKS = [
+    'Normal',
+    'Pneumonia',
+]
+RSNA_CLASS_PROMPTS = {
+    'Pneumonia': {
+        'adjective': ['round', 'early', 'focal', 'multifocal', 'small', ''],
+        'subtype': ['bacterial', 'viral', 'mycoplasma', ''],
+        "location": [
+            "at the mid lung zone",
+            "at the upper lung zone",
+            "at the right lung zone",
+            "at the left lung zone",
+            "at the lung bases",
+            "at the right lung base",
+            "at the left lung base",
+            "at the bilateral lung bases",
+            "at the left lower lobe",
+            "at the right lower lobe",
+            "at the left middle lobe",
+            "at the right middle lobe",
+            ""
+        ]
+    }
+}
+
+WEIGHTS_NAME = 'pytorch_model.bin'
+
+# store the URL of pretrained weights, `dev` needs to change to `main` after merging it to main branch.
+PRETRAINED_URL_MEDCLIP_RESNET = 'https://github.com/RyanWangZf/MedCLIP/raw/main/medclip/medclip_resnet_weight.txt'
+PRETRAINED_URL_MEDCLIP_VIT = 'https://github.com/RyanWangZf/MedCLIP/raw/main/medclip/medclip_vit_weight.txt'

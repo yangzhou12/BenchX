@@ -14,7 +14,7 @@ from pathlib import Path
 path_root = Path(__file__).parents[1]
 sys.path.append(str(path_root))
 import builder
-from loss.gloria_loss import local_loss, global_loss
+from loss.gloria_loss import local_loss, global_loss, attention_fn, cosine_similarity
 from gloria.utils.utils import *
 
 
@@ -119,7 +119,7 @@ class GLoRIA(nn.Module):
             word = word.repeat(batch_size, 1, 1)  # [48, 768, 25]
             context = img_emb_l  # [48, 768, 19, 19]
 
-            weiContext, attn = loss.gloria_loss.attention_fn(
+            weiContext, attn = attention_fn(
                 word, context, 4.0
             )  # [48, 768, 25], [48, 25, 19, 19]
 
@@ -128,8 +128,8 @@ class GLoRIA(nn.Module):
 
             word = word.view(batch_size * words_num, -1)  # [1200, 768]
             weiContext = weiContext.view(batch_size * words_num, -1)  # [1200, 768]
-            #
-            row_sim = loss.gloria_loss.cosine_similarity(word, weiContext)
+            
+            row_sim = cosine_similarity(word, weiContext)
             row_sim = row_sim.view(batch_size, words_num)  # [48, 25]
 
             row_sim.mul_(5.0).exp_()

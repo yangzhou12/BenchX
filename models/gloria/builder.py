@@ -149,46 +149,46 @@ def build_text_model(cfg):
 #         raise NotImplementedError(f"{cfg.train.loss_fn} not implemented yet")
 
 
-# def build_transformation(cfg, split):
+def build_transformation(cfg, split):
 
-#     t = []
-#     if split == "train":
+    t = []
+    if split == "train":
 
-#         if cfg.transforms.random_crop is not None:
-#             t.append(transforms.RandomCrop(cfg.transforms.random_crop.crop_size))
+        if cfg.transforms.random_crop is not None:
+            t.append(transforms.RandomCrop(cfg.transforms.random_crop.crop_size))
 
-#         if cfg.transforms.random_horizontal_flip is not None:
-#             t.append(
-#                 transforms.RandomHorizontalFlip(p=cfg.transforms.random_horizontal_flip)
-#             )
+        if cfg.transforms.random_horizontal_flip is not None:
+            t.append(
+                transforms.RandomHorizontalFlip(p=cfg.transforms.random_horizontal_flip)
+            )
 
-#         if cfg.transforms.random_affine is not None:
-#             t.append(
-#                 transforms.RandomAffine(
-#                     cfg.transforms.random_affine.degrees,
-#                     translate=[*cfg.transforms.random_affine.translate],
-#                     scale=[*cfg.transforms.random_affine.scale],
-#                 )
-#             )
+        if cfg.transforms.random_affine is not None:
+            t.append(
+                transforms.RandomAffine(
+                    cfg.transforms.random_affine.degrees,
+                    translate=[*cfg.transforms.random_affine.translate],
+                    scale=[*cfg.transforms.random_affine.scale],
+                )
+            )
 
-#         if cfg.transforms.color_jitter is not None:
-#             t.append(
-#                 transforms.ColorJitter(
-#                     brightness=[*cfg.transforms.color_jitter.bightness],
-#                     contrast=[*cfg.transforms.color_jitter.contrast],
-#                 )
-#             )
-#     else:
-#         if cfg.transforms.random_crop is not None:
-#             t.append(transforms.CenterCrop(cfg.transforms.random_crop.crop_size))
+        if cfg.transforms.color_jitter is not None:
+            t.append(
+                transforms.ColorJitter(
+                    brightness=[*cfg.transforms.color_jitter.bightness],
+                    contrast=[*cfg.transforms.color_jitter.contrast],
+                )
+            )
+    else:
+        if cfg.transforms.random_crop is not None:
+            t.append(transforms.CenterCrop(cfg.transforms.random_crop.crop_size))
 
-#     t.append(transforms.ToTensor())
-#     if cfg.transforms.norm is not None:
-#         if cfg.transforms.norm == "imagenet":
-#             t.append(transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
-#         elif cfg.transforms.norm == "half":
-#             t.append(transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
-#         else:
-#             raise NotImplementedError("Normaliation method not implemented")
+    t.append(transforms.ToTensor())
+    if cfg.transforms.norm is not None:
+        if cfg.transforms.norm == "imagenet":
+            t.append(transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
+        elif cfg.transforms.norm == "half":
+            t.append(transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
+        else:
+            raise NotImplementedError("Normaliation method not implemented")
 
-#     return transforms.Compose(t)
+    return transforms.Compose(t)

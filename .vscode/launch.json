@@ -13,25 +13,9 @@
             "justMyCode": true,
             "args": [
                 "--pretrain_path",
-                "/home/faith/projects/unified-framework/checkpoints/MRM.pth",
-                "--dataset",
-                "nih_chest_xray",
+                "/home/faith/projects/unified-framework/checkpoints/chexpert_resnet50.ckpt",
                 "--model_name",
-                "mrm",
-                "--model_type",
-                "vit",
-                "--output_dir",
-                "/home/faith/projects/unified-framework/data",
-                "--num_steps",
-                "3000",
-                "--warmup_steps",
-                "50",
-                "--data_pct",
-                "0.01",
-                "--learning_rate",
-                "3e-2",
-                "--weight_decay",
-                "0"
+                "gloria"
             ]
         }
     ]

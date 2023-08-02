@@ -8,9 +8,9 @@ import segmentation_models_pytorch as smp
 
 import sys
 from pathlib import Path
-path_root = Path(__file__).parents[0]
+path_root = Path(__file__).parents[1]
 sys.path.append(str(path_root))
-import utils.utils
+from gloria.utils.utils import *
 import builder
 import constants
 from .models.vision_model import PretrainedImageClassifier
@@ -94,6 +94,7 @@ def load_gloria(
 
     gloria_model = builder.build_gloria_model(cfg).to(device)
     gloria_model.load_state_dict(ckpt_dict)
+    del ckpt
 
     return gloria_model
 
@@ -271,7 +272,7 @@ def zero_shot_classification(gloria_model, imgs, cls_txt_mapping):
 
     # normalize across class
     if class_similarities.shape[0] > 1:
-        class_similarities = utils.normalize(class_similarities)
+        class_similarities = normalize(class_similarities)
     class_similarities = pd.DataFrame(
         class_similarities, columns=cls_txt_mapping.keys()
     )

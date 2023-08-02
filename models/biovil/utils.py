@@ -449,7 +449,7 @@ def get_all_preds(DL, mod=None,similarity=False, im_embeds=False, only_labels=Fa
                 neg_label_embeds = neg_label_embeds / neg_label_embeds.norm(dim=1, keepdim=True)
 
         # Get all image embeddings/labels
-        for i, samples in enumerate(DL): #data loader fails
+        for i, samples in enumerate(DL):
             images = samples['images']
             if i == 0:
                 tt = []
