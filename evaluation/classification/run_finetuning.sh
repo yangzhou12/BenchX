@@ -9,5 +9,4 @@ python finetuned_classifier.py \
     --warmup_steps 50 \
     --val_steps 200 \
     --data_pct 0.01 \
-    --learning_rate 1e-5 \
-    --resume 89
+    --learning_rate 1e-5

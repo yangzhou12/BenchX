@@ -3,3 +3,4 @@ checkpoints/
 experiments/
 components/
 models/convirt/data/
+.vscode/
