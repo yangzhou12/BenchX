@@ -34,7 +34,7 @@ def build_img_classifier(args, num_classes):
         Return a image classifier based on model argument.
     """
     if args.model_name == "biovil":
-        model = build_biovil_model(args, eval=True)
+        model = load_biovil_model(args, eval=True)
         img_backbone = model.cnn.encoder
         img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
     elif args.model_name == "mrm":

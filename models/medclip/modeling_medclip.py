@@ -159,12 +159,12 @@ class MedCLIPModel(nn.Module):
             # resnet
             pretrained_url = constants.PRETRAINED_URL_MEDCLIP_RESNET
             if input_dir is None:
-                input_dir = './pretrained/medclip-resnet'
+                input_dir = '/home/faith/projects/unified-framework/models/medclip/pretrained/medclip-resnet'
         elif isinstance(self.vision_model, MedCLIPVisionModelViT):
             # ViT
             pretrained_url = constants.PRETRAINED_URL_MEDCLIP_VIT
             if input_dir is None:
-                input_dir = './pretrained/medclip-vit'
+                input_dir = '/home/faith/projects/unified-framework/models/medclip/pretrained/medclip-vit'
         else:
             raise ValueError(f'We only have pretrained weight for MedCLIP-ViT or MedCLIP-ResNet, get {type(self.vision_model)} instead.')
 
@@ -185,7 +185,7 @@ class MedCLIPModel(nn.Module):
         self.load_state_dict(state_dict)
         print('load model weight from:', input_dir)
 
-    def encode_text(self, input_ids=None, attention_mask=None):
+    def encode_text(self, input_ids=None, attention_mask=None, token_type_ids=None):
         input_ids = input_ids.cuda()
         if attention_mask is not None:
             attention_mask = attention_mask.cuda()

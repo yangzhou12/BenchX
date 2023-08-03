@@ -78,6 +78,7 @@ class PromptClassifier(nn.Module):
                 img_emb_g = self.img_encoder_forward(imgs)
                 text_emb_g = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
 
+            #print(img_emb_g.shape, text_emb_g.shape)
             global_similarities = self.get_global_similarities(img_emb_g, text_emb_g)
 
         if self.similarity_type == "global":
@@ -101,8 +102,8 @@ class PromptClassifier(nn.Module):
         class_similarities = torch.stack(class_similarities, 1)
 
         # standardize across class
-        # if class_similarities.shape[0] > 1:
-        #     class_similarities = (class_similarities - class_similarities.mean(axis=0)) / (class_similarities.std(axis=0))
+        if class_similarities.shape[0] > 1:
+            class_similarities = (class_similarities - class_similarities.mean(axis=0)) / (class_similarities.std(axis=0))
 
         outputs = {
             'logits': class_similarities,

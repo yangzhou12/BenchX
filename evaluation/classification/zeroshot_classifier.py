@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import argparse
 import os
 import numpy as np
@@ -65,7 +66,24 @@ def build_prompt_classifier(args, device):
         model = PromptClassifier(gloria_model.image_encoder_forward, gloria_model.text_encoder_forward, 
                                  get_local_similarities=gloria_model.get_local_similarities, similarity_type=args.similarity_type)
     elif args.model_name == "medclip":
-        model = PromptClassifier()
+        medclip_model = load_medclip()
+        model = PromptClassifier(medclip_model.encode_image, medclip_model.encode_text, similarity_type=args.similarity_type)
+    elif args.model_name == "convirt":
+        convirt_model = load_convirt(args)
+        model = PromptClassifier(lambda x: F.normalize(convirt_model.img_encoder.global_embed(
+                                                       convirt_model.img_encoder(x)[0]), dim=1), 
+                                 lambda x, y, z: F.normalize(convirt_model.text_encoder.global_embed(
+                                                             convirt_model.text_encoder(x, y, z)[0]), dim=1),
+                                 similarity_type=args.similarity_type
+                                )
+    elif args.model_name == "biovil":
+        biovil_model = load_biovil_model(args, eval=True)
+        model = PromptClassifier(lambda x: biovil_model.get_im_embeddings(x, only_ims=True)[0], 
+                                 lambda x, y, z: biovil_model.encode_text(x, y, only_texts=True), 
+                                 similarity_type=args.similarity_type)
+    #elif args.model_name == "mrm":
+    #    mrm_model = load_mrm(args, device=device)
+    #    model = PromptClassifier()
     return model
 
 

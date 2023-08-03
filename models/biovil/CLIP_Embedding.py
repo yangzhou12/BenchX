@@ -85,12 +85,29 @@ class MedCLIP(nn.Module):
         else:
             return all_patches, all_im_embs
 
+    def encode_text(self, input_ids, attention_mask, only_words = False, only_texts = False): #custom proxy function for zeroshot classification
+        text_output = self.transformer(input_ids, attention_mask)
+        text_emb = self.transformer.get_projected_text_embeddings(input_ids=input_ids, 
+                                                                  attention_mask=attention_mask).to(device)
+
+        #get word embeddings using transformer projection head (predict [CLS] token)
+        word_embs_projected = [self.cls_projection_head(text_output.last_hidden_state[:, i, :])[:, None, :] for i in
+                               np.arange(text_output.last_hidden_state.shape[1])]
+        word_embs = torch.cat(word_embs_projected, dim=1).to(device)  # N T E
+
+        if only_words:
+            return word_embs
+        elif only_texts:
+            return text_emb
+        else:
+            return word_embs, text_emb
+
     def get_text_embeddings(self, text, only_words = False, only_texts = False):
         #tokenize to get tokens
         token_output = self.tokenizer.batch_encode_plus(batch_text_or_text_pairs=text,
-                                                        add_special_tokens=True, truncation=True,
-                                                        padding='longest', max_length=128,
-                                                        return_tensors='pt').to(device)
+                                                    add_special_tokens=True, truncation=True,
+                                                    padding='longest', max_length=128,
+                                                    return_tensors='pt').to(device)
 
         #text transformer output object
         text_output = self.transformer(token_output.input_ids, token_output.attention_mask)
@@ -114,7 +131,7 @@ class MedCLIP(nn.Module):
     def get_cross_weights(self, all_patches, word_embs):
         cross_weights = []
 
-        #print(all_patches[0]) #only 1 all_patches
+        print(all_patches[0].shape) #only 1 all_patches
 
         N, T, E = word_embs.shape
 
@@ -126,6 +143,8 @@ class MedCLIP(nn.Module):
         # (N x T x E)(N x E x P)
         # --> (N x T x P)
 
+        print(word_embs.repeat(len(all_patches), 1, 1).shape)
+        print(stack_patches.shape)
         cross_weights_text = torch.bmm(word_embs.repeat(len(all_patches), 1, 1), stack_patches)
         #TIER: takes sample word embeddings x sample patch embeddings, repeat x batch size
 

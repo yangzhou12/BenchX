@@ -34,7 +34,7 @@ BIOVIL_IMAGE_WEIGHTS_MD5 = "02ce6ee460f72efd599295f440dbb453"
 
 def get_biovil_resnet(pretrained: bool = True, eval=False) -> ImageModel:
     """Download weights from Hugging Face and instantiate the image model."""
-    resnet_checkpoint_path = '/home/faith/projects/tier-regularized/Modeling/biovil_image_resnet50_proj_size_128.pt'
+    resnet_checkpoint_path = '/home/faith/projects/unified-framework/checkpoints/biovil_image_resnet50_proj_size_128.pt'
     image_model = ImageModel(
         img_model_type=MODEL_TYPE, #ResNet-50
         joint_feature_size=JOINT_FEATURE_SIZE,
@@ -43,7 +43,7 @@ def get_biovil_resnet(pretrained: bool = True, eval=False) -> ImageModel:
     return image_model
 
 def getCNN(pretrained: bool = False, num_heads = 5, loadpath=None, loadmodel='best_model.pt', freeze=False, eval=True, classifier=False) -> ImageModel:
-    resnet_checkpoint_path = '/home/faith/projects/tier-regularized/Modeling/biovil_image_resnet50_proj_size_128.pt'
+    resnet_checkpoint_path = '/home/faith/projects/unified-framework/checkpoints/biovil_image_resnet50_proj_size_128.pt'
     image_model = ImageModel(
         img_model_type=MODEL_TYPE, 
         joint_feature_size=JOINT_FEATURE_SIZE,
