@@ -110,8 +110,9 @@ class GLoRIA(nn.Module):
         batch_size = img_emb_l.shape[0]
         similarities = []
 
-        for i in range(len(text_emb_l)):
+        for i in range(len(text_emb_l)):            
             words_num = cap_lens[i]
+
             word = (
                 text_emb_l[i, :, 1 : words_num + 1].unsqueeze(0).contiguous()
             )  # [1, 768, 25]

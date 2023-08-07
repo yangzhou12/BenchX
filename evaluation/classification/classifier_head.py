@@ -39,8 +39,7 @@ def get_encoder_output_dim(module: torch.nn.Module) -> int:
 
 class PromptClassifier(nn.Module):
     '''
-        Take in pre-trained text and image encoders with prompts and tokenizer for 
-        zero-shot classification.
+        Take in pre-trained text and image encoders for zero-shot classification.
     '''
 
     def __init__(self, 
@@ -67,12 +66,12 @@ class PromptClassifier(nn.Module):
         
         self.similarity_type = similarity_type
 
-        if get_global_similarities:
-            self._get_global_similarities = get_global_similarities
-        else:
-            self._get_global_similarities = self.get_global_similarities
+        if get_global_similarities: # if custom global similarity function exists, use custom function
+            self.get_global_similarities = get_global_similarities
+        else: # else, use GLoRIA global similarity function
+            self.get_global_similarities = self.calc_global_similarities
 
-    def get_global_similarities(self, img_emb_g, text_emb_g): # Taken from GLoRIA
+    def calc_global_similarities(self, img_emb_g, text_emb_g): # Taken from GLoRIA
         img_emb_g = img_emb_g.detach().cpu().numpy()
         text_emb_g = text_emb_g.detach().cpu().numpy()
         global_similarities = metrics.pairwise.cosine_similarity(img_emb_g, text_emb_g)
@@ -90,7 +89,7 @@ class PromptClassifier(nn.Module):
                 text_emb_g = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
 
             #print(img_emb_g.shape, text_emb_g.shape)
-            global_similarities = self._get_global_similarities(img_emb_g, text_emb_g)
+            global_similarities = self.get_global_similarities(img_emb_g, text_emb_g)
 
         if self.similarity_type == "global":
             return global_similarities.detach().cpu().numpy()

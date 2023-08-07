@@ -166,7 +166,7 @@ def main(args):
     writer = SummaryWriter(os.path.join(exp_path, 'log'))
 
     # Save copy of run_finetuning.sh file in exp folder
-    shutil.copyfile('run_finetuning.sh', os.path.join(exp_path, 'run_finetuning.sh'))
+    shutil.copyfile('run_finetuning_cls.sh', os.path.join(exp_path, 'run_finetuning_cls.sh'))
 
     # Train by batch
     t_total = args.num_steps

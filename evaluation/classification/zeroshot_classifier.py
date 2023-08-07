@@ -2,7 +2,6 @@ import torch
 import torch.nn.functional as F
 import argparse
 import os
-import tokenizers
 import numpy as np
 from pathlib import Path
 from PIL import Image
@@ -25,7 +24,6 @@ def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
     
     for cls_name, cls_text in cls_prompts.items():
 
-        #text_inputs = tokenizer(cls_text)
         text_inputs = tokenizer(cls_text, truncation=True, padding="max_length", return_tensors='pt', max_length=max_length)
         for k, v in text_inputs.items():
             text_inputs[k] = v.to(device)
@@ -94,11 +92,10 @@ def get_tokenizer(args):
     if args.model_name in ['gloria', 'medclip', 'convirt']:
         return AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
     if args.model_name in ['biovil']:
-        return AutoTokenizer.from_pretrained("microsoft/BiomedVLP-CXR-BERT-specialized")
+        return AutoTokenizer.from_pretrained("microsoft/BiomedVLP-CXR-BERT-specialized", trust_remote_code=True)
     if args.model_name in ['mrm']:
         tokenizer = PreTrainedTokenizerFast(tokenizer_file="/home/faith/projects/unified-framework/models/mrm/mimic_wordpiece.json",
-                                            add_special_tokens=True)
-        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+                                            add_special_tokens=True, pad_token='[PAD]')
         return tokenizer
     
 
@@ -143,7 +140,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     # Customizable model training settings
-    parser.add_argument('--model_name', type=str, default='', help='model name')
+    parser.add_argument('--model_name', type=str, default='', choices=['mrm', 'biovil', 'convirt', 'medclip', 'gloria'])
     parser.add_argument('--similarity_type', default='global', type=str, choices=['global', 'local', 'both'])
 
     # To be configured based on hardware/directory

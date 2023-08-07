@@ -6,7 +6,6 @@ import re
 from os.path import exists
 from tqdm import tqdm
 from ..constants import *
-from .utils import *
 
 
 def extract_mimic_text(args):
@@ -452,11 +451,10 @@ def main(args):
         
     master_df.insert(loc=0, column="Path", value=path_list)
 
-    # TODO: Create labeled data df
     labeled_data_df = pd.merge(master_df, chexpert_df, on=[
                                "subject_id", "study_id"], how="inner")
-    labeled_data_df.drop(["dicom_id", "subject_id", "study_id",
-                          "impression", "findings"], axis=1, inplace=True)
+    # labeled_data_df.drop(["dicom_id", "subject_id", "study_id",
+    #                       "impression", "findings"], axis=1, inplace=True)
 
     train_df = labeled_data_df.loc[labeled_data_df["split"] == "train"]
     train_df.to_csv(MIMIC_CXR_TRAIN_CSV, index=False)

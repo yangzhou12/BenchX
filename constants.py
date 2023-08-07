@@ -21,6 +21,7 @@ MIMIC_CXR_TEST_CSV = MIMIC_CXR_ROOT_DIR / "test.csv" #test split
 MIMIC_CXR_MASTER_CSV = MIMIC_CXR_ROOT_DIR / "master_data.csv"
 MIMIC_CXR_PATH_COL = "Path"
 MIMIC_CXR_SPLIT_COL = "split"
+MIMIC_CXR_REPORT_COL = "Report"
 
 
 # #############################################
