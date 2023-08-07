@@ -4,6 +4,7 @@ import copy
 from functools import partial
 from timm.models.vision_transformer import VisionTransformer
 from timm.models.layers import trunc_normal_
+from transformers import BertModel
 
 import sys
 from pathlib import Path
@@ -13,7 +14,7 @@ from biovil.CLIP_Embedding import MedCLIP
 from gloria.models.gloria_model import GLoRIA
 from convirt.convirt_module import ConVIRT
 from medclip.modeling_medclip import MedCLIPModel, MedCLIPVisionModelViT
-#from mrm.model_mrm import MRM
+from mrm.bert.bert_encoder import BertConfig
 
 
 
@@ -114,29 +115,42 @@ def load_medclip():
     return medclip_model
 
 
-# def load_mrm(args, device="cuda" if torch.cuda.is_available() else "cpu"):
+def load_mrm(args, device="cuda" if torch.cuda.is_available() else "cpu"):
    
-#     def vit_base_patch16(**kwargs):
-#         model = VisionTransformer(norm_layer=partial(torch.nn.LayerNorm, eps=1e-6), **kwargs)
-#         return model
+    def vit_base_patch16(**kwargs):
+        model = VisionTransformer(norm_layer=partial(torch.nn.LayerNorm, eps=1e-6), **kwargs)
+        return model
 
-#     mrm_model = vit_base_patch16(num_classes=0, drop_path_rate=0.1, fc_norm=False).to(device)
+    img_encoder = vit_base_patch16(num_classes=0, drop_path_rate=0.1, fc_norm=False).to(device)
+    bert_encoder = BertModel(BertConfig()).to(device)
+    bert_mlp = nn.Linear(img_encoder.embed_dim, 384, bias=True).to(device) # Project img encoder to "multimodal embedding space"
 
-#     if args.pretrain_path:
-#         checkpoint_model = torch.load(args.pretrain_path, map_location='cpu')['model']
-#         state_dict = mrm_model.state_dict()
-#         for k in ['head.weight', 'head.bias']:
-#             if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
-#                 print(f"Removing key {k} from pretrained checkpoint")
-#                 del checkpoint_model[k]
+    if args.pretrain_path:
+        checkpoint_model = torch.load(args.pretrain_path, map_location='cpu')['model']
+
+        bert_state_dict = {}
+        for k, v in checkpoint_model.items():
+            prefix = "bert_encoder.model.bert."
+            if k.startswith(prefix):
+                new_k = k.replace(prefix, "")
+                bert_state_dict[new_k] = v
+
+        bert_mlp_state_dict = {}
+        for k, v in checkpoint_model.items():
+            prefix = "bert_mlp."
+            if k.startswith(prefix):
+                new_k = k.replace(prefix, "")
+                bert_mlp_state_dict[new_k] = v
         
-#         # load pre-trained model
-#         msg = mrm_model.load_state_dict(checkpoint_model, strict=False)
-#         print(msg)
-
-#         assert set(msg.missing_keys) == {'head.weight', 'head.bias', 'fc_norm.weight', 'fc_norm.bias'}
+        # load pre-trained model
+        img_msg = img_encoder.load_state_dict(checkpoint_model, strict=False)
+        bert_msg = bert_encoder.load_state_dict(bert_state_dict, strict=False)
+        bert_mlp_msg = bert_mlp.load_state_dict(bert_mlp_state_dict, strict=False)
+        print(img_msg)
+        print(bert_msg)
+        print(bert_mlp_msg)
     
-#     return mrm_model
+    return img_encoder, bert_encoder, bert_mlp
 
     
 

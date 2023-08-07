@@ -2,10 +2,11 @@ import torch
 import torch.nn.functional as F
 import argparse
 import os
+import tokenizers
 import numpy as np
 from pathlib import Path
 from PIL import Image
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
 from sklearn.metrics import classification_report
 
 import sys
@@ -24,6 +25,7 @@ def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
     
     for cls_name, cls_text in cls_prompts.items():
 
+        #text_inputs = tokenizer(cls_text)
         text_inputs = tokenizer(cls_text, truncation=True, padding="max_length", return_tensors='pt', max_length=max_length)
         for k, v in text_inputs.items():
             text_inputs[k] = v.to(device)
@@ -61,31 +63,44 @@ def process_imgs(paths, device):
 
 
 def build_prompt_classifier(args, device):
-    if args.model_name == "gloria":
+    if args.model_name == "gloria": # uses BioClinicalBERT tokenizer
         gloria_model = load_gloria(args, device=device)
         model = PromptClassifier(gloria_model.image_encoder_forward, gloria_model.text_encoder_forward, 
                                  get_local_similarities=gloria_model.get_local_similarities, similarity_type=args.similarity_type)
-    elif args.model_name == "medclip":
+    elif args.model_name == "medclip": # uses BioClinicalBERT tokenizer  
         medclip_model = load_medclip()
         model = PromptClassifier(medclip_model.encode_image, medclip_model.encode_text, similarity_type=args.similarity_type)
-    elif args.model_name == "convirt":
+    elif args.model_name == "convirt": # uses BioClinicalBERT tokenizer 
         convirt_model = load_convirt(args)
         model = PromptClassifier(lambda x: F.normalize(convirt_model.img_encoder.global_embed(
                                                        convirt_model.img_encoder(x)[0]), dim=1), 
                                  lambda x, y, z: F.normalize(convirt_model.text_encoder.global_embed(
                                                              convirt_model.text_encoder(x, y, z)[0]), dim=1),
-                                 similarity_type=args.similarity_type
-                                )
-    elif args.model_name == "biovil":
+                                 similarity_type=args.similarity_type)
+    elif args.model_name == "biovil": # BiomedVLP-CXR-BERT tokenizer
         biovil_model = load_biovil_model(args, eval=True)
         model = PromptClassifier(lambda x: biovil_model.get_im_embeddings(x, only_ims=True)[0], 
                                  lambda x, y, z: biovil_model.encode_text(x, y, only_texts=True), 
                                  similarity_type=args.similarity_type)
-    #elif args.model_name == "mrm":
-    #    mrm_model = load_mrm(args, device=device)
-    #    model = PromptClassifier()
+    elif args.model_name == "mrm": # Custom mimic wordpiece tokenizer
+        vision_transformer, bert_model, bert_mlp = load_mrm(args, device=device)
+        model = PromptClassifier(lambda imgs: bert_mlp(vision_transformer.forward_features(imgs))[:, 1:, :].mean(dim=1), 
+                                 lambda x, y, z: bert_model(input_ids=x, attention_mask=y, token_type_ids=z)['pooler_output'],
+                                 similarity_type = args.similarity_type)
     return model
 
+
+def get_tokenizer(args):
+    if args.model_name in ['gloria', 'medclip', 'convirt']:
+        return AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+    if args.model_name in ['biovil']:
+        return AutoTokenizer.from_pretrained("microsoft/BiomedVLP-CXR-BERT-specialized")
+    if args.model_name in ['mrm']:
+        tokenizer = PreTrainedTokenizerFast(tokenizer_file="/home/faith/projects/unified-framework/models/mrm/mimic_wordpiece.json",
+                                            add_special_tokens=True)
+        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        return tokenizer
+    
 
 def main(args):
     
@@ -105,7 +120,7 @@ def main(args):
     
     # Build model and tokenizer
     model = build_prompt_classifier(args, device)
-    tokenizer = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+    tokenizer = get_tokenizer(args)
 
     # Process input images and class prompts
     processed_txt = process_class_prompts(cls_prompts, tokenizer, device)

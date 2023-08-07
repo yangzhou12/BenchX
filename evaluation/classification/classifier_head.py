@@ -43,7 +43,13 @@ class PromptClassifier(nn.Module):
         zero-shot classification.
     '''
 
-    def __init__(self, img_encoder_forward, text_encoder_forward, get_local_similarities=None, similarity_type="both"):
+    def __init__(self, 
+                 img_encoder_forward, 
+                 text_encoder_forward, 
+                 get_global_similarities=None, 
+                 get_local_similarities=None, 
+                 similarity_type="both"):
+        
         super(PromptClassifier, self).__init__()
         self.img_encoder_forward = img_encoder_forward
         self.text_encoder_forward = text_encoder_forward
@@ -58,8 +64,13 @@ class PromptClassifier(nn.Module):
             raise RuntimeError(
                 "Local similarity function not specified"
             )
-
+        
         self.similarity_type = similarity_type
+
+        if get_global_similarities:
+            self._get_global_similarities = get_global_similarities
+        else:
+            self._get_global_similarities = self.get_global_similarities
 
     def get_global_similarities(self, img_emb_g, text_emb_g): # Taken from GLoRIA
         img_emb_g = img_emb_g.detach().cpu().numpy()
@@ -79,7 +90,7 @@ class PromptClassifier(nn.Module):
                 text_emb_g = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
 
             #print(img_emb_g.shape, text_emb_g.shape)
-            global_similarities = self.get_global_similarities(img_emb_g, text_emb_g)
+            global_similarities = self._get_global_similarities(img_emb_g, text_emb_g)
 
         if self.similarity_type == "global":
             return global_similarities.detach().cpu().numpy()
