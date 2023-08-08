@@ -1,3 +1,14 @@
+"""
+Downstream task: Zero-shot retrieval (Image-to-text & image-to-report)
+Label-conditioned retrieval task - positive only when query label matches candidate label
+
+Metric:
+- Recall@K
+- Precision@K
+- Hit@K
+where K = {1, 5, 10}
+"""
+
 import torch
 import torch.nn.functional as F
 import argparse
@@ -101,7 +112,7 @@ def get_tokenizer(args):
         return tokenizer
     
 
-def evaluate(predictions, target):
+def evaluate(predictions, targets):
     hit_at_k, precision_at_k, recall_at_k = (), (), ()
 
     for k in [1, 5, 10]:
@@ -109,14 +120,18 @@ def evaluate(predictions, target):
         num_hits = 0
         num_correct = 0
 
-        for i in range(num_samples):
-            top_k_predictions = predictions[i].argsort(descending=True)[:k]
-            if target[i] in top_k_predictions:
-                num_hits += 1
-            num_correct += len(set(top_k_predictions) & set([target[i].item()]))
+        for i in range(num_samples): # for each text/image query
+            top_k_predictions = predictions[i].argsort(descending=True)[:k] # extract top k candidate images/reports
+            hit = False
+            for idx in top_k_predictions:  # for each candidate
+                if torch.equal(targets[idx], targets[i]) and hit == False: # if class of query is found in classes of top K candidates
+                    num_hits += 1 
+                    hit = True
+                elif torch.equal(targets[idx], targets[i]): # if class of query matches class of candidate
+                    num_correct += 1
 
-        hit = num_hits / num_samples
-        hit_at_k += (hit,)
+        hit_frac = num_hits / num_samples
+        hit_at_k += (hit_frac,)
         
         precision = num_correct / (num_samples * k)
         precision_at_k += (precision,)
@@ -140,24 +155,23 @@ def main(args):
     # Set seed
     set_seed(args)
 
-    df = pd.read_csv(MIMIC_CXR_MASTER_CSV)
-    df = df.sample(frac=0.001, random_state=42, replace=False)
+    df = pd.read_csv(MIMIC_CXR_5X200)
     df[MIMIC_CXR_REPORT_COL] = df['findings'] + " " + df['impression']
-    df['Path'] = df['Path'].apply(lambda x: os.path.join(MIMIC_CXR_ROOT_DIR, x))
     
     # Build model and tokenizer
     model = build_retrieval_model(args, device)
     tokenizer = get_tokenizer(args)
 
     # Process input images and class prompts
-    processed_txt = process_reports(df[MIMIC_CXR_REPORT_COL].tolist(), tokenizer, device)
-    processed_imgs = process_imgs(df[MIMIC_CXR_PATH_COL].tolist(), device)
+    processed_txt = process_reports(df[MIMIC_CXR_REPORT_COL].tolist(), tokenizer, device) #dictionary of txt
+    processed_imgs = process_imgs(df[MIMIC_CXR_PATH_COL].tolist(), device) #img tensor stack
 
     # Zero-shot image-text retrieval on image-text pairs
     predictions = model(processed_imgs, processed_txt, retrieve_images=args.retrieve_images)
 
     # Print evaluation results
-    eval_results = evaluate(predictions, torch.arange(len(df)))
+    targets = torch.tensor(df[CHEXPERT_COMPETITION_TASKS].values)
+    eval_results = evaluate(predictions, targets)
     H1, H5, H10 = eval_results['Hit@K']
     R1, R5, R10 = eval_results['Recall@K']
     P1, P5, P10 = eval_results['Precision@K']
