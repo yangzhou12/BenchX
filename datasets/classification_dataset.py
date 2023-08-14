@@ -62,83 +62,13 @@ class RSNAImageDataset(BaseImageDataset):
         # get image
         img_path = row["Path"]
         x = read_from_dicom(
-            img_path, imsize=self.imsize, transform=self.transform)
+            img_path, imsize=self.imsize, transform=self.transform) #default imsize None - no resizing involved
 
         y = float(row["Target"])
         y = torch.tensor([y])
 
         return {'image': x,
                 'label': y}
-
-
-# class MRMPneumonia(BaseImageDataset):
-#     def __init__(self, split="train", transform=None, data_pct=0.01):
-#         super().__init__(split=split, transform=transform)
-
-#         if not os.path.exists(PNEUMONIA_ROOT_DIR):
-#             raise RuntimeError(f"{PNEUMONIA_ROOT_DIR} does not exist!")
-            
-#         if data_pct == 0.01:
-#             train_label_data = "train_1.txt"
-#         if data_pct == 0.1:
-#             train_label_data = "train_10.txt"
-#         if data_pct == 1:
-#             train_label_data = "train_list.txt"
-#         test_label_data = "test_list.txt"
-#         val_label_data = "val_list.txt"
-        
-#         self.root = PNEUMONIA_ROOT_DIR
-#         self.listImagePaths = []
-#         self.listImageLabels = []
-        
-#         if self.split == "train":
-#             downloaded_data_label_txt = train_label_data
-        
-#         elif self.split == "valid":
-#             downloaded_data_label_txt = val_label_data
-                 
-#         elif self.split == "test":
-#             downloaded_data_label_txt = test_label_data
-           
-#         #---- Open file, get image paths and labels
-        
-#         fileDescriptor = open(os.path.join(self.root, downloaded_data_label_txt), "r")
-        
-#         #---- get into the loop
-#         line = True
-        
-#         while line:
-                
-#             line = fileDescriptor.readline()
-            
-#             #--- if not empty
-#             if line:
-#                 lineItems = line.split()
-#                 imagePath = os.path.join(self.root, lineItems[0])
-#                 imageLabel = lineItems[1:]
-#                 imageLabel = [int(i) for i in imageLabel]
-                
-#                 self.listImagePaths.append(imagePath)
-#                 self.listImageLabels.append(imageLabel)   
-            
-#         fileDescriptor.close()
-
-#     def __getitem__(self, index):
-        
-#         imagePath = self.listImagePaths[index]
-#         imageData = read_from_dicom(imagePath, transform=self.transform)
-        
-#         #imageData = Image.open(imagePath).convert('RGB')
-#         imageLabel = torch.FloatTensor(self.listImageLabels[index])
-
-#         #if self.transform != None: imageData = self.transform(imageData)
-        
-#         return {'image': imageData, 
-#                 'label': imageLabel}
-
-#     def __len__(self):
-        
-#         return len(self.listImagePaths)
 
 
 class NIHChestXRay14(BaseImageDataset):

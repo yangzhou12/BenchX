@@ -5,7 +5,7 @@ from sklearn import metrics
 
 class ZeroShotRetrieval(nn.Module):
     '''
-        Take in image and text encoders for ITR.
+        Take in image and text encoders for zero-shot image-text retrieval.
     '''
 
     def __init__(self, 

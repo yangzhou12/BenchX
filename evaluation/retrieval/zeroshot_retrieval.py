@@ -15,7 +15,6 @@ import argparse
 import os
 from pathlib import Path
 from PIL import Image
-from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 import sys
@@ -113,7 +112,7 @@ def get_tokenizer(args):
     
 
 def evaluate(predictions, targets):
-    hit_at_k, precision_at_k, recall_at_k = (), (), ()
+    hit_at_k, precision_at_k = (), ()
 
     for k in [1, 5, 10]:
         num_samples = len(predictions)
@@ -121,14 +120,15 @@ def evaluate(predictions, targets):
         num_correct = 0
 
         for i in range(num_samples): # for each text/image query
-            top_k_predictions = predictions[i].argsort(descending=True)[:k] # extract top k candidate images/reports
+            top_k_predictions = predictions[i][:k] # extract top k candidate images/reports
             hit = False
             for idx in top_k_predictions:  # for each candidate
-                if torch.equal(targets[idx], targets[i]) and hit == False: # if class of query is found in classes of top K candidates
-                    num_hits += 1 
-                    hit = True
-                elif torch.equal(targets[idx], targets[i]): # if class of query matches class of candidate
+                if torch.equal(targets[idx], targets[i]): # if class of query matches class of candidate 
                     num_correct += 1
+                    
+                    if hit == False:
+                        num_hits += 1
+                        hit = True # class of query is found in classes of top K candidates
 
         hit_frac = num_hits / num_samples
         hit_at_k += (hit_frac,)
@@ -136,11 +136,7 @@ def evaluate(predictions, targets):
         precision = num_correct / (num_samples * k)
         precision_at_k += (precision,)
 
-        recall = num_correct / num_samples
-        recall_at_k += (recall,)
-
     return {'Hit@K': hit_at_k, 
-            'Recall@K': recall_at_k, 
             'Precision@K': precision_at_k}
 
 
@@ -155,9 +151,10 @@ def main(args):
     # Set seed
     set_seed(args)
 
+    # Get dataset
     df = pd.read_csv(MIMIC_CXR_5X200)
     df[MIMIC_CXR_REPORT_COL] = df['findings'] + " " + df['impression']
-    
+
     # Build model and tokenizer
     model = build_retrieval_model(args, device)
     tokenizer = get_tokenizer(args)
@@ -173,11 +170,9 @@ def main(args):
     targets = torch.tensor(df[CHEXPERT_COMPETITION_TASKS].values)
     eval_results = evaluate(predictions, targets)
     H1, H5, H10 = eval_results['Hit@K']
-    R1, R5, R10 = eval_results['Recall@K']
     P1, P5, P10 = eval_results['Precision@K']
 
     print(f'Hit@1: {H1}, Hit@5: {H5}, Hit@10: {H10}, \n',
-          f'Recall@1: {R1}, Recall@5: {R5}, Recall@10: {R10}, \n',
           f'Precision@1: {P1}, Precision@5: {P5}, Precision@10: {P10}')
 
 
