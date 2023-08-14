@@ -320,3 +320,45 @@ class GLoRIA(nn.Module):
         )
 
         return resized_img
+    
+    # local similarity for retrieval model
+    def _compute_local_similarity(
+        self,
+        img_features,
+        words_emb,
+        cap_lens,
+        temp1=4.0,
+        temp2=5.0,
+        temp3=10.0,
+        agg="sum",
+    ):
+
+        batch_size = words_emb.shape[0]
+
+        similarities = []
+        for i in range(batch_size):
+
+            words_num = cap_lens[i]
+            word = words_emb[i, :, 1 : words_num + 1].unsqueeze(0).contiguous()
+            context = img_features
+
+            weiContext, _ = attention_fn(word, context, temp1)
+
+            word = word.transpose(1, 2).contiguous()
+            weiContext = weiContext.transpose(1, 2).contiguous()
+
+            word = word.squeeze()
+            weiContext = weiContext.squeeze()
+
+            row_sim = cosine_similarity(word, weiContext)
+
+            row_sim.mul_(temp2).exp_()
+            if agg == "sum":
+                row_sim = row_sim.sum()
+            else:
+                row_sim = row_sim.mean()
+            row_sim = torch.log(row_sim)
+
+            similarities.append(row_sim.item())
+
+        return np.array(similarities) * temp3
