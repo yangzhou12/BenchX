@@ -19,6 +19,7 @@ MIMIC_CXR_TRAIN_CSV = MIMIC_CXR_ROOT_DIR / "train.csv" #train split
 MIMIC_CXR_VALID_CSV = MIMIC_CXR_ROOT_DIR / "valid.csv" #valid split
 MIMIC_CXR_TEST_CSV = MIMIC_CXR_ROOT_DIR / "test.csv" #test split
 MIMIC_CXR_MASTER_CSV = MIMIC_CXR_ROOT_DIR / "master_data.csv"
+MIMIC_CXR_5X200 = MIMIC_CXR_ROOT_DIR / "mimic_5x200.csv"
 MIMIC_CXR_PATH_COL = "Path"
 MIMIC_CXR_SPLIT_COL = "split"
 MIMIC_CXR_REPORT_COL = "Report"
@@ -188,6 +189,18 @@ CHEXPERT_TEST_CSV = (
 )  # using expert-labelled validation set as test set (test set label hidden)
 CHEXPERT_5x200 = CHEXPERT_DATA_DIR / "chexpert_5x200.csv"
 
+
+# #############################################
+#         SIIM Pneumothorax constants         #
+# #############################################
+
+PNEUMOTHORAX_DATA_DIR = Path("/data/faith/datasets/siim-acr-pneumothorax") #change this to your root data directory for SIIM-ACR Pneumothorax
+PNEUMOTHORAX_ORIGINAL_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train-rle.csv"
+PNEUMOTHORAX_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train.csv"
+PNEUMOTHORAX_VALID_CSV = PNEUMOTHORAX_DATA_DIR / "valid.csv"
+PNEUMOTHORAX_TEST_CSV = PNEUMOTHORAX_DATA_DIR / "test.csv"
+PNEUMOTHORAX_IMG_DIR = PNEUMOTHORAX_DATA_DIR / "images"
+PNEUMOTHORAX_IMG_SIZE = 1024
 
 
 # ############################################
