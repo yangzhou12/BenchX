@@ -11,7 +11,6 @@ sys.path.append(str(path_root))
 from constants import *
 
 
-np.random.seed(0)
 
 def preprocess_pneumothorax_data(test_fac=0.15):
     try:

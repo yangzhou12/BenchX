@@ -1,4 +1,4 @@
 python zeroshot_retrieval.py \
-    --pretrain_path /home/faith/projects/unified-framework/checkpoints/chexpert_resnet50.ckpt \
-    --model_name gloria \
-    --similarity_type local
+    --pretrain_path /home/faith/projects/unified-framework/checkpoints/biovil_image_resnet50_proj_size_128.pt \
+    --model_name biovil \
+    --similarity_type global

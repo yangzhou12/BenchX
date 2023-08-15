@@ -184,41 +184,40 @@ class MultimodalPretrainingDataset(Dataset):
         img = self.get_img(path_key, self.imsize, self.transform)
         return img, caps, cap_len, path_key
 
+    def collate_fn(self, batches):
+        """sort sequence"""
+        imgs, cap_len, ids, tokens, attention = [], [], [], [], []
+        path = []
+        for b in batches:
+            img, cap, cap_l, p = b
+            imgs.append(img)
+            cap_len.append(cap_l)
+            ids.append(cap["input_ids"])
+            tokens.append(cap["token_type_ids"])
+            attention.append(cap["attention_mask"])
+            path.append(p)
 
-def multimodal_collate_fn(batch):
-    """sort sequence"""
-    imgs, cap_len, ids, tokens, attention = [], [], [], [], []
-    path = []
-    for b in batch:
-        img, cap, cap_l, p = b
-        imgs.append(img)
-        cap_len.append(cap_l)
-        ids.append(cap["input_ids"])
-        tokens.append(cap["token_type_ids"])
-        attention.append(cap["attention_mask"])
-        path.append(p)
+        # stack
+        imgs = torch.stack(imgs)
+        ids = torch.stack(ids).squeeze()
+        tokens = torch.stack(tokens).squeeze()
+        attention = torch.stack(attention).squeeze()
 
-    # stack
-    imgs = torch.stack(imgs)
-    ids = torch.stack(ids).squeeze()
-    tokens = torch.stack(tokens).squeeze()
-    attention = torch.stack(attention).squeeze()
+        # sort and add to dictionary
+        sorted_cap_lens, sorted_cap_indices = torch.sort(
+            torch.tensor(cap_len), 0, True)
 
-    # sort and add to dictionary
-    sorted_cap_lens, sorted_cap_indices = torch.sort(
-        torch.tensor(cap_len), 0, True)
+        path = np.array(path)
 
-    path = np.array(path)
-
-    return_dict = {
-        "caption_ids": ids[sorted_cap_indices],
-        "token_type_ids": tokens[sorted_cap_indices],
-        "attention_mask": attention[sorted_cap_indices],
-        "imgs": imgs[sorted_cap_indices],
-        "cap_lens": sorted_cap_lens,
-        "path": path[sorted_cap_indices]
-    }
-    return return_dict
+        return_dict = {
+            "caption_ids": ids[sorted_cap_indices],
+            "token_type_ids": tokens[sorted_cap_indices],
+            "attention_mask": attention[sorted_cap_indices],
+            "imgs": imgs[sorted_cap_indices],
+            "cap_lens": sorted_cap_lens,
+            "path": path[sorted_cap_indices]
+        }
+        return return_dict
 
 
     
