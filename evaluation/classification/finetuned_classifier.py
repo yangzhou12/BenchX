@@ -11,7 +11,6 @@ import numpy as np
 from tqdm import tqdm
 from pathlib import Path
 from tensorboardX import SummaryWriter
-from timm.scheduler.cosine_lr import CosineLRScheduler
 from sklearn.metrics import roc_auc_score, precision_recall_curve, accuracy_score
 
 import sys
@@ -19,7 +18,7 @@ path_root = Path(__file__).parents[2]
 sys.path.append(str(path_root))
 from evaluation.utils import *
 from evaluation.classification.classifier_head import ImageClassifier
-from datasets.dataloader import get_dataloaders
+from datasets.dataloader import get_ft_dataloaders
 from models.builders import *
 
 
@@ -146,7 +145,7 @@ def main(args):
 
     # Load specified dataset
     print("Creating dataset")
-    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(args) 
+    train_dataloader, val_dataloader, test_dataloader = get_ft_dataloaders(args) 
     classes = DATASET_CLASSES[args.dataset]
     
     # Load model
