@@ -82,7 +82,7 @@ class PromptClassifier(nn.Module):
         with torch.no_grad(): # get image features and compute similarities (global and local)
             if self.get_local_similarities:
                 img_emb_l, img_emb_g = self.img_encoder_forward(imgs)
-                text_emb_l, text_emb_g = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])[:2]
+                text_emb_l, text_emb_g, _ = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
                 local_similarities = self.get_local_similarities(img_emb_l, text_emb_l, texts["cap_lens"])
             else:
                 img_emb_g = self.img_encoder_forward(imgs)

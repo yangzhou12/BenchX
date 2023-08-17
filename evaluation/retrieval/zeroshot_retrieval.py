@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import argparse
 import os
 import GPUtil
+from tqdm import tqdm
 from pathlib import Path
 from PIL import Image
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
@@ -23,54 +24,20 @@ path_root = Path(__file__).parents[2]
 sys.path.append(str(path_root))
 from evaluation.utils import *
 from evaluation.retrieval.retrieval_head import ZeroShotRetrieval
-from datasets.transforms import DataTransforms
+from datasets.dataloader import get_zeroshot_dataloader
 from models.builders import *
 
 
 
-def process_reports(reports, tokenizer, device, max_length=97):
-    
-    processed_text = []
-
-    for t in reports:
-        text_inputs = tokenizer(t, truncation=True, padding="max_length", return_tensors='pt', max_length=max_length)
-        processed_text.append(text_inputs)
-
-    input_ids = torch.stack([x["input_ids"] for x in processed_text]).squeeze().to(device)
-    attention_mask = torch.stack([x["attention_mask"] for x in processed_text]).squeeze().to(device)
-    token_type_ids = torch.stack([x["token_type_ids"] for x in processed_text]).squeeze().to(device)
-
-    cap_lens = []
-    for txt in reports:
-        cap_lens.append(len([w for w in txt if not w.startswith("[")]))
-
-    return {
-        "input_ids": input_ids,
-        "attention_mask": attention_mask,
-        "token_type_ids": token_type_ids,
-        "cap_lens": cap_lens
-    }
-
-
-def process_imgs(paths, device):
-    transform = DataTransforms(is_train=False)
-    
-    if type(paths) == str: #input is one img path
-        paths = [paths]
-
-    all_imgs = []
-    for p in paths:
-
-        x = cv2.imread(str(p), 0)
-
-        # transform images
-        img = Image.fromarray(x).convert("RGB")
-        img = transform(img)
-        all_imgs.append(torch.tensor(img))
-
-    all_imgs = torch.stack(all_imgs).to(device)
-
-    return all_imgs
+def get_tokenizer(args):
+    if args.model_name in ['gloria', 'medclip', 'convirt']:
+        return AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+    if args.model_name in ['biovil']:
+        return AutoTokenizer.from_pretrained("microsoft/BiomedVLP-CXR-BERT-specialized", trust_remote_code=True)
+    if args.model_name in ['mrm']:
+        tokenizer = PreTrainedTokenizerFast(tokenizer_file="/home/faith/projects/unified-framework/models/mrm/mimic_wordpiece.json",
+                                            add_special_tokens=True, pad_token='[PAD]')
+        return tokenizer
 
 
 def build_retrieval_model(args, device):
@@ -152,33 +119,38 @@ def main(args):
     # Set seed
     set_seed(args)
 
-    # Get dataset
-    df = pd.read_csv(MIMIC_CXR_5X200)
-    df[MIMIC_CXR_REPORT_COL] = df['findings'] + " " + df['impression']
-
     # Build model and tokenizer
-    model = build_retrieval_model(args, device)
-    
-    # TODO: Distributed training
-    # if args.n_gpu > 1:
-        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        # model = torch.nn.parallel.DataParallel(model)
-    
-    model.cuda()
+    model = build_retrieval_model(args, device).to(device)
     tokenizer = get_tokenizer(args)
 
-    # Process input images and class prompts
-    processed_txt = process_reports(df[MIMIC_CXR_REPORT_COL].tolist(), tokenizer, device) #dictionary of txt
-    processed_imgs = process_imgs(df[MIMIC_CXR_PATH_COL].tolist(), device) #img tensor stack
+    # Get dataset
+    dataloader = get_zeroshot_dataloader(args, tokenizer)    
 
-    # Zero-shot image-text retrieval on image-text pairs
-    predictions = model(processed_imgs, processed_txt, retrieve_images=args.retrieve_images)
+    hits = []
+    precisions = []
 
-    # Print evaluation results
-    targets = torch.tensor(df[CHEXPERT_COMPETITION_TASKS].values)
-    eval_results = evaluate(predictions, targets)
-    H1, H5, H10 = eval_results['Hit@K']
-    P1, P5, P10 = eval_results['Precision@K']
+    # Batch-wise zero-shot image-text retrieval on image-text pairs
+    for i, sample in enumerate(tqdm(dataloader)):
+        image = sample['image'].to(device)
+        text = sample['text']
+        for k, v in text.items():
+            text[k] = v.to(device)
+
+        targets = sample['target'].to(device)
+        predictions = model(image, text, retrieve_images=args.retrieve_images)
+
+        eval_results = evaluate(predictions, targets)
+        hit = torch.tensor(eval_results['Hit@K'])
+        prec = torch.tensor(eval_results['Precision@K'])
+
+        hits.append(hit)
+        precisions.append(prec)
+
+    hits_at_k = torch.stack(hits).mean(dim=0, dtype=float)
+    H1, H5, H10 = hits_at_k.tolist()
+
+    precision_at_k = torch.stack(precisions).mean(dim=0, dtype=float)
+    P1, P5, P10 = precision_at_k.tolist()
 
     print(f'Hit@1: {H1}, Hit@5: {H5}, Hit@10: {H10}, \n',
           f'Precision@1: {P1}, Precision@5: {P5}, Precision@10: {P10}')
@@ -189,6 +161,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     # Customizable model training settings
+    parser.add_argument('--dataset', type=str, default='mimic_5x200')
     parser.add_argument('--model_name', type=str, default='', choices=['mrm', 'biovil', 'convirt', 'medclip', 'gloria'])
     parser.add_argument('--similarity_type', default='global', type=str, choices=['global', 'local', 'both'])
     parser.add_argument('--retrieve_images', action='store_true', help='switch to text-to-image retrieval instead of image-to-text')
@@ -199,6 +172,7 @@ if __name__ == "__main__":
     parser.add_argument('--gpu', type=str, default='0', help='gpu')
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--batch_size', type=int, default=16)
     
     args = parser.parse_args()
 

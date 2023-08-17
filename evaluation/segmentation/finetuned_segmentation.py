@@ -1,23 +1,16 @@
 import os
 import torch
-import torch.nn.functional as F
-import torch.nn as nn
-import shutil
 import argparse
+import shutil
 import time
-import json
-import datetime
-import numpy as np
-from tqdm import tqdm
 from pathlib import Path
+from tqdm import tqdm
 from tensorboardX import SummaryWriter
-from sklearn.metrics import roc_auc_score, precision_recall_curve, accuracy_score
 
 import sys
 path_root = Path(__file__).parents[2]
 sys.path.append(str(path_root))
 from evaluation.utils import *
-from evaluation.classification.classifier_head import ImageClassifier
 from datasets.dataloader import get_ft_dataloaders
 from models.builders import *
 
@@ -28,109 +21,7 @@ def count_parameters(model):
     return params/1000000
 
 
-def build_img_classifier(args, num_classes):
-    """
-        Return a image classifier based on model argument.
-    """
-    if args.model_name == "biovil":
-        model = load_biovil_model(args, eval=True)
-        img_backbone = model.cnn.encoder
-        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
-    elif args.model_name == "mrm":
-        img_classifier = build_mrm_classifier(args, num_classes)
-    elif args.model_name == "gloria":
-        img_backbone = build_gloria_encoder(args)
-        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
-    elif args.model_name == "convirt":
-        img_backbone = build_convirt_encoder(args)
-        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
-    else:
-        raise RuntimeError("Model not found")
-    
-    return img_classifier
-
-
-def compute_AUCs(gt, pred, n_class):
-    """Computes Area Under the Curve (AUC) from prediction scores.
-    Args:
-        gt: Pytorch tensor on GPU, shape = [n_samples, n_classes]
-        true binary labels.
-        pred: Pytorch tensor on GPU, shape = [n_samples, n_classes]
-        can either be probability estimates of the positive class,
-        confidence values, or binary decisions.
-    Returns:
-        List of AUROCs of all classes.
-    """
-    AUROCs = []
-    gt_np = gt.cpu().numpy()
-    pred_np = pred.cpu().numpy()
-    for i in range(n_class):
-        AUROCs.append(roc_auc_score(gt_np[:, i], pred_np[:, i]))
-    return AUROCs
-
-
-def valid(model, data_loader, criterion, device, writer, global_step):
-    model.eval()
-    val_losses = []
-    for i, sample in enumerate(tqdm(data_loader)):
-        image = sample['image']
-        label = sample['label'].float().to(device)
-        input_image = image.to(device,non_blocking=True)  
-        with torch.no_grad():
-            pred_class = model(input_image)
-            val_loss = criterion(pred_class,label)
-            val_losses.append(val_loss.item())
-    avg_val_loss = np.array(val_losses).mean()
-    writer.add_scalar('valid/loss', avg_val_loss, global_step)
-    return avg_val_loss
-
-
-def test(args, model, data_loader, device, classes):
-    # initialize the ground truth and output tensor
-    gt = torch.FloatTensor()
-    gt = gt.cuda()
-    pred = torch.FloatTensor()
-    pred = pred.cuda()
-
-    print("Detected lower validation loss! Start testing")
-    model.eval()
-    for i, sample in enumerate(tqdm(data_loader)):
-        image = sample['image']
-        label = sample['label'].float().to(device)
-        gt = torch.cat((gt, label), 0)
-        input_image = image.to(device,non_blocking=True)  
-        with torch.no_grad():
-            pred_class = model(input_image)
-            pred_class = F.sigmoid(pred_class)
-            pred = torch.cat((pred, pred_class), 0)
-
-    # Compute AUROCs
-    num_classes = len(classes)
-    AUROCs = compute_AUCs(gt, pred, num_classes)
-    AUROC_avg = np.array(AUROCs).mean()
-      
-    # Compute F1 scores and accuracy
-    gt_np = gt[:, 0].cpu().numpy()
-    pred_np = pred[:, 0].cpu().numpy()   
-    precision, recall, thresholds = precision_recall_curve(gt_np, pred_np)
-    numerator = 2 * recall * precision
-    denom = recall + precision
-    f1_scores = np.divide(numerator, denom, out=np.zeros_like(denom), where=(denom!=0))
-    max_f1 = np.max(f1_scores)
-    max_f1_thresh = thresholds[np.argmax(f1_scores)]
-
-    # Print metrics
-    print('The max f1 is', max_f1)    
-    print('The accuracy is', accuracy_score(gt_np, pred_np > max_f1_thresh)) 
-    print('The average AUROC is {AUROC_avg:.3f}'.format(AUROC_avg=AUROC_avg))
-    for i in range(num_classes):
-        print('The AUROC of {} is {}'.format(classes[i], AUROCs[i]))
-    
-    return AUROC_avg
-
-
 def main(args):
-
     # Set up CUDA and GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print("Total CUDA devices: ", torch.cuda.device_count()) 
@@ -165,7 +56,7 @@ def main(args):
     writer = SummaryWriter(os.path.join(exp_path, 'log'))
 
     # Save copy of run_finetuning.sh file in exp folder
-    shutil.copyfile('run_finetuning_cls.sh', os.path.join(exp_path, 'run_finetuning_cls.sh'))
+    shutil.copyfile('run_finetuning_seg.sh', os.path.join(exp_path, 'run_finetuning_seg.sh'))
 
     # Train by batch
     t_total = args.num_steps
@@ -246,20 +137,12 @@ def main(args):
         if global_step % t_total == 0:
             break
 
-    writer.close()       
-               
-    total_time = time.time() - start_time
-    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print('End training!')
-    print('Training time {}'.format(total_time_str))
-
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     # Customizable model training settings
-    parser.add_argument('--dataset', type=str, default='', choices=['rsna_pneumonia', 'nih_chest_xray'])
     parser.add_argument('--model_name', type=str, default='', help='model name')
     parser.add_argument('--optimizer', type=str, default='', choices=['sgd', 'adamw'])
     parser.add_argument('--scheduler', type=str, default='', choices=['cosine'])

@@ -110,7 +110,7 @@ def main(args):
     # Set seed
     set_seed(args)
 
-    df = pd.read_csv(CHEXPERT_5x200)[:200]
+    df = pd.read_csv(CHEXPERT_5x200)
     
     # Generate input class text prompts
     cls_prompts = generate_chexpert_class_prompts()
