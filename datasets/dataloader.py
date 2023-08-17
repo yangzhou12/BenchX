@@ -1,5 +1,6 @@
-from . import classification_dataset
 from . import pretraining_dataset
+from . import classification_dataset
+from . import segmentation_dataset
 from . import zeroshot_dataset
 from . import transforms
 
@@ -9,9 +10,10 @@ from torch.utils.data import DataLoader
 
 
 DATASETS = {
+    "pretrain": pretraining_dataset.MultimodalPretrainingDataset,
     "rsna_pneumonia": classification_dataset.RSNAImageDataset,
     "nih_chest_xray": classification_dataset.NIHChestXRay14,
-    "pretrain": pretraining_dataset.MultimodalPretrainingDataset,
+    "siim_acr_pneumothorax": segmentation_dataset.SIIMImageDataset,
     "mimic_5x200": zeroshot_dataset.MIMIC_5x200
 }
 
