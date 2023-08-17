@@ -20,11 +20,12 @@ from mrm.bert.bert_encoder import BertConfig
 
 def load_biovil_model(args, eval=False):
     biovil_model = MedCLIP(eval=eval)
-    biovil_model.cuda()
     
     if args.pretrain_path:
         checkpoint = torch.load(args.pretrain_path, map_location='cpu')
         biovil_model.load_state_dict(checkpoint, strict=False)
+
+    biovil_model.cuda()
 
     return biovil_model
 

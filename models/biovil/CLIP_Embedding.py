@@ -1,6 +1,7 @@
 from torch import nn
 import pandas as pd
 import torch
+import GPUtil
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -12,7 +13,7 @@ sys.path.append(str(path_root))
 import Vision_Model
 
 
-filename = '/home/faith/projects/unified-framework/models/biovil/query_custom_anil.csv'
+filename = '/home/faith/unified-framework/models/biovil/query_custom_anil.csv'
 labeldescs = pd.read_csv(filename) #load short queries
 try: #load train set queries if possible
     filename2 = '/n/data2/hms/XXXX-9/XXXX-4/XXXX-1/Med_ImageText_Embedding/data/mimic_label_queries_tinytrain.csv'
@@ -64,7 +65,7 @@ class MedCLIP(nn.Module):
         if not isinstance(images, list):
             images = [images]
 
-        images = [im.to(device) for im in images]
+        #images = [im.to(device) for im in images]
 
         all_patches, all_im_embs = [], []
         for im in images:

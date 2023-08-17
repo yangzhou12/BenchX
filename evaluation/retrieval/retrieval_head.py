@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from sklearn import metrics
+import GPUtil
 
 
 class ZeroShotRetrieval(nn.Module):
@@ -55,7 +56,10 @@ class ZeroShotRetrieval(nn.Module):
                 text_emb_l = text_emb_l[:, :, 1:] #remove [CLS] token
                 local_similarities = self.get_local_similarities(img_emb_l, text_emb_l, cap_lens)
             else:
+                GPUtil.showUtilization()
                 img_emb_g = self.img_encoder_forward(imgs)
+
+                GPUtil.showUtilization()
                 text_emb_g = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
 
             #print(img_emb_g.shape, text_emb_g.shape)

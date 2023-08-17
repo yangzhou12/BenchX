@@ -13,6 +13,7 @@ import torch
 import torch.nn.functional as F
 import argparse
 import os
+import GPUtil
 from pathlib import Path
 from PIL import Image
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
@@ -106,7 +107,7 @@ def get_tokenizer(args):
     if args.model_name in ['biovil']:
         return AutoTokenizer.from_pretrained("microsoft/BiomedVLP-CXR-BERT-specialized", trust_remote_code=True)
     if args.model_name in ['mrm']:
-        tokenizer = PreTrainedTokenizerFast(tokenizer_file="/home/faith/projects/unified-framework/models/mrm/mimic_wordpiece.json",
+        tokenizer = PreTrainedTokenizerFast(tokenizer_file="/home/faith/unified-framework/models/mrm/mimic_wordpiece.json",
                                             add_special_tokens=True, pad_token='[PAD]')
         return tokenizer
     
@@ -157,6 +158,13 @@ def main(args):
 
     # Build model and tokenizer
     model = build_retrieval_model(args, device)
+    
+    # TODO: Distributed training
+    # if args.n_gpu > 1:
+        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        # model = torch.nn.parallel.DataParallel(model)
+    
+    model.cuda()
     tokenizer = get_tokenizer(args)
 
     # Process input images and class prompts
@@ -195,8 +203,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    torch.cuda.current_device()
-    torch.cuda._initialized = True
+    #torch.cuda.current_device()
+    #torch.cuda._initialized = True
 
     main(args)
 

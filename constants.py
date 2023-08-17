@@ -7,7 +7,7 @@ from pathlib import Path
 # #############################################
 
 # MIMIC user constants
-MIMIC_CXR_ROOT_DIR = Path("/home/faith/datasets/mimic_512") #change this to your root data directory for MIMIC-CXR
+MIMIC_CXR_ROOT_DIR = Path("/home/faith/MVLM/mimic_512") #change this to your root data directory for MIMIC-CXR
 MIMIC_CXR_META_CSV = MIMIC_CXR_ROOT_DIR / "mimic-cxr-2.0.0-metadata.csv"
 MIMIC_CXR_SPLIT_CSV = MIMIC_CXR_ROOT_DIR / "mimic-cxr-2.0.0-split.csv"
 MIMIC_CXR_CHEX_CSV = MIMIC_CXR_ROOT_DIR / "mimic-cxr-2.0.0-chexpert.csv"
@@ -30,7 +30,7 @@ MIMIC_CXR_REPORT_COL = "Report"
 # #############################################
 
 # RSNA Pneumonia
-PNEUMONIA_ROOT_DIR = Path("/home/faith/datasets/rsna_pneumonia/")  #change this to your root data directory for RSNA Pneumonia
+PNEUMONIA_ROOT_DIR = Path("/home/faith/MVLM/rsna_pneumonia/")  #change this to your root data directory for RSNA Pneumonia
 PNEUMONIA_ORIGINAL_TRAIN_CSV = PNEUMONIA_ROOT_DIR / "stage_2_train_labels.csv"
 PNEUMONIA_IMG_DIR = PNEUMONIA_ROOT_DIR / "stage_2_train_images"
 PNEUMONIA_TRAIN_CSV = PNEUMONIA_ROOT_DIR / "train.csv"
@@ -67,7 +67,7 @@ PNEUMONIA_CLASS_PROMPTS = {
 #          NIH Chest X-Ray constants         #
 # ############################################
 
-NIH_CHEST_ROOT_DIR = Path("/data/faith/datasets/nih_chest_xray") #change this to your root data directory for NIH Chest X-ray
+NIH_CHEST_ROOT_DIR = Path("/home/faith/MVLM/nih_chest_xray") #change this to your root data directory for NIH Chest X-ray
 
 NIH_CHEST_XRAY_TASKS =  ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass', 'Nodule', 'Pneumonia',
                          'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia']
@@ -182,7 +182,7 @@ CHEXPERT_COMPETITION_TASKS = [
 ]
 
 # CheXpert constants
-CHEXPERT_DATA_DIR = Path("/data/faith/datasets/CheXpert-v1.0-small") #change this to your data directory for CheXpert small dataset
+CHEXPERT_DATA_DIR = Path("/home/faith/MVLM/CheXpert-v1.0-small") #change this to your data directory for CheXpert small dataset
 CHEXPERT_ORIGINAL_TRAIN_CSV = CHEXPERT_DATA_DIR / "train.csv"
 CHEXPERT_TEST_CSV = (
     CHEXPERT_DATA_DIR / "valid.csv"
@@ -194,7 +194,7 @@ CHEXPERT_5x200 = CHEXPERT_DATA_DIR / "chexpert_5x200.csv"
 #         SIIM Pneumothorax constants         #
 # #############################################
 
-PNEUMOTHORAX_DATA_DIR = Path("/data/faith/datasets/siim-acr-pneumothorax") #change this to your root data directory for SIIM-ACR Pneumothorax
+PNEUMOTHORAX_DATA_DIR = Path("/home/faith/MVLM/siim-acr-pneumothorax") #change this to your root data directory for SIIM-ACR Pneumothorax
 PNEUMOTHORAX_ORIGINAL_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train-rle.csv"
 PNEUMOTHORAX_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train.csv"
 PNEUMOTHORAX_VALID_CSV = PNEUMOTHORAX_DATA_DIR / "valid.csv"
