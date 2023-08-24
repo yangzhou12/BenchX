@@ -4,9 +4,9 @@ import argparse
 import os
 import numpy as np
 from pathlib import Path
-from PIL import Image
+from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, accuracy_score
 
 import sys
 path_root = Path(__file__).parents[2]
@@ -14,7 +14,7 @@ sys.path.append(str(path_root))
 from evaluation.utils import *
 from evaluation.classification.classifier_head import PromptClassifier
 from evaluation.classification.prompts import *
-from datasets.transforms import DataTransforms
+from datasets.dataloader import get_zeroshot_dataloader
 from models.builders import *
 
 
@@ -37,27 +37,6 @@ def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
         cls_prompt_inputs[cls_name] = text_inputs
 
     return cls_prompt_inputs
-
-
-def process_imgs(paths, device):
-    transform = DataTransforms(is_train=False)
-    
-    if type(paths) == str: #input is one img path
-        paths = [paths]
-
-    all_imgs = []
-    for p in paths:
-
-        x = cv2.imread(str(p), 0)
-
-        # transform images
-        img = Image.fromarray(x).convert("RGB")
-        img = transform(img)
-        all_imgs.append(torch.tensor(img))
-
-    all_imgs = torch.stack(all_imgs).to(device)
-
-    return all_imgs
 
 
 def build_prompt_classifier(args, device):
@@ -119,20 +98,31 @@ def main(args):
     model = build_prompt_classifier(args, device)
     tokenizer = get_tokenizer(args)
 
-    # Process input images and class prompts
-    processed_txt = process_class_prompts(cls_prompts, tokenizer, device)
-    processed_imgs = process_imgs(df['Path'].tolist(), device)
+    # Get dataset
+    dataloader = get_zeroshot_dataloader(args)
 
-    # Zero-shot classification on 1000 images
-    output = model(processed_imgs, processed_txt)
+    accuracies = []
 
-    class_similarities = pd.DataFrame(output['logits'], columns=output['class_names'])
-    print(class_similarities, "\n")
+    for i, sample in enumerate(tqdm(dataloader)):
+        image = sample['image'].to(device)
+        label = sample['label']
+        
+        processed_txt = process_class_prompts(cls_prompts, tokenizer, device)
 
-    df_5x200 = df[output['class_names']]
-    y_pred = np.argmax(output['logits'], axis=1)
-    y_true = np.argmax(df_5x200, axis=1)
-    print(classification_report(y_true, y_pred))
+        output = model(image, processed_txt)
+        
+        # class_similarities = pd.DataFrame(output['logits'], columns=output['class_names'])
+        # print(class_similarities, "\n")
+
+        y_pred = np.argmax(output['logits'], axis=1)
+        y_true = np.argmax(label, axis=1)
+        accuracy = accuracy_score(y_true, y_pred)
+
+        accuracies.append(accuracy)
+
+    mean_acc = np.stack(accuracies).mean(axis=0, dtype=float)
+
+    print(f'Mean accuracy: {mean_acc}')
 
 
 
@@ -140,6 +130,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     # Customizable model training settings
+    parser.add_argument('--dataset', default='chexpert_5x200')
     parser.add_argument('--model_name', type=str, default='', choices=['mrm', 'biovil', 'convirt', 'medclip', 'gloria'])
     parser.add_argument('--similarity_type', default='global', type=str, choices=['global', 'local', 'both'])
 
@@ -149,6 +140,7 @@ if __name__ == "__main__":
     parser.add_argument('--gpu', type=str, default='0', help='gpu')
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--batch_size', type=int, default=16)
     
     args = parser.parse_args()
 
