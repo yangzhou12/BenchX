@@ -14,7 +14,8 @@ DATASETS = {
     "rsna_pneumonia": classification_dataset.RSNAImageDataset,
     "nih_chest_xray": classification_dataset.NIHChestXRay14,
     "siim_acr_pneumothorax": segmentation_dataset.SIIMImageDataset,
-    "mimic_5x200": zeroshot_dataset.MIMIC_5x200
+    "mimic_5x200": zeroshot_dataset.MIMIC_5x200,
+    "chexpert_5x200": zeroshot_dataset.CheXpert_5x200
 }
 
 
@@ -66,7 +67,7 @@ def get_ft_dataloaders(args):
     return train_dataloader, val_dataloader, test_dataloader
 
 
-def get_zeroshot_dataloader(args, tokenizer):
+def get_zeroshot_dataloader(args, tokenizer=None):
     if args.dataset not in DATASETS:
         raise RuntimeError(
             "Please specify a dataset.\n" +
@@ -74,8 +75,12 @@ def get_zeroshot_dataloader(args, tokenizer):
         )
     
     dataset_class = DATASETS[args.dataset]
-
-    zeroshot_dataset = dataset_class(transforms.DataTransforms, tokenizer)
+    
+    if tokenizer:
+        zeroshot_dataset = dataset_class(transforms.DataTransforms, tokenizer)
+    else:
+        zeroshot_dataset = dataset_class(transforms.DataTransforms)
+        
     sampler = torch.utils.data.RandomSampler(zeroshot_dataset, replacement=False, num_samples=len(zeroshot_dataset))
     
     zeroshot_dataloader = DataLoader(
@@ -85,7 +90,7 @@ def get_zeroshot_dataloader(args, tokenizer):
         pin_memory=True,
         sampler=sampler,
         shuffle=False,
-        collate_fn=zeroshot_dataset.collate_fn,
+        collate_fn=zeroshot_dataset.collate_fn if hasattr(zeroshot_dataset, 'collate_fn') else None,
         drop_last=False
     )
 

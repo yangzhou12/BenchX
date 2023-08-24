@@ -12,7 +12,7 @@ class DataTransforms(object):
             ]
         else:
             data_transforms = [
-                #transforms.Resize(crop_size),
+                transforms.Resize(crop_size),
                 transforms.CenterCrop(crop_size),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) 

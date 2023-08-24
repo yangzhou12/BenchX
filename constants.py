@@ -188,6 +188,8 @@ CHEXPERT_TEST_CSV = (
     CHEXPERT_DATA_DIR / "valid.csv"
 )  # using expert-labelled validation set as test set (test set label hidden)
 CHEXPERT_5x200 = CHEXPERT_DATA_DIR / "chexpert_5x200.csv"
+CHEXPERT_PATH_COL = "Path"
+
 
 
 # #############################################

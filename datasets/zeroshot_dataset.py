@@ -5,16 +5,14 @@ from random import sample
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
-
 import sys
 from pathlib import Path
 path_root = Path(__file__).parents[2]
 from constants import *
 from datasets.utils import *
-from datasets.transforms import DataTransforms
 
 
-# Zero-shot image-text retrieval
+
 class MIMIC_5x200(Dataset): 
     def __init__(self, transform=None, tokenizer=None) -> None:
         super().__init__()
@@ -89,5 +87,38 @@ class MIMIC_5x200(Dataset):
                 "target": all_targets}
 
         
+class CheXpert_5x200(Dataset): 
+    def __init__(self, transform=None) -> None:
+        super().__init__()
+
+        self.transform = transform(is_train=False)
+
+        if not os.path.exists(CHEXPERT_DATA_DIR):
+            raise RuntimeError(f"{CHEXPERT_DATA_DIR} does not exist!")
+        elif not os.path.exists(CHEXPERT_5x200):
+            raise RuntimeError("Please pre-process CheXpert-5x200 dataset")
         
-        
+        self.df = pd.read_csv(CHEXPERT_5x200)
+        self.listImagePaths = self.df[CHEXPERT_PATH_COL].tolist()
+
+    def process_img(self, path):
+        x = cv2.imread(str(path), 0)
+
+        # transform images
+        img = Image.fromarray(x).convert("RGB")
+        img = self.transform(img)
+
+        return img
+    
+    def __getitem__(self, index):
+
+        imagePath = self.listImagePaths[index]
+
+        processed_img = self.process_img(imagePath)
+        target = torch.tensor(self.df[CHEXPERT_COMPETITION_TASKS].values[index])
+
+        return {'image': processed_img, 
+                'label': target}
+    
+    def __len__(self):
+        return len(self.df)
