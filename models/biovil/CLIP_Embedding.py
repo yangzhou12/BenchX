@@ -1,7 +1,6 @@
 from torch import nn
 import pandas as pd
 import torch
-import GPUtil
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

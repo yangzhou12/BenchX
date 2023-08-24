@@ -1,2 +1,1 @@
-python train.py --output_dir /home/faith/projects/unified-framework/models/convirt/data \
-    --batch_size 48 \
+python train.py --output_dir /home/faith/unified-framework/models/convirt/data

@@ -13,10 +13,8 @@ import torch
 import torch.nn.functional as F
 import argparse
 import os
-import GPUtil
 from tqdm import tqdm
 from pathlib import Path
-from PIL import Image
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 import sys
@@ -47,7 +45,8 @@ def build_retrieval_model(args, device):
                                   get_local_similarities=gloria_model.get_local_similarities, similarity_type=args.similarity_type)
     elif args.model_name == "medclip": # uses BioClinicalBERT tokenizer  
         medclip_model = load_medclip()
-        model = ZeroShotRetrieval(medclip_model.encode_image, medclip_model.encode_text, similarity_type=args.similarity_type)
+        model = ZeroShotRetrieval(medclip_model.encode_image, medclip_model.encode_text, 
+                                  get_global_similarities=medclip_model.compute_logits, similarity_type=args.similarity_type)
     elif args.model_name == "convirt": # uses BioClinicalBERT tokenizer 
         convirt_model = load_convirt(args)
         model = ZeroShotRetrieval(lambda x: F.normalize(convirt_model.img_encoder.global_embed(
@@ -120,11 +119,12 @@ def main(args):
     set_seed(args)
 
     # Build model and tokenizer
+    print(f"Model: {args.model_name}")
     model = build_retrieval_model(args, device).to(device)
     tokenizer = get_tokenizer(args)
 
     # Get dataset
-    dataloader = get_zeroshot_dataloader(args, tokenizer)    
+    dataloader = get_zeroshot_dataloader(args, tokenizer)  
 
     hits = []
     precisions = []
@@ -177,8 +177,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    #torch.cuda.current_device()
-    #torch.cuda._initialized = True
+    torch.cuda.current_device()
+    torch.cuda._initialized = True
 
     main(args)
 

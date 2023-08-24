@@ -62,7 +62,7 @@ class MultimodalPretrainingDataset(Dataset):
             BASE_DIR, "../data/captions.pickle")
         if not os.path.isfile(filepath):
             print(
-                f"Caption file {filepath} does not exit. Creating captions...")
+                f"Caption file {filepath} does not exist. Creating captions...")
             path2sent = self.create_path_2_sent_mapping()
             with open(filepath, "wb") as f:
                 pickle.dump(path2sent, f, protocol=2)

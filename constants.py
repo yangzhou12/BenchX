@@ -188,6 +188,8 @@ CHEXPERT_TEST_CSV = (
     CHEXPERT_DATA_DIR / "valid.csv"
 )  # using expert-labelled validation set as test set (test set label hidden)
 CHEXPERT_5x200 = CHEXPERT_DATA_DIR / "chexpert_5x200.csv"
+CHEXPERT_PATH_COL = "Path"
+CHEXPERT_REPORT_COL = "Report"
 
 
 # #############################################
@@ -199,7 +201,7 @@ PNEUMOTHORAX_ORIGINAL_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train-rle.csv"
 PNEUMOTHORAX_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train.csv"
 PNEUMOTHORAX_VALID_CSV = PNEUMOTHORAX_DATA_DIR / "valid.csv"
 PNEUMOTHORAX_TEST_CSV = PNEUMOTHORAX_DATA_DIR / "test.csv"
-PNEUMOTHORAX_IMG_DIR = PNEUMOTHORAX_DATA_DIR / "images"
+PNEUMOTHORAX_IMG_DIR = PNEUMOTHORAX_DATA_DIR / "dicom-images-train"
 PNEUMOTHORAX_IMG_SIZE = 1024
 
 

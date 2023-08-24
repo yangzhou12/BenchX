@@ -5,3 +5,4 @@ components/
 models/convirt/data/
 .vscode/
 models/medclip/pretrained/
+data/
