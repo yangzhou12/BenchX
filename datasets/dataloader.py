@@ -86,7 +86,7 @@ def get_zeroshot_dataloader(args, tokenizer):
         pin_memory=True,
         sampler=sampler,
         shuffle=False,
-        collate_fn=zeroshot_dataset.collate_fn,
+        collate_fn=zeroshot_dataset.collate_fn if hasattr(zeroshot_dataset, 'collate_fn') else None,
         drop_last=False
     )
 

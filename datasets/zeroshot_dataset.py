@@ -1,20 +1,16 @@
 import os
 import torch
 import pandas as pd
-from random import sample
 from torch.utils.data import Dataset
-from transformers import AutoTokenizer, PreTrainedTokenizerFast
-
 
 import sys
 from pathlib import Path
 path_root = Path(__file__).parents[2]
 from constants import *
 from datasets.utils import *
-from datasets.transforms import DataTransforms
 
 
-# Zero-shot image-text retrieval
+
 class MIMIC_5x200(Dataset): 
     def __init__(self, transform=None, tokenizer=None) -> None:
         super().__init__()
