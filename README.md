@@ -35,7 +35,7 @@ root:[data]
 | | +--mimic-cxr-2.0.0-negbio.csv
 | | +--mimic-cxr-2.0.0-split.csv
 | +--nih_chest_xray
-| | +--all_classes
+| | +--all_images
 | | +--test_list.txt
 | | +--train_val_list.txt
 | +--rsna_pneumonia
@@ -77,8 +77,8 @@ chmod a+x ./run_{task_name}.sh
 Supported Tasks:
 
 * Uni-modal Tasks
-    * Multi-label Classification on CheXpert
-    * Classification on RSNA Pneumonia
+    * Multi-label Classification on CheXpert (Zero-shot & Fine-tuned)
+    * Classification on RSNA Pneumonia (Zero-shot & Fine-tuned)
 * Cross-modal Tasks
     * Cross-modal Retrieval on CheXpert-5x200/MIMIC-5x200 (Zero-shot)
     * Cross-modal Retrieval on CheXpert-5x200/MIMIC-5x200 (Fine-tuned)
