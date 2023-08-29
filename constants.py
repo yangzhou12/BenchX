@@ -206,6 +206,17 @@ PNEUMOTHORAX_IMG_SIZE = 1024
 
 
 # ############################################
+#              SLAKE constants               #
+# ############################################
+
+SLAKE_DATA_DIR = Path("/data/faith/datasets/slake")
+SLAKE_IMG_DIR = SLAKE_DATA_DIR / "imgs"
+SLAKE_TRAIN_CSV = SLAKE_DATA_DIR / "train.csv"
+SLAKE_VALID_CSV = SLAKE_DATA_DIR / "valid.csv"
+SLAKE_TEST_CSV = SLAKE_DATA_DIR / "test.csv"
+
+
+# ############################################
 #          Downstream Task Constants         #
 # ############################################
 
