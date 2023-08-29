@@ -237,7 +237,9 @@ if __name__ == "__main__":
     # Customizable model training settings
     parser.add_argument("--model_name", type=str, default="", help="model name")
     parser.add_argument("--dataset", default="siim_acr_pneumothorax")
-    parser.add_argument("--optimizer", type=str, default="", choices=["sgd", "adamw"])
+    parser.add_argument(
+        "--optimizer", type=str, default="", choices=["sgd", "adamw", "adam"]
+    )
     parser.add_argument("--scheduler", type=str, default="", choices=["cosine"])
     parser.add_argument("--data_pct", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=48)
@@ -247,8 +249,8 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=42)
 
     # Hyperparameter tuning
-    parser.add_argument("--learning_rate", type=float, default=1e-6)
-    parser.add_argument("--weight_decay", type=float, default=0)
+    parser.add_argument("--learning_rate", type=float, default=5e-4)
+    parser.add_argument("--weight_decay", type=float, default=1e-6)
     parser.add_argument("--max_grad", type=float, default=1.0)
     parser.add_argument("--momentum", type=float, default=0.9)
 

@@ -3,5 +3,5 @@ python finetuned_segmentation.py \
     --output_dir /home/faith/projects/unified-framework/experiments \
     --model_name gloria \
     --scheduler cosine \
-    --optimizer adamw \
+    --optimizer adam \
     --gpu 0 \

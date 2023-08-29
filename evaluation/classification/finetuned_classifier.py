@@ -281,7 +281,9 @@ if __name__ == "__main__":
         "--dataset", type=str, default="", choices=["rsna_pneumonia", "nih_chest_xray"]
     )
     parser.add_argument("--model_name", type=str, default="", help="model name")
-    parser.add_argument("--optimizer", type=str, default="", choices=["sgd", "adamw"])
+    parser.add_argument(
+        "--optimizer", type=str, default="", choices=["sgd", "adamw", "adam"]
+    )
     parser.add_argument("--scheduler", type=str, default="", choices=["cosine"])
     parser.add_argument("--data_pct", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=48)
