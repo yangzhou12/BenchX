@@ -362,3 +362,5 @@ class GLoRIA(nn.Module):
             similarities.append(row_sim.item())
 
         return np.array(similarities) * temp3
+    
+    

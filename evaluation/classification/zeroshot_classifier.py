@@ -42,11 +42,13 @@ def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
 def build_prompt_classifier(args, device):
     if args.model_name == "gloria": # uses BioClinicalBERT tokenizer
         gloria_model = load_gloria(args, device=device)
-        model = PromptClassifier(gloria_model.image_encoder_forward, gloria_model.text_encoder_forward, 
+        model = PromptClassifier(gloria_model.image_encoder_forward, gloria_model.text_encoder_forward,
                                  get_local_similarities=gloria_model.get_local_similarities, similarity_type=args.similarity_type)
     elif args.model_name == "medclip": # uses BioClinicalBERT tokenizer  
         medclip_model = load_medclip()
-        model = PromptClassifier(medclip_model.encode_image, medclip_model.encode_text, similarity_type=args.similarity_type)
+        model = PromptClassifier(medclip_model.encode_image, medclip_model.encode_text, 
+                                 get_global_similarities=medclip_model.compute_logits,
+                                 similarity_type=args.similarity_type)
     elif args.model_name == "convirt": # uses BioClinicalBERT tokenizer 
         convirt_model = load_convirt(args)
         model = PromptClassifier(lambda x: F.normalize(convirt_model.img_encoder.global_embed(

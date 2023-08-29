@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from sklearn import metrics
 
 
@@ -66,8 +67,14 @@ class ZeroShotRetrieval(nn.Module):
         elif self.similarity_type == "local":
             return local_similarities.detach().cpu().numpy()
         else:
-            similarities = (local_similarities + global_similarities) / 2 # similarity aggregation function
-            return similarities.detach().cpu().numpy()
+            norm = lambda x: (x - x.mean(axis=0)) / (x.std(axis=0))
+            similarities = np.stack(
+                [norm(local_similarities), norm(global_similarities)]
+            )
+            #similarities = np.stack([local_similarities, global_similarities])
+            similarities = similarities.mean(axis=0)
+            return similarities
+        
         
     def forward(self, img_values=None, text_inputs=None, retrieve_images=False):
         similarity_matrix = torch.tensor(self.get_similarities(img_values, text_inputs)) # n_images, n_reports
