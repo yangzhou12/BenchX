@@ -4,13 +4,17 @@
 
 ### 0. Download Datasets
 
-- MIMIC-CXR: We downloaded the MIMIC-CXR-JPG dataset as the radiographs. Paired medical reports can be downloaded in MIMIC-CXR.
+- MIMIC-CXR: We downloaded the [MIMIC-CXR-JPG](https://physionet.org/content/mimic-cxr-jpg/2.0.0/) dataset as the radiographs. Paired medical reports can be downloaded in MIMIC-CXR.
 
-- CheXpert: We downloaded the CheXpert small dataset in Kaggle.
+- CheXpert: We downloaded the [CheXpert](https://stanfordmlgroup.github.io/competitions/chexpert/#:~:text=What%20is%20CheXpert%3F,labeled%20reference%20standard%20evaluation%20sets) small dataset from Kaggle.
 
-- RSNA Pneumonia: We used the stage 2 of RSNA dataset in Kaggle.
+- RSNA Pneumonia: We used the stage 2 of [RSNA Pneumonia](https://www.kaggle.com/c/rsna-pneumonia-detection-challenge) dataset in Kaggle.
 
-- SIIM: We downloaded the stage 1 of SIIM dataset in Kaggle.
+- SIIM: We downloaded the stage 1 of [SIIM](https://www.kaggle.com/c/siim-acr-pneumothorax-segmentation) dataset from Kaggle.
+
+- NIH Chest X-rays: We downloaded Version 3 of the [NIH Chest X-rays dataset](https://www.kaggle.com/datasets/nih-chest-xrays/data) from Kaggle. All images from `img_0XX' folders are moved to a combined folder `all_images`.
+  
+- SLAKE: We downloaded the [SLAKE](https://www.med-vqa.com/slake/) dataset through the official download link in the paper.
 
 Change dataset paths in `constants.py` accordingly.
 
@@ -46,6 +50,11 @@ root:[data]
 | +--dicom-images-test
 | +--dicom-images-train
 | +--train-rle.csv
++--slake
+| +--imgs
+| +--test.json
+| +--train.json
+| +--valid.json
 ```
 
 
