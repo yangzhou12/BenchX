@@ -1,5 +1,4 @@
-# unified-framework
-This project aims to summarize recent progress, develop a unified framework for fair comparisons, and build a benchmark for medical vision-language models.
+# Unified Framework for Medical Vision-Language Models
 
 ## Downstream Evaluation
 
