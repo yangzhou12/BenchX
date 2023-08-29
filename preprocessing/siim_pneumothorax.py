@@ -6,10 +6,10 @@ from sklearn.model_selection import train_test_split
 
 import sys
 from pathlib import Path
+
 path_root = Path(__file__).parents[1]
 sys.path.append(str(path_root))
 from constants import *
-
 
 
 def preprocess_pneumothorax_data(test_fac=0.15):
@@ -29,7 +29,7 @@ def preprocess_pneumothorax_data(test_fac=0.15):
             if "dcm" in f:
                 # remove dcm
                 file_id = f[:-4]
-                img_paths[file_id] = os.path.join(subdir[105:], f)
+                img_paths[file_id] = os.path.join(subdir, f)
 
     # no encoded pixels mean healthy
     df["Label"] = df.apply(
@@ -38,10 +38,8 @@ def preprocess_pneumothorax_data(test_fac=0.15):
     df["Path"] = df["ImageId"].apply(lambda x: img_paths[x])
 
     # split data
-    train_df, test_val_df = train_test_split(
-        df, test_size=test_fac * 2, random_state=0)
-    test_df, valid_df = train_test_split(
-        test_val_df, test_size=0.5, random_state=0)
+    train_df, test_val_df = train_test_split(df, test_size=test_fac * 2, random_state=0)
+    test_df, valid_df = train_test_split(test_val_df, test_size=0.5, random_state=0)
 
     print(f"Number of train samples: {len(train_df)}")
     print(train_df["Label"].value_counts())
