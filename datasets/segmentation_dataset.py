@@ -12,7 +12,7 @@ from constants import *
 
 
 
-class BaseImageDataset(Dataset):
+class BaseDataset(Dataset):
     def __init__(self, split="train", transform=None) -> None:
         super().__init__()
 
@@ -30,7 +30,7 @@ class BaseImageDataset(Dataset):
         raise NotImplementedError
     
 
-class SIIMImageDataset(BaseImageDataset):
+class SIIMImageDataset(BaseDataset):
     def __init__(self, split="train", transform=None, data_pct=0.01, imsize=224):
         super().__init__(split=split, transform=transform)
 

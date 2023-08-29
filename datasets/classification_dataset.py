@@ -2,17 +2,19 @@ import os
 import torch
 import pandas as pd
 from random import sample
+from PIL import Image
 from torch.utils.data import Dataset
 
 import sys
 from pathlib import Path
 path_root = Path(__file__).parents[2]
+sys.path.append(str(path_root))
 from constants import *
 from datasets.utils import *
 
 
 
-class BaseImageDataset(Dataset):
+class BaseDataset(Dataset):
     def __init__(self, split="train", transform=None) -> None:
         super().__init__()
 
@@ -30,7 +32,7 @@ class BaseImageDataset(Dataset):
         raise NotImplementedError
     
 
-class RSNAImageDataset(BaseImageDataset):
+class RSNAImageDataset(BaseDataset):
     def __init__(self, split="train", transform=None, data_pct=0.01, imsize=None) -> None:
         super().__init__(split=split, transform=transform)
 
@@ -71,7 +73,7 @@ class RSNAImageDataset(BaseImageDataset):
                 'label': y}
 
 
-class NIHChestXRay14(BaseImageDataset):
+class NIHChestXRay14(BaseDataset):
     def __init__(self, split="train", transform=None, data_pct=0.01):
         super().__init__(split=split, transform=transform)
 
