@@ -12,7 +12,7 @@
 
 - SIIM: We downloaded the stage 1 of [SIIM](https://www.kaggle.com/c/siim-acr-pneumothorax-segmentation) dataset from Kaggle.
 
-- NIH Chest X-rays: We downloaded Version 3 of the [NIH Chest X-rays dataset](https://www.kaggle.com/datasets/nih-chest-xrays/data) from Kaggle. All images from `img_0XX' folders are moved to a combined folder `all_images`.
+- NIH Chest X-rays: We downloaded Version 3 of the [NIH Chest X-rays dataset](https://www.kaggle.com/datasets/nih-chest-xrays/data) from Kaggle. All images from `img_0XX` folders are moved to a combined folder `all_images`.
   
 - SLAKE: We downloaded the [SLAKE](https://www.med-vqa.com/slake/) dataset through the official download link in the paper.
 
