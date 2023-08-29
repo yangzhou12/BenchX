@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from sklearn import metrics
 
 
@@ -105,11 +106,11 @@ class PromptClassifier(nn.Module):
         
         for cls_name, cls_text in prompt_inputs.items():
             similarities = self.get_similarities(img_values, cls_text)
-            cls_similarity = torch.max(torch.from_numpy(similarities), 1)[0] # Take max as the logits similarity
+            cls_similarity = similarities.max(axis=1) # Take max as the logits similarity
             class_similarities.append(cls_similarity)
             class_names.append(cls_name)
         
-        class_similarities = torch.stack(class_similarities, 1)
+        class_similarities = np.stack(class_similarities, 1)
 
         # standardize across class
         if class_similarities.shape[0] > 1:

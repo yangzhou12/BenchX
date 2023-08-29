@@ -97,7 +97,8 @@ class SIIMImageDataset(BaseImageDataset):
         x = augmented["image"]
         y = augmented["mask"].squeeze()
         
-        return x, y
+        return {"image": x,
+                "mask": y}
     
     def __len__(self):
         return len(self.img_ids)

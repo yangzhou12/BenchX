@@ -13,10 +13,10 @@ from tensorboardX import SummaryWriter
 import sys
 path_root = Path(__file__).parents[2]
 sys.path.append(str(path_root))
-from datasets.pretraining_dataset import MultimodalPretrainingDataset, multimodal_collate_fn
+from datasets.pretraining_dataset import MultimodalPretrainingDataset
 from datasets.transforms import DataTransforms
 from convirt_module import ConVIRT
-from train_utils import *
+from models.convirt.utils import *
 
 
 def train_one_epoch(model, train_dataloader, optimizer, epoch, warmup_steps, device, lr_scheduler, args, writer):
@@ -81,7 +81,7 @@ def main(args):
             num_workers=args.num_workers,
             pin_memory=True,
             sampler=None,
-            collate_fn=multimodal_collate_fn,
+            collate_fn=dataset.collate_fn,
             drop_last=True,
         )
     
@@ -136,14 +136,14 @@ def main(args):
             f.write(json.dumps(log_stats) + "\n")
         
         # Save every 10th checkpoint
-        if (epoch+1) % 10 == 0 and epoch > 1:
-            save_obj = {
-                'model': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'lr_scheduler': lr_scheduler.state_dict(),
-                'epoch': epoch,
-            }
-            torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_'+str(epoch)+'.pth'))         
+        # if (epoch+1) % 10 == 0 and epoch > 1:
+        #     save_obj = {
+        #         'model': model.state_dict(),
+        #         'optimizer': optimizer.state_dict(),
+        #         'lr_scheduler': lr_scheduler.state_dict(),
+        #         'epoch': epoch,
+        #     }
+        #     torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_'+str(epoch)+'.pth'))         
                 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -161,10 +161,10 @@ if __name__ == '__main__':
     parser.add_argument("--encoder_momentum", type=float, default=0.999)
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--weight_decay", type=float, default=0.05)
-    parser.add_argument("--batch_size", type=int, default=48)
+    parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--gpu", type=str, default='0', help='gpu')
+    parser.add_argument("--gpu", type=str, default='1', help='gpu')
     parser.add_argument("--output_dir", type=str, default='Path/To/Outputdir')
     args = parser.parse_args()
 

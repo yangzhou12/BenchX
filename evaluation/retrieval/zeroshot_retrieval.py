@@ -15,7 +15,6 @@ import argparse
 import os
 from tqdm import tqdm
 from pathlib import Path
-from PIL import Image
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 import sys
@@ -46,7 +45,8 @@ def build_retrieval_model(args, device):
                                   get_local_similarities=gloria_model.get_local_similarities, similarity_type=args.similarity_type)
     elif args.model_name == "medclip": # uses BioClinicalBERT tokenizer  
         medclip_model = load_medclip()
-        model = ZeroShotRetrieval(medclip_model.encode_image, medclip_model.encode_text, similarity_type=args.similarity_type)
+        model = ZeroShotRetrieval(medclip_model.encode_image, medclip_model.encode_text, 
+                                  get_global_similarities=medclip_model.compute_logits, similarity_type=args.similarity_type)
     elif args.model_name == "convirt": # uses BioClinicalBERT tokenizer 
         convirt_model = load_convirt(args)
         model = ZeroShotRetrieval(lambda x: F.normalize(convirt_model.img_encoder.global_embed(
@@ -65,6 +65,17 @@ def build_retrieval_model(args, device):
                                   lambda x, y, z: bert_model(input_ids=x, attention_mask=y, token_type_ids=z)['pooler_output'],
                                   similarity_type = args.similarity_type)
     return model
+
+
+def get_tokenizer(args):
+    if args.model_name in ['gloria', 'medclip', 'convirt']:
+        return AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+    if args.model_name in ['biovil']:
+        return AutoTokenizer.from_pretrained("microsoft/BiomedVLP-CXR-BERT-specialized", trust_remote_code=True)
+    if args.model_name in ['mrm']:
+        tokenizer = PreTrainedTokenizerFast(tokenizer_file="/home/faith/unified-framework/models/mrm/mimic_wordpiece.json",
+                                            add_special_tokens=True, pad_token='[PAD]')
+        return tokenizer
     
 
 def evaluate(predictions, targets):
@@ -108,11 +119,12 @@ def main(args):
     set_seed(args)
 
     # Build model and tokenizer
+    print(f"Model: {args.model_name}")
     model = build_retrieval_model(args, device).to(device)
     tokenizer = get_tokenizer(args)
 
     # Get dataset
-    dataloader = get_zeroshot_dataloader(args, tokenizer)    
+    dataloader = get_zeroshot_dataloader(args, tokenizer)  
 
     hits = []
     precisions = []

@@ -117,6 +117,8 @@ class GLoRIA(nn.Module):
                 text_emb_l[i, :, 1 : words_num + 1].unsqueeze(0).contiguous()
             )  # [1, 768, 25]
 
+            words_num = min(words_num, word.shape[2]) # Account for when word.shape[2] < words_num (embedding is truncated)
+
             word = word.repeat(batch_size, 1, 1)  # [48, 768, 25]
             context = img_emb_l  # [48, 768, 19, 19]
 
@@ -125,8 +127,10 @@ class GLoRIA(nn.Module):
             )  # [48, 768, 25], [48, 25, 19, 19]
 
             word = word.transpose(1, 2).contiguous()  # [48, 25, 768]
+            # print(word.shape)
             weiContext = weiContext.transpose(1, 2).contiguous()  # [48, 25, 768]
 
+            # print(batch_size * words_num)
             word = word.view(batch_size * words_num, -1)  # [1200, 768]
             weiContext = weiContext.view(batch_size * words_num, -1)  # [1200, 768]
             

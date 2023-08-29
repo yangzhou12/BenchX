@@ -14,6 +14,7 @@ sys.path.append(str(path_root))
 from evaluation.utils import *
 from evaluation.classification.classifier_head import PromptClassifier
 from evaluation.classification.prompts import *
+from datasets.transforms import DataTransforms, MedCLIPTransforms, GloRIATransforms
 from datasets.dataloader import get_zeroshot_dataloader
 from models.builders import *
 
@@ -23,7 +24,6 @@ def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
     cls_prompt_inputs = {}
     
     for cls_name, cls_text in cls_prompts.items():
-
         text_inputs = tokenizer(cls_text, truncation=True, padding="max_length", return_tensors='pt', max_length=max_length)
         for k, v in text_inputs.items():
             text_inputs[k] = v.to(device)

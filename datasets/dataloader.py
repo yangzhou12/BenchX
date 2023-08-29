@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 
 
-DATASETS = {
+_DATASETS = {
     "pretrain": pretraining_dataset.MultimodalPretrainingDataset,
     "rsna_pneumonia": classification_dataset.RSNAImageDataset,
     "nih_chest_xray": classification_dataset.NIHChestXRay14,
@@ -20,13 +20,13 @@ DATASETS = {
 
 
 def get_ft_dataloaders(args):
-    if args.dataset not in DATASETS:
+    if args.dataset not in _DATASETS:
         raise RuntimeError(
             "Please specify a dataset.\n" +
             "Run --help to see datasets available for downstream task."
         )
     
-    dataset_class = DATASETS[args.dataset]
+    dataset_class = _DATASETS[args.dataset]
 
     train_dataset = dataset_class('train', transforms.DataTransforms, args.data_pct)
     train_dataloader = DataLoader(
@@ -67,20 +67,16 @@ def get_ft_dataloaders(args):
     return train_dataloader, val_dataloader, test_dataloader
 
 
-def get_zeroshot_dataloader(args, tokenizer=None):
-    if args.dataset not in DATASETS:
+def get_zeroshot_dataloader(args, tokenizer):
+    if args.dataset not in _DATASETS:
         raise RuntimeError(
             "Please specify a dataset.\n" +
             "Run --help to see datasets available for downstream task."
         )
     
-    dataset_class = DATASETS[args.dataset]
-    
-    if tokenizer:
-        zeroshot_dataset = dataset_class(transforms.DataTransforms, tokenizer)
-    else:
-        zeroshot_dataset = dataset_class(transforms.DataTransforms)
-        
+    dataset_class = _DATASETS[args.dataset]
+
+    zeroshot_dataset = dataset_class(transforms.DataTransforms, tokenizer)
     sampler = torch.utils.data.RandomSampler(zeroshot_dataset, replacement=False, num_samples=len(zeroshot_dataset))
     
     zeroshot_dataloader = DataLoader(
