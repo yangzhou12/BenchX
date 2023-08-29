@@ -1,6 +1,7 @@
-python zeroshot_retrieval.py \
-    --pretrain_path /home/faith/unified-framework/checkpoints/ConVIRT.pth \
-    --model_name convirt \
-    --similarity_type global \
+python finetuned_segmentation.py \
+    --pretrain_path /home/faith/projects/unified-framework/checkpoints/chexpert_resnet50.ckpt \
+    --output_dir /home/faith/projects/unified-framework/experiments \
+    --model_name gloria \
+    --scheduler cosine \
     --optimizer adamw \
     --gpu 0 \
