@@ -17,12 +17,37 @@ sys.path.append(str(path_root))
 from evaluation.utils import *
 from datasets.dataloader import get_ft_dataloaders
 from evaluation.segmentation.segmentation_loss import *
+from evaluation.segmentation.metrics import *
 from models.builders import *
 
 
 def count_parameters(model):
     params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return params / 1000000
+
+
+def compute_metrics(
+    probability,
+    truth,
+    num_classes,
+    metrics=["medDice", "mIoU", "mDice", "mFscore"],
+    threshold=0.5,
+):
+    batch_size = len(truth)
+    with torch.no_grad():
+        probability = probability.view(batch_size, -1)
+        truth = truth.view(batch_size, -1)
+        assert probability.shape == truth.shape
+
+        p = (probability > threshold).float()
+        t = (truth > 0.5).float()
+
+        p = p.detach().cpu().numpy()
+        t = t.detach().cpu().numpy()
+
+        ret_metrics = eval_metrics(p, t, num_classes, metrics=metrics)
+
+    return ret_metrics
 
 
 def valid(model, data_loader, criterion, device, writer, global_step):
@@ -41,29 +66,34 @@ def valid(model, data_loader, criterion, device, writer, global_step):
     return avg_val_loss
 
 
-def get_dice(probability, truth, threshold=0.5):
-    batch_size = len(truth)
-    with torch.no_grad():
-        probability = probability.view(batch_size, -1)
-        truth = truth.view(batch_size, -1)
-        assert probability.shape == truth.shape
+def test(args, model, num_classes, data_loader, device):
+    # initialize the ground truth and output tensor
+    gt = torch.FloatTensor()
+    gt = gt.cuda()
+    pred = torch.FloatTensor()
+    pred = pred.cuda()
 
-        p = (probability > threshold).float()
-        t = (truth > 0.5).float()
+    model.eval()
+    for i, sample in enumerate(data_loader):
+        image = sample["image"]
+        label = sample["mask"].float().to(device)
+        gt = torch.cat((gt, label), 0)
+        input_image = image.to(device, non_blocking=True)
+        with torch.no_grad():
+            logit = model(input_image).squeeze(dim=1)
+            prob = torch.sigmoid(logit)
+            pred = torch.cat((pred, prob), 0)
 
-        t_sum = t.sum(-1)
-        p_sum = p.sum(-1)
-        neg_index = torch.nonzero(t_sum == 0)
-        pos_index = torch.nonzero(t_sum >= 1)
+    # Compute and print metrics
+    ret_metrics = compute_metrics(pred, gt, num_classes)
+    for metric, value in ret_metrics.items():
+        print(
+            "The average {metric_name} is {metric_avg:.5f}".format(
+                metric_name=metric, metric_avg=value
+            )
+        )
 
-        dice_neg = (p_sum == 0).float()
-        dice_pos = 2 * (p * t).sum(-1) / ((p + t).sum(-1))
-
-        dice_neg = dice_neg[neg_index]
-        dice_pos = dice_pos[pos_index]
-        dice = torch.cat([dice_pos, dice_neg])
-
-    return torch.mean(dice).detach().item()
+    return ret_metrics
 
 
 def main(args):
@@ -100,6 +130,7 @@ def main(args):
         del ckpt
 
     model = model.to(device)
+    num_classes = 2  # binary segmentation task
     num_params = count_parameters(model)
     print("Total Parameter: \t%2.1fM" % num_params)
 
@@ -146,21 +177,23 @@ def main(args):
             loss.backward()
 
             prob = torch.sigmoid(logit)
-            dice = get_dice(prob, label)
+            ret_medDice = compute_metrics(prob, label, num_classes, metrics=["medDice"])
+            dice = ret_medDice["medDice"]
 
-            if i == 0:
-                img = sample["image"][0].cpu().numpy()
-                mask = sample["mask"][0].cpu().numpy()
-                mask = np.stack([mask, mask, mask])
+            # if i == 0:
+            #     img = sample["image"][0].cpu().numpy()
+            #     mask = sample["mask"][0].cpu().numpy()
+            #     mask = np.stack([mask, mask, mask])
 
-                layered = 0.6 * mask + 0.4 * img
-                img = img.transpose((1, 2, 0))
-                mask = mask.transpose((1, 2, 0))
-                layered = layered.transpose((1, 2, 0))
+            #     layered = 0.6 * mask + 0.4 * img
+            #     img = img.transpose((1, 2, 0))
+            #     mask = mask.transpose((1, 2, 0))
+            #     layered = layered.transpose((1, 2, 0))
 
             # torch.nn.utils.clip_grad_norm_(
             #     model.parameters(), args.max_grad
             # )  # Tackle exploding gradients
+
             optimizer.step()
             lr_scheduler.step(global_step)
             global_step += 1
@@ -208,14 +241,18 @@ def main(args):
                 torch.save(save_obj, os.path.join(exp_path, "checkpoint_state.pth"))
 
                 # Save and test model with best validation score
-                # if val_loss < best_val_loss:
-                #     torch.save(save_obj, os.path.join(exp_path, 'best_valid.pth'))
-                #     best_val_loss = val_loss
-                #     args.model_path = os.path.join(exp_path, 'best_valid.pth')
-                #     test_auc = test(args, model, test_dataloader, device, classes)
+                if val_loss < best_val_loss:
+                    torch.save(save_obj, os.path.join(exp_path, "best_valid.pth"))
+                    best_val_loss = val_loss
+                    args.model_path = os.path.join(exp_path, "best_valid.pth")
 
-                #     with open(os.path.join(exp_path, "log.txt"), "a") as f:
-                #         f.write('The average AUROC is {AUROC_avg:.4f}'.format(AUROC_avg=test_auc) + "\n")
+                    print("\n" + f"Start testing at step {global_step}")
+                    ret_metrics = test(
+                        args, model, num_classes, test_dataloader, device
+                    )
+
+                    with open(os.path.join(exp_path, "log.txt"), "a") as f:
+                        f.write("Metrics: " + str(ret_metrics) + "\n")
 
             if global_step % t_total == 0:
                 break
@@ -242,7 +279,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--scheduler", type=str, default="", choices=["cosine"])
     parser.add_argument("--data_pct", type=float, default=1.0)
-    parser.add_argument("--batch_size", type=int, default=48)
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_steps", type=int, default=2000)
     parser.add_argument("--warmup_steps", type=int, default=50)
     parser.add_argument("--val_steps", type=int, default=-1)
