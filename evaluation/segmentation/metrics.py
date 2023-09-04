@@ -1,3 +1,4 @@
+# Code adapted from OpenMMLab
 import torch
 import numpy as np
 from collections import OrderedDict
@@ -131,7 +132,7 @@ def total_area_to_metrics(
         ndarray: Per category evaluation metrics, shape (num_classes, ).
     """
     all_acc = total_area_intersect.sum() / total_area_label.sum()
-    ret_metrics = OrderedDict({"aAcc": all_acc})
+    ret_metrics = OrderedDict({"aAcc": all_acc.item()})
     for metric in metrics:
         if metric == "mIoU":
             iou = total_area_intersect / total_area_union
@@ -156,7 +157,7 @@ def total_area_to_metrics(
     if nan_to_num is not None:
         ret_metrics = OrderedDict(
             {
-                metric: np.nan_to_num(metric_value, nan=nan_to_num)
+                metric: np.nan_to_num(metric_value.numpy(), nan=nan_to_num)
                 for metric, metric_value in ret_metrics.items()
             }
         )
