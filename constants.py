@@ -7,11 +7,12 @@ from pathlib import Path
 
 # MIMIC user constants
 MIMIC_CXR_ROOT_DIR = Path(
-    "/home/faith/MVLM/mimic_512"
+    "/home/faith/datasets/mimic_512"
 )  # change this to your root data directory for MIMIC-CXR
 MIMIC_CXR_META_CSV = MIMIC_CXR_ROOT_DIR / "mimic-cxr-2.0.0-metadata.csv"
 MIMIC_CXR_SPLIT_CSV = MIMIC_CXR_ROOT_DIR / "mimic-cxr-2.0.0-split.csv"
 MIMIC_CXR_CHEX_CSV = MIMIC_CXR_ROOT_DIR / "mimic-cxr-2.0.0-chexpert.csv"
+MIMIC_CXR_TRAINING_CSV = MIMIC_CXR_ROOT_DIR / "training.csv"
 MIMIC_REPORTS_DIR = MIMIC_CXR_ROOT_DIR / "files"
 
 # MIMIC fixed constants
