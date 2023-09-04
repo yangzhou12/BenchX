@@ -6,7 +6,7 @@
 
 - MIMIC-CXR: We downloaded the [MIMIC-CXR-JPG](https://physionet.org/content/mimic-cxr-jpg/2.0.0/) dataset as the radiographs. Paired medical reports can be downloaded in MIMIC-CXR.
 
-- CheXpert: We downloaded the [CheXpert-v1.0-small](https://stanfordmlgroup.github.io/competitions/chexpert/#:~:text=What%20is%20CheXpert%3F,labeled%20reference%20standard%20evaluation%20sets) small dataset from Kaggle.
+- CheXpert: We downloaded the [CheXpert-v1.0-small](https://stanfordmlgroup.github.io/competitions/chexpert/#:~:text=What%20is%20CheXpert%3F,labeled%20reference%20standard%20evaluation%20sets) dataset from Kaggle.
 
 - RSNA Pneumonia: We used the stage 2 of [RSNA Pneumonia](https://www.kaggle.com/c/rsna-pneumonia-detection-challenge) dataset in Kaggle.
 
@@ -84,11 +84,12 @@ chmod a+x ./run_{task_name}.sh
 Supported Tasks:
 
 * Uni-modal Tasks
-    * Multi-label Classification on CheXpert (Zero-shot & Fine-tuned)
-    * Classification on RSNA Pneumonia (Zero-shot & Fine-tuned)
+    * Multi-label Classification on CheXpert (Fine-tuned)
+    * Classification on RSNA Pneumonia (Fine-tuned)
 * Cross-modal Tasks
     * Cross-modal Retrieval on CheXpert-5x200/MIMIC-5x200 (Zero-shot)
-    * Cross-modal Retrieval on CheXpert-5x200/MIMIC-5x200 (Fine-tuned)
+    * Cross-modal Classification on CheXpert-5x200 (Zero-shot)
+    * Cross-modal Classification on RSNA Pneumonia (Zero-shot)
 * Multi-modal Tasks
     * Visual Question Answering on VQA-RAD
     * Visual Question Answering on SLACK
