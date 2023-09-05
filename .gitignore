@@ -1,7 +1,7 @@
 __pycache__/
 checkpoints/
 experiments/
-components/
+modules/
 models/convirt/data/
 .vscode/
 models/medclip/pretrained/

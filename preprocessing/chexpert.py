@@ -8,7 +8,6 @@ sys.path.append(str(path_root))
 from constants import *
 
 
-
 def preprocess_chexpert_5x200_data(n=200):
     
     df = pd.read_csv(CHEXPERT_ORIGINAL_TRAIN_CSV)
