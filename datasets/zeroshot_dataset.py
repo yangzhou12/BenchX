@@ -125,7 +125,11 @@ class CheXpert_5x200(Dataset):
         report = self.listReports[index]
 
         processed_img = self.process_img(imagePath)
-        processed_txt =self.process_report(report)
+        
+        if self.tokenizer:
+            processed_txt = self.process_report(report)
+        else: # do not return report if it is not processed
+            processed_txt = None
 
         target = torch.tensor(self.df[CHEXPERT_COMPETITION_TASKS].values[index])
 
@@ -144,18 +148,22 @@ class CheXpert_5x200(Dataset):
             text_list.append(text)
             target_list.append(target)
 
-        input_ids = torch.stack([x["input_ids"] for x in text_list]).squeeze()
-        attention_masks = torch.stack([x["attention_mask"] for x in text_list]).squeeze()
-        token_type_ids = torch.stack([x["token_type_ids"] for x in text_list]).squeeze()
-        
         all_imgs = torch.stack(image_list)
-        all_txt = {
-            "input_ids": input_ids,
-            "attention_mask": attention_masks,
-            "token_type_ids": token_type_ids,
-        }
-        all_targets = torch.stack(target_list)    
-
+        all_targets = torch.stack(target_list)   
+        
+        if text_list[0] != None: # if reports are processed
+            input_ids = torch.stack([x["input_ids"] for x in text_list]).squeeze()
+            attention_masks = torch.stack([x["attention_mask"] for x in text_list]).squeeze()
+            token_type_ids = torch.stack([x["token_type_ids"] for x in text_list]).squeeze()
+            
+            all_txt = {
+                "input_ids": input_ids,
+                "attention_mask": attention_masks,
+                "token_type_ids": token_type_ids,
+            }
+        else:
+            all_txt = None
+ 
         return {"image": all_imgs,
                 "text": all_txt,
                 "target": all_targets}

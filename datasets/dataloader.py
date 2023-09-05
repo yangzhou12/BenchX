@@ -67,7 +67,7 @@ def get_ft_dataloaders(args):
     return train_dataloader, val_dataloader, test_dataloader
 
 
-def get_zeroshot_dataloader(args, tokenizer):
+def get_zeroshot_dataloader(args, tokenizer=None):
     if args.dataset not in _DATASETS:
         raise RuntimeError(
             "Please specify a dataset.\n" +

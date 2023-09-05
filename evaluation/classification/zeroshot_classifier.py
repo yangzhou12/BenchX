@@ -73,7 +73,7 @@ def get_tokenizer(args):
     if args.model_name in ['biovil']:
         return AutoTokenizer.from_pretrained("microsoft/BiomedVLP-CXR-BERT-specialized", trust_remote_code=True)
     if args.model_name in ['mrm']:
-        tokenizer = PreTrainedTokenizerFast(tokenizer_file="/home/faith/projects/unified-framework/models/mrm/mimic_wordpiece.json",
+        tokenizer = PreTrainedTokenizerFast(tokenizer_file="/home/faith/unified-framework/models/mrm/mimic_wordpiece.json",
                                             add_special_tokens=True, pad_token='[PAD]')
         return tokenizer
     
@@ -103,7 +103,7 @@ def main(args):
 
     for i, sample in enumerate(tqdm(dataloader)):
         image = sample['image'].to(device)
-        label = sample['label']
+        target = sample['target']
         
         processed_txt = process_class_prompts(cls_prompts, tokenizer, device)
 
@@ -113,7 +113,7 @@ def main(args):
         # print(class_similarities, "\n")
 
         y_pred = np.argmax(output['logits'], axis=1)
-        y_true = np.argmax(label, axis=1)
+        y_true = np.argmax(target, axis=1)
         accuracy = accuracy_score(y_true, y_pred)
 
         accuracies.append(accuracy)
