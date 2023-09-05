@@ -35,11 +35,17 @@ def get_experiment(args):
     else:
         all_files = os.listdir(os.path.join(args.output_dir))
         je_exps = [exp for exp in all_files if "exp" in exp]
-        num = [int(re.search("\d+", exp).group(0)) for exp in je_exps]
-        highest_ind = np.argmax(np.array(num))
-        highest = num[highest_ind]
-        highest = highest + 1
+        
+        if je_exps:
+            num = [int(re.search("\d+", exp).group(0)) for exp in je_exps]
+            highest_ind = np.argmax(np.array(num))
+            highest = num[highest_ind]
+            highest = highest + 1  
+        else:
+            highest = 1
+       
         fp = os.path.join(args.output_dir, "exp" + str(highest))
+    
     return fp
 
 

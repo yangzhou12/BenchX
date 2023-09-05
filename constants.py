@@ -221,7 +221,7 @@ CHEXPERT_REPORT_COL = "Report"
 # #############################################
 
 PNEUMOTHORAX_DATA_DIR = Path(
-    "/data/faith/datasets/siim-acr-pneumothorax"
+    "/home/faith/MVLM/siim-acr-pneumothorax"
 )  # change this to your root data directory for SIIM-ACR Pneumothorax
 PNEUMOTHORAX_ORIGINAL_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train-rle.csv"
 PNEUMOTHORAX_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train.csv"
