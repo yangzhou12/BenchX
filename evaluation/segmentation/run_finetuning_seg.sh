@@ -1,8 +1,13 @@
-CUDA_LAUNCH_BLOCKING=1 python finetuned_segmentation.py \
+python finetuned_segmentation.py \
     --pretrain_path /home/faith/projects/unified-framework/checkpoints/chexpert_resnet50.ckpt \
     --output_dir /home/faith/projects/unified-framework/experiments \
     --model_name gloria \
+    --base_model resnet50 \
     --scheduler cosine \
-    --optimizer adam \
+    --optimizer adamw \
+    --num_steps 4000 \
     --data_pct 0.01 \
+    --weight_decay 0.05 \
+    --val_steps 50 \
+    --learning_rate 2e-4 \
     --gpu 0
