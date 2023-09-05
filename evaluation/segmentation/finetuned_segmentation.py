@@ -26,6 +26,50 @@ def count_parameters(model):
     return params / 1000000
 
 
+def build_img_segmenter(args): # TO BE MODIFIED
+    """
+    Return a image segmenter based on model argument.
+    """
+
+    CKPT_PREFIX = {'gloria': 'gloria.img_encoder.model',
+                   'biovil':'encoder.encoder',
+                   'convirt': 'img_encoder.model'}
+
+    if args.base_model == "resnet50":
+        model = smp.Unet("resnet50", encoder_weights=None, activation=None)
+
+        if args.pretrain_path:
+            ckpt = torch.load(args.pretrain_path, map_location="cpu")
+
+            for key in ["state_dict", "model"]: # resolve differences in saved checkpoints 
+                if key in ckpt:
+                    ckpt = ckpt[key]
+                break
+
+            ckpt_dict = {}
+            for k, v in ckpt.items():
+                if k.startswith(CKPT_PREFIX[args.model_name]):
+                    beginning_index = len(CKPT_PREFIX[args.model_name].split('.'))
+                    k = ".".join(k.split(".")[beginning_index:])
+                    ckpt_dict[k] = v
+                ckpt_dict["fc.bias"] = None
+                ckpt_dict["fc.weight"] = None
+            model.encoder.load_state_dict(ckpt_dict)
+            del ckpt
+
+        # Freeze encoder
+        for param in model.encoder.parameters():
+            param.requires_grad = False
+
+    elif args.base_model == "vit": # TODO: Implement transformer segmentation model
+        model = None
+
+    else:
+        raise RuntimeError(f"Base model name {args.base_model} not found")
+
+    return model
+
+
 def compute_metrics(
     probability,
     truth,
@@ -46,14 +90,14 @@ def compute_metrics(
         t = t.detach().cpu().numpy()
 
         ret_metrics = eval_metrics(p, t, num_classes, metrics=metrics)
-
+        
     return ret_metrics
 
 
 def valid(model, data_loader, criterion, device, writer, global_step):
     model.eval()
     val_losses = []
-    for i, sample in enumerate(tqdm(data_loader)):
+    for i, sample in enumerate(data_loader):
         image = sample["image"]
         label = sample["mask"].float().to(device)
         input_image = image.to(device, non_blocking=True)
@@ -66,8 +110,8 @@ def valid(model, data_loader, criterion, device, writer, global_step):
     return avg_val_loss
 
 
-def test(args, model, num_classes, data_loader, device):
-    # initialize the ground truth and output tensor
+def test(args, model, num_classes, data_loader, device, global_step):
+    # Initialize the ground truth and output tensor
     gt = torch.FloatTensor()
     gt = gt.cuda()
     pred = torch.FloatTensor()
@@ -86,8 +130,10 @@ def test(args, model, num_classes, data_loader, device):
 
     # Compute and print metrics
     ret_metrics = compute_metrics(pred, gt, num_classes)
+    
+    tqdm.write("Test results at step {curr_step}:".format(curr_step=global_step))
     for metric, value in ret_metrics.items():
-        print(
+        tqdm.write(
             "The average {metric_name} is {metric_avg:.5f}".format(
                 metric_name=metric, metric_avg=value
             )
@@ -96,46 +142,15 @@ def test(args, model, num_classes, data_loader, device):
     return ret_metrics
 
 
-def main(args):
-    # Set up CUDA and GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("Total CUDA devices: ", torch.cuda.device_count())
-    args.n_gpu = torch.cuda.device_count()
-    torch.set_default_tensor_type("torch.FloatTensor")
-
-    # Set seed
-    set_seed(args)
-
-    # Get experiment path
-    exp_path = get_experiment(args)
-
+def train(args, model, exp_path, device):
+    
     # Load specified dataset
     print("Creating dataset")
     train_dataloader, val_dataloader, test_dataloader = get_ft_dataloaders(args)
-
-    # Load model
-    print("Loading model")
-    model = smp.Unet("resnet50", encoder_weights=None, activation=None)
-
-    if args.pretrain_path:
-        ckpt = torch.load(args.pretrain_path, map_location="cpu")
-        ckpt_dict = {}
-        for k, v in ckpt["state_dict"].items():
-            if k.startswith("gloria.img_encoder.model"):
-                k = ".".join(k.split(".")[3:])
-                ckpt_dict[k] = v
-            ckpt_dict["fc.bias"] = None
-            ckpt_dict["fc.weight"] = None
-        model.encoder.load_state_dict(ckpt_dict)
-        del ckpt
-
-    model = model.to(device)
-    num_classes = 2  # binary segmentation task
-    num_params = count_parameters(model)
-    print("Total Parameter: \t%2.1fM" % num_params)
-
-    # Prepare loss
+    
+    # Prepare training loss
     criterion = MixedLoss()
+    num_classes = 2  # binary segmentation task
 
     # Training steps
     print("Start training")
@@ -190,10 +205,6 @@ def main(args):
             #     mask = mask.transpose((1, 2, 0))
             #     layered = layered.transpose((1, 2, 0))
 
-            # torch.nn.utils.clip_grad_norm_(
-            #     model.parameters(), args.max_grad
-            # )  # Tackle exploding gradients
-
             optimizer.step()
             lr_scheduler.step(global_step)
             global_step += 1
@@ -208,14 +219,17 @@ def main(args):
             )
             writer.add_scalar("train/dice", dice, global_step)
 
-            # Validate every T steps, as specified by val_step
             if args.val_steps >= 0:
                 val_step = args.val_steps
             else:
                 val_step = len(train_dataloader)
 
             if global_step % val_step == 0:
-                print("\n" + f"Start validating at step {global_step}")
+                epoch_iterator.set_description(
+                    "Validating... (%d / %d Steps) (loss=%2.5f) (dice=%2.5f)" 
+                    % (global_step, t_total, loss, dice)
+                )
+
                 val_loss = valid(
                     model, val_dataloader, criterion, device, writer, global_step
                 )
@@ -244,11 +258,13 @@ def main(args):
                 if val_loss < best_val_loss:
                     torch.save(save_obj, os.path.join(exp_path, "best_valid.pth"))
                     best_val_loss = val_loss
-                    args.model_path = os.path.join(exp_path, "best_valid.pth")
 
-                    print("\n" + f"Start testing at step {global_step}")
+                    epoch_iterator.set_description(
+                        "Testing... (%d / %d Steps) (val_loss=%2.5f)" 
+                        % (global_step, t_total, val_loss)
+                    )
                     ret_metrics = test(
-                        args, model, num_classes, test_dataloader, device
+                        args, model, num_classes, test_dataloader, device, global_step
                     )
 
                     with open(os.path.join(exp_path, "log.txt"), "a") as f:
@@ -268,11 +284,35 @@ def main(args):
     print("Training time {}".format(total_time_str))
 
 
+def main(args):
+    # Set up CUDA and GPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Total CUDA devices: ", torch.cuda.device_count())
+    args.n_gpu = torch.cuda.device_count()
+    torch.set_default_tensor_type("torch.FloatTensor")
+
+    # Set seed
+    set_seed(args)
+
+    # Get experiment path
+    exp_path = get_experiment(args)
+
+    # Load model
+    print("Loading model")
+    model = build_img_segmenter(args)
+    model = model.to(device)
+    num_params = count_parameters(model)
+    print("Total Parameter: \t%2.1fM" % num_params)
+
+    train(args, model, exp_path, device)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Customizable model training settings
     parser.add_argument("--model_name", type=str, default="", help="model name")
+    parser.add_argument("--base_model", type=str, default="", choices=["vit", "resnet50"])
     parser.add_argument("--dataset", default="siim_acr_pneumothorax")
     parser.add_argument(
         "--optimizer", type=str, default="", choices=["sgd", "adamw", "adam"]
@@ -288,7 +328,6 @@ if __name__ == "__main__":
     # Hyperparameter tuning
     parser.add_argument("--learning_rate", type=float, default=5e-4)
     parser.add_argument("--weight_decay", type=float, default=1e-6)
-    parser.add_argument("--max_grad", type=float, default=1.0)
     parser.add_argument("--momentum", type=float, default=0.9)
 
     # To be configured based on hardware/directory
