@@ -15,7 +15,6 @@ sys.path.append(str(path_root))
 from evaluation.utils import *
 from evaluation.classification.classifier_head import PromptClassifier
 from evaluation.classification.prompts import *
-from datasets.transforms import DataTransforms, MedCLIPTransforms, GloRIATransforms
 from datasets.dataloader import get_zeroshot_dataloader
 from models.builders import *
 
@@ -145,7 +144,7 @@ def main(args):
         y_pred = np.argmax(output['logits'], axis=1)
         y_true = np.argmax(target, axis=1)
         accuracy = accuracy_score(y_true, y_pred)
-
+        
         accuracies.append(accuracy)
 
     mean_acc = np.stack(accuracies).mean(axis=0, dtype=float)

@@ -14,7 +14,7 @@ sys.path.append(str(path_root))
 import Vision_Model
 
 
-filename = "/home/faith/projects/unified-framework/models/biovil/query_custom_anil.csv"  # /home/faith/unified-framework/models/biovil/query_custom_anil.csv
+filename = "/home/faith/unified-framework/models/biovil/query_custom_anil.csv"  # /home/faith/unified-framework/models/biovil/query_custom_anil.csv
 labeldescs = pd.read_csv(filename)  # load short queries
 try:  # load train set queries if possible
     filename2 = "/n/data2/hms/XXXX-9/XXXX-4/XXXX-1/Med_ImageText_Embedding/data/mimic_label_queries_tinytrain.csv"

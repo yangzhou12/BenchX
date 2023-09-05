@@ -25,7 +25,7 @@ class MIMIC_5x200(Dataset):
             raise RuntimeError("Please pre-process MIMIC-CXR-5x200 dataset")
         
         self.df = pd.read_csv(MIMIC_CXR_5X200)
-        self.df[MIMIC_CXR_REPORT_COL] = self.df[['findings', 'impression']].agg(' '.join, axis=1)
+        # self.df[MIMIC_CXR_REPORT_COL] = self.df[['findings', 'impression']].agg(' '.join, axis=1)
         self.df[MIMIC_CXR_PATH_COL] = self.df[MIMIC_CXR_PATH_COL].apply(lambda x: MIMIC_CXR_ROOT_DIR / x)
 
         self.listImagePaths = self.df[MIMIC_CXR_PATH_COL].tolist()
