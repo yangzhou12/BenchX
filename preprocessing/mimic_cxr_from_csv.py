@@ -1,6 +1,6 @@
-import argparse
 import pandas as pd
 import re
+import numpy as np
 from sklearn.model_selection import GroupShuffleSplit
 
 import sys
@@ -38,6 +38,36 @@ def parse_report(report, key):
     return " "
 
 
+def preprocess_mimic_5x200_data(df, n=200):
+
+    task_dfs = []
+    for i, t in enumerate(CHEXPERT_COMPETITION_TASKS):
+        index = np.zeros(14)
+        index[i] = 1
+        df_task = df[
+            (df["Atelectasis"] == index[0])
+            & (df["Cardiomegaly"] == index[1])
+            & (df["Consolidation"] == index[2])
+            & (df["Edema"] == index[3])
+            & (df["Pleural Effusion"] == index[4])
+            & (df["Enlarged Cardiomediastinum"] == index[5])
+            & (df["Lung Lesion"] == index[7])
+            & (df["Lung Opacity"] == index[8])
+            & (df["Pneumonia"] == index[9])
+            & (df["Pneumothorax"] == index[10])
+            & (df["Pleural Other"] == index[11])
+            & (df["Fracture"] == index[12])
+            & (df["Support Devices"] == index[13])
+        ]
+        df_task = df_task.sample(n)
+        task_dfs.append(df_task)
+
+    df_200 = pd.concat(task_dfs)
+    df_200.to_csv(MIMIC_CXR_ROOT_DIR / 'mimic_5x200.csv')
+
+    return df_200
+
+
 def main():
     df = pd.read_csv(MIMIC_CXR_TRAINING_CSV, index_col=0)
     print(f"Original number of samples: {len(df)}")
@@ -46,7 +76,7 @@ def main():
     df["dicom_id"] = df["image_path"].apply(lambda x: x.split("/")[4][:-4])
 
     # Rename column image_path to Path
-    df = df.rename(columns={"image_path": "Path"})
+    df = df.rename(columns={"image_path": MIMIC_CXR_PATH_COL})
 
     # Add metadata information
     metadata_df = pd.read_csv(MIMIC_CXR_META_CSV)
@@ -77,6 +107,11 @@ def main():
     )
     master_df = master_df.fillna(0)
 
+    # Preprocess MIMIC_5X200 data and exclude data points from master dataset
+    df_5x200 = preprocess_mimic_5x200_data(master_df)
+    master_df = master_df[~master_df[MIMIC_CXR_PATH_COL].isin(df_5x200[MIMIC_CXR_PATH_COL])]
+    print(f"Number of samples after filtering out MIMIC_5x200 samples: {len(master_df)}")
+    
     # Generate train-test-val splits in the ratio of 70:15:15
     # Ensure there are no overlaps of patients between splits
     train_valtest_splitter = GroupShuffleSplit(test_size=0.3, random_state=42)
