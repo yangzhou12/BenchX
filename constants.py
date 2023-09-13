@@ -221,14 +221,20 @@ CHEXPERT_REPORT_COL = "Report"
 # #############################################
 
 PNEUMOTHORAX_DATA_DIR = Path(
-    "/data/faith/datasets/siim-acr-pneumothorax"
+    "/home/faith/datasets/siim-acr-pneumothorax"
 )  # change this to your root data directory for SIIM-ACR Pneumothorax
 PNEUMOTHORAX_ORIGINAL_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train-rle.csv"
 PNEUMOTHORAX_TRAIN_CSV = PNEUMOTHORAX_DATA_DIR / "train.csv"
 PNEUMOTHORAX_VALID_CSV = PNEUMOTHORAX_DATA_DIR / "valid.csv"
 PNEUMOTHORAX_TEST_CSV = PNEUMOTHORAX_DATA_DIR / "test.csv"
-PNEUMOTHORAX_IMG_DIR = PNEUMOTHORAX_DATA_DIR / "dicom-images-train"
+PNEUMOTHORAX_ORIGINAL_IMG_DIR = PNEUMOTHORAX_DATA_DIR / "dicom-images-train"
 PNEUMOTHORAX_IMG_SIZE = 1024
+
+# For pre-processing
+PNEUMOTHORAX_IMG_DIR = PNEUMOTHORAX_DATA_DIR / "images"
+PNEUMOTHORAX_IMG_TRAIN_DIR = PNEUMOTHORAX_IMG_DIR / "training"
+PNEUMOTHORAX_IMG_VALID_DIR = PNEUMOTHORAX_IMG_DIR / "validation"
+PNEUMOTHORAX_IMG_TEST_DIR = PNEUMOTHORAX_IMG_DIR / "test"
 
 
 # ############################################
