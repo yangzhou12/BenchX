@@ -2,6 +2,19 @@ from pathlib import Path
 
 
 # #############################################
+#         Model Checkpoint Constants          #
+# #############################################
+
+# Should end with a .
+CKPT_PREFIX = {
+    "gloria": "gloria.img_encoder.model.",
+    "biovil": "encoder.encoder.",
+    "convirt": "img_encoder.model.",
+    "mrm": "",
+}
+
+
+# #############################################
 #          MIMIC-CXR-JPG constants            #
 # #############################################
 

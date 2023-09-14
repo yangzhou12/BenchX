@@ -18,7 +18,9 @@ from evaluation.utils import *
 from datasets.dataloader import get_ft_dataloaders
 from evaluation.segmentation.segmentation_loss import *
 from evaluation.segmentation.metrics import *
+from evaluation.segmentation.transformer_seg import SETRModel
 from models.builders import *
+from constants import *
 
 
 def count_parameters(model):
@@ -26,43 +28,44 @@ def count_parameters(model):
     return params / 1000000
 
 
-def build_img_segmenter(args): # TO BE MODIFIED
+def build_img_segmenter(args):  # TO BE MODIFIED
     """
     Return a image segmenter based on model argument.
     """
 
-    CKPT_PREFIX = {'gloria': 'gloria.img_encoder.model',
-                   'biovil':'encoder.encoder',
-                   'convirt': 'img_encoder.model'}
-
     if args.base_model == "resnet50":
         model = smp.Unet("resnet50", encoder_weights=None, activation=None)
-
-        if args.pretrain_path:
-            ckpt = torch.load(args.pretrain_path, map_location="cpu")
-
-            for key in ["state_dict", "model"]: # resolve differences in saved checkpoints 
-                if key in ckpt:
-                    ckpt = ckpt[key]
-                break
-
-            ckpt_dict = {}
-            for k, v in ckpt.items():
-                if k.startswith(CKPT_PREFIX[args.model_name]):
-                    beginning_index = len(CKPT_PREFIX[args.model_name].split('.'))
-                    k = ".".join(k.split(".")[beginning_index:])
-                    ckpt_dict[k] = v
-                ckpt_dict["fc.bias"] = None
-                ckpt_dict["fc.weight"] = None
-            model.encoder.load_state_dict(ckpt_dict)
-            del ckpt
+        load_encoder_from_checkpoint(args, model.encoder)
 
         # Freeze encoder
         for param in model.encoder.parameters():
             param.requires_grad = False
 
-    elif args.base_model == "vit": # TODO: Implement transformer segmentation model
-        model = None
+    elif args.base_model == "vit":
+
+        def vit_base_patch16(**kwargs):
+            model = VisionTransformer(
+                norm_layer=partial(torch.nn.LayerNorm, eps=1e-6), **kwargs
+            )
+            return model
+
+        model = SETRModel(
+            patch_size=(16, 16),
+            in_channels=3,
+            out_channels=1,
+            hidden_size=768,
+            num_hidden_layers=12,
+            num_attention_heads=12,
+            decode_features=[512, 256, 128, 64],
+        )
+        encoder = vit_base_patch16(num_classes=0, global_pool="avg")
+        model.encoder_2d.bert_model = encoder
+
+        load_encoder_from_checkpoint(args, model.encoder_2d.bert_model)
+
+        # Freeze encoder
+        for param in model.encoder_2d.bert_model.parameters():
+            param.requires_grad = False
 
     else:
         raise RuntimeError(f"Base model name {args.base_model} not found")
@@ -90,7 +93,7 @@ def compute_metrics(
         t = t.detach().cpu().numpy()
 
         ret_metrics = eval_metrics(p, t, num_classes, metrics=metrics)
-        
+
     return ret_metrics
 
 
@@ -130,7 +133,7 @@ def test(args, model, num_classes, data_loader, device, global_step):
 
     # Compute and print metrics
     ret_metrics = compute_metrics(pred, gt, num_classes)
-    
+
     tqdm.write("Test results at step {curr_step}:".format(curr_step=global_step))
     for metric, value in ret_metrics.items():
         tqdm.write(
@@ -143,11 +146,10 @@ def test(args, model, num_classes, data_loader, device, global_step):
 
 
 def train(args, model, exp_path, device):
-    
     # Load specified dataset
     print("Creating dataset")
     train_dataloader, val_dataloader, test_dataloader = get_ft_dataloaders(args)
-    
+
     # Prepare training loss
     criterion = MixedLoss()
     num_classes = 2  # binary segmentation task
@@ -226,7 +228,7 @@ def train(args, model, exp_path, device):
 
             if global_step % val_step == 0:
                 epoch_iterator.set_description(
-                    "Validating... (%d / %d Steps) (loss=%2.5f) (dice=%2.5f)" 
+                    "Validating... (%d / %d Steps) (loss=%2.5f) (dice=%2.5f)"
                     % (global_step, t_total, loss, dice)
                 )
 
@@ -260,7 +262,7 @@ def train(args, model, exp_path, device):
                     best_val_loss = val_loss
 
                     epoch_iterator.set_description(
-                        "Testing... (%d / %d Steps) (val_loss=%2.5f)" 
+                        "Testing... (%d / %d Steps) (val_loss=%2.5f)"
                         % (global_step, t_total, val_loss)
                     )
                     ret_metrics = test(
@@ -312,7 +314,9 @@ if __name__ == "__main__":
 
     # Customizable model training settings
     parser.add_argument("--model_name", type=str, default="", help="model name")
-    parser.add_argument("--base_model", type=str, default="", choices=["vit", "resnet50"])
+    parser.add_argument(
+        "--base_model", type=str, default="", choices=["vit", "resnet50"]
+    )
     parser.add_argument("--dataset", default="siim_acr_pneumothorax")
     parser.add_argument(
         "--optimizer", type=str, default="", choices=["sgd", "adamw", "adam"]
