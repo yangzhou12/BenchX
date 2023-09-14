@@ -289,7 +289,7 @@ def test_metrics():
     mrm_dice = ret_metrics
     gloria_dice = get_dice(torch.from_numpy(results), torch.from_numpy(label))
 
-    print(mrm_dice["Dice"])
+    print(mrm_dice["medDice"])
     print(gloria_dice)
 
 

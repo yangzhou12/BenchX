@@ -94,3 +94,31 @@ def load_training_setup(args, exp_path, model):
         global_step = 0
 
     return global_step, optimizer, lr_scheduler
+
+
+def load_encoder_from_checkpoint(args, encoder):
+    if args.pretrain_path:
+        ckpt = torch.load(args.pretrain_path, map_location="cpu")
+
+        for key in [
+            "state_dict",
+            "model",
+        ]:  # resolve differences in saved checkpoints
+            if key in ckpt:
+                ckpt = ckpt[key]
+            break
+
+        ckpt_dict = {}
+        for k, v in ckpt.items():
+            if k.startswith(CKPT_PREFIX[args.model_name]):
+                beginning_index = len(CKPT_PREFIX[args.model_name].split(".")) - 1
+                k = ".".join(k.split(".")[beginning_index:])
+                ckpt_dict[k] = v
+            for layer_k in ["head.weight", "head.bias", "fc.weight", "fc.bias"]:
+                if layer_k in ckpt_dict:
+                    del ckpt_dict[layer_k]
+        encoder.load_state_dict(ckpt_dict, strict=False)
+        del ckpt
+
+    else:
+        print("No checkpoint detected; Train model from scratch!")

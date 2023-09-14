@@ -18,7 +18,9 @@ from evaluation.utils import *
 from datasets.dataloader import get_ft_dataloaders
 from evaluation.segmentation.segmentation_loss import *
 from evaluation.segmentation.metrics import *
+from evaluation.segmentation.transformer_seg import SETRModel
 from models.builders import *
+from constants import *
 
 
 def count_parameters(model):
@@ -26,43 +28,45 @@ def count_parameters(model):
     return params / 1000000
 
 
-def build_img_segmenter(args): # TO BE MODIFIED
+def build_img_segmenter(args):
     """
     Return a image segmenter based on model argument.
     """
 
-    CKPT_PREFIX = {'gloria': 'gloria.img_encoder.model',
-                   'biovil':'encoder.encoder',
-                   'convirt': 'img_encoder.model'}
-
     if args.base_model == "resnet50":
         model = smp.Unet("resnet50", encoder_weights=None, activation=None)
-
-        if args.pretrain_path:
-            ckpt = torch.load(args.pretrain_path, map_location="cpu")
-
-            for key in ["state_dict", "model"]: # resolve differences in saved checkpoints 
-                if key in ckpt:
-                    ckpt = ckpt[key]
-                break
-
-            ckpt_dict = {}
-            for k, v in ckpt.items():
-                if k.startswith(CKPT_PREFIX[args.model_name]):
-                    beginning_index = len(CKPT_PREFIX[args.model_name].split('.'))
-                    k = ".".join(k.split(".")[beginning_index:])
-                    ckpt_dict[k] = v
-                ckpt_dict["fc.bias"] = None
-                ckpt_dict["fc.weight"] = None
-            model.encoder.load_state_dict(ckpt_dict)
-            del ckpt
+        load_encoder_from_checkpoint(args, model.encoder)
 
         # Freeze encoder
         for param in model.encoder.parameters():
             param.requires_grad = False
 
-    elif args.base_model == "vit": # TODO: Implement transformer segmentation model
-        model = None
+    elif args.base_model == "vit":
+
+        def vit_base_patch16(**kwargs):
+            model = VisionTransformer(
+                norm_layer=partial(torch.nn.LayerNorm, eps=1e-6), **kwargs
+            )
+            return model
+
+        model = SETRModel(
+            patch_size=(16, 16),
+            in_channels=3,
+            out_channels=1,
+            hidden_size=768,
+            num_hidden_layers=12,
+            num_attention_heads=12,
+            decode_features=[512, 256, 128, 64],
+        )
+        # create ViT with no classifier and pooling
+        encoder = vit_base_patch16(num_classes=0, global_pool="")
+        model.encoder_2d.bert_model = encoder
+
+        load_encoder_from_checkpoint(args, model.encoder_2d.bert_model)
+
+        # Freeze encoder
+        for param in model.encoder_2d.bert_model.parameters():
+            param.requires_grad = False
 
     else:
         raise RuntimeError(f"Base model name {args.base_model} not found")
@@ -90,7 +94,7 @@ def compute_metrics(
         t = t.detach().cpu().numpy()
 
         ret_metrics = eval_metrics(p, t, num_classes, metrics=metrics)
-        
+
     return ret_metrics
 
 
@@ -130,223 +134,5 @@ def test(args, model, num_classes, data_loader, device, global_step):
 
     # Compute and print metrics
     ret_metrics = compute_metrics(pred, gt, num_classes)
-    
-    tqdm.write("Test results at step {curr_step}:".format(curr_step=global_step))
-    for metric, value in ret_metrics.items():
-        tqdm.write(
-            "The average {metric_name} is {metric_avg:.5f}".format(
-                metric_name=metric, metric_avg=value
-            )
-        )
 
-    return ret_metrics
-
-
-def train(args, model, exp_path, device):
-    
-    # Load specified dataset
-    print("Creating dataset")
-    train_dataloader, val_dataloader, test_dataloader = get_ft_dataloaders(args)
-    
-    # Prepare training loss
-    criterion = MixedLoss()
-    num_classes = 2  # binary segmentation task
-
-    # Training steps
-    print("Start training")
-    start_time = time.time()
-    best_val_loss = 10000
-    writer = SummaryWriter(os.path.join(exp_path, "log"))
-
-    # Save copy of run_finetuning.sh file in exp folder
-    shutil.copyfile(
-        "run_finetuning_seg.sh", os.path.join(exp_path, "run_finetuning_seg.sh")
-    )
-
-    # Train by batch
-    t_total = args.num_steps
-    global_step = 0
-
-    global_step, optimizer, lr_scheduler = load_training_setup(args, exp_path, model)
-
-    while True:
-        model.train()
-
-        epoch_iterator = tqdm(
-            train_dataloader,
-            desc="Training (X / X Steps) (loss=X.X)",
-            bar_format="{l_bar}{r_bar}",
-            dynamic_ncols=True,
-        )
-
-        for i, sample in enumerate(epoch_iterator):
-            image = sample["image"]
-            label = sample["mask"].float().to(device)  # batch_size, num_class
-            input_image = image.to(device, non_blocking=True)
-
-            optimizer.zero_grad()
-            logit = model(input_image)  # batch_size, num_class
-            logit = logit.squeeze(dim=1)
-
-            loss = criterion(logit, label)
-            loss.backward()
-
-            prob = torch.sigmoid(logit)
-            ret_medDice = compute_metrics(prob, label, num_classes, metrics=["medDice"])
-            dice = ret_medDice["medDice"]
-
-            # if i == 0:
-            #     img = sample["image"][0].cpu().numpy()
-            #     mask = sample["mask"][0].cpu().numpy()
-            #     mask = np.stack([mask, mask, mask])
-
-            #     layered = 0.6 * mask + 0.4 * img
-            #     img = img.transpose((1, 2, 0))
-            #     mask = mask.transpose((1, 2, 0))
-            #     layered = layered.transpose((1, 2, 0))
-
-            optimizer.step()
-            lr_scheduler.step(global_step)
-            global_step += 1
-
-            epoch_iterator.set_description(
-                "Training (%d / %d Steps) (loss=%2.5f) (dice=%2.5f)"
-                % (global_step, t_total, loss, dice)
-            )
-            writer.add_scalar("train/loss", loss, global_step)
-            writer.add_scalar(
-                "train/lr", lr_scheduler._get_lr(global_step)[0], global_step
-            )
-            writer.add_scalar("train/dice", dice, global_step)
-
-            if args.val_steps >= 0:
-                val_step = args.val_steps
-            else:
-                val_step = len(train_dataloader)
-
-            if global_step % val_step == 0:
-                epoch_iterator.set_description(
-                    "Validating... (%d / %d Steps) (loss=%2.5f) (dice=%2.5f)" 
-                    % (global_step, t_total, loss, dice)
-                )
-
-                val_loss = valid(
-                    model, val_dataloader, criterion, device, writer, global_step
-                )
-
-                # Log training and validation stats at validation step
-                log_stats = {
-                    "loss": loss.item(),
-                    "val_loss": val_loss.item(),
-                    "lr": lr_scheduler._get_lr(global_step)[0],
-                    "step": global_step,
-                }
-                with open(os.path.join(exp_path, "log.txt"), "a") as f:
-                    f.write(json.dumps(log_stats) + "\n")
-
-                save_obj = {
-                    "model": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                    "lr_scheduler": lr_scheduler.state_dict(),
-                    "step": global_step,
-                }
-
-                # Save most recent tested checkpoint at each specified validation interval
-                torch.save(save_obj, os.path.join(exp_path, "checkpoint_state.pth"))
-
-                # Save and test model with best validation score
-                if val_loss < best_val_loss:
-                    torch.save(save_obj, os.path.join(exp_path, "best_valid.pth"))
-                    best_val_loss = val_loss
-
-                    epoch_iterator.set_description(
-                        "Testing... (%d / %d Steps) (val_loss=%2.5f)" 
-                        % (global_step, t_total, val_loss)
-                    )
-                    ret_metrics = test(
-                        args, model, num_classes, test_dataloader, device, global_step
-                    )
-
-                    with open(os.path.join(exp_path, "log.txt"), "a") as f:
-                        f.write("Metrics: " + str(ret_metrics) + "\n")
-
-            if global_step % t_total == 0:
-                break
-
-        if global_step % t_total == 0:
-            break
-
-    writer.close()
-
-    total_time = time.time() - start_time
-    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print("End training!")
-    print("Training time {}".format(total_time_str))
-
-
-def main(args):
-    # Set up CUDA and GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("Total CUDA devices: ", torch.cuda.device_count())
-    args.n_gpu = torch.cuda.device_count()
-    torch.set_default_tensor_type("torch.FloatTensor")
-
-    # Set seed
-    set_seed(args)
-
-    # Get experiment path
-    exp_path = get_experiment(args)
-
-    # Load model
-    print("Loading model")
-    model = build_img_segmenter(args)
-    model = model.to(device)
-    num_params = count_parameters(model)
-    print("Total Parameter: \t%2.1fM" % num_params)
-
-    train(args, model, exp_path, device)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-
-    # Customizable model training settings
-    parser.add_argument("--model_name", type=str, default="", help="model name")
-    parser.add_argument("--base_model", type=str, default="", choices=["vit", "resnet50"])
-    parser.add_argument("--dataset", default="siim_acr_pneumothorax")
-    parser.add_argument(
-        "--optimizer", type=str, default="", choices=["sgd", "adamw", "adam"]
-    )
-    parser.add_argument("--scheduler", type=str, default="", choices=["cosine"])
-    parser.add_argument("--data_pct", type=float, default=1.0)
-    parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--num_steps", type=int, default=2000)
-    parser.add_argument("--warmup_steps", type=int, default=50)
-    parser.add_argument("--val_steps", type=int, default=-1)
-    parser.add_argument("--seed", type=int, default=42)
-
-    # Hyperparameter tuning
-    parser.add_argument("--learning_rate", type=float, default=5e-4)
-    parser.add_argument("--weight_decay", type=float, default=1e-6)
-    parser.add_argument("--momentum", type=float, default=0.9)
-
-    # To be configured based on hardware/directory
-    parser.add_argument("--resume", type=int, default=0, help="input exp number")
-    parser.add_argument("--pretrain_path", default="Path/To/checkpoint.pth")
-    parser.add_argument("--output_dir", default="Path/To/Outputdir")
-    parser.add_argument("--device", default="cuda")
-    parser.add_argument("--gpu", type=str, default="0", help="gpu")
-    parser.add_argument("--num_workers", type=int, default=4)
-
-    args = parser.parse_args()
-
-    if args.output_dir:
-        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    torch.cuda.current_device()
-    torch.cuda._initialized = True
-
-    args.phase = "segmentation"
-
-    main(args)
+    tqdm.write("Test results at step {curr_step}:".f

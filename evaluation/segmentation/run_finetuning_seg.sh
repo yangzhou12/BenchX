@@ -1,8 +1,8 @@
 python finetuned_segmentation.py \
-    --pretrain_path /home/faith/projects/unified-framework/checkpoints/chexpert_resnet50.ckpt \
+    --pretrain_path /home/faith/projects/unified-framework/checkpoints/MRM.pth \
     --output_dir /home/faith/projects/unified-framework/experiments \
-    --model_name gloria \
-    --base_model resnet50 \
+    --model_name mrm \
+    --base_model vit \
     --scheduler cosine \
     --optimizer adamw \
     --num_steps 4000 \
