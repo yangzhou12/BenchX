@@ -67,7 +67,8 @@ class Encoder2D(nn.Module):
         # x = rearrange(x, 'b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = p1, p2 = p2)
 
         # encode_x = self.bert_model(x)[-1] # 取出来最后一层
-        encode_x = self.bert_model(x)[:, 1:]
+        # encode_x = self.bert_model(x)[:, 1:]
+        encode_x = self.bert_model(x)
         if not self.is_segmentation:
             return encode_x
 
