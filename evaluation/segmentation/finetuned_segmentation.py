@@ -9,6 +9,7 @@ import segmentation_models_pytorch as smp
 from pathlib import Path
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
+from timm.models.vision_transformer import VisionTransformer
 
 import sys
 
@@ -30,7 +31,7 @@ def count_parameters(model):
 
 def build_img_segmenter(args):
     """
-    Return a image segmenter based on model argument.
+    Return an image segmenter based on model argument.
     """
 
     if args.base_model == "resnet50":
@@ -38,8 +39,9 @@ def build_img_segmenter(args):
         load_encoder_from_checkpoint(args, model.encoder)
 
         # Freeze encoder
-        for param in model.encoder.parameters():
-            param.requires_grad = False
+        if args.freeze_encoder:
+            for param in model.encoder.parameters():
+                param.requires_grad = False
 
     elif args.base_model == "vit":
 
@@ -59,14 +61,15 @@ def build_img_segmenter(args):
             decode_features=[512, 256, 128, 64],
         )
         # create ViT with no classifier and pooling
-        encoder = vit_base_patch16(num_classes=0, global_pool="")
+        encoder = vit_base_patch16(num_classes=0, global_pool="", class_token=True) # class_token=False for MRM
         model.encoder_2d.bert_model = encoder
 
         load_encoder_from_checkpoint(args, model.encoder_2d.bert_model)
 
         # Freeze encoder
-        for param in model.encoder_2d.bert_model.parameters():
-            param.requires_grad = False
+        if args.freeze_encoder:
+            for param in model.encoder_2d.bert_model.parameters():
+                param.requires_grad = False
 
     else:
         raise RuntimeError(f"Base model name {args.base_model} not found")
@@ -98,23 +101,34 @@ def compute_metrics(
     return ret_metrics
 
 
-def valid(model, data_loader, criterion, device, writer, global_step):
+def valid(model, data_loader, criterion, num_classes, device, writer, global_step):
+    gt = torch.FloatTensor()
+    gt = gt.cuda()
+    pred = torch.FloatTensor()
+    pred = pred.cuda()
+    
     model.eval()
     val_losses = []
     for i, sample in enumerate(data_loader):
         image = sample["image"]
         label = sample["mask"].float().to(device)
+        gt = torch.cat((gt, label), 0)
         input_image = image.to(device, non_blocking=True)
         with torch.no_grad():
-            pred_class = model(input_image).squeeze(dim=1)
-            val_loss = criterion(pred_class, label)
+            logit = model(input_image).squeeze(dim=1)
+            prob = torch.sigmoid(logit)
+            pred = torch.cat((pred, prob), 0)
+            val_loss = criterion(logit, label)
             val_losses.append(val_loss.item())
+    
     avg_val_loss = np.array(val_losses).mean()
+    ret_metrics = compute_metrics(pred, gt, num_classes, "medDice")
     writer.add_scalar("valid/loss", avg_val_loss, global_step)
-    return avg_val_loss
+    writer.add_scalar("valid/dice", ret_metrics["medDice"], global_step)
+    return avg_val_loss, ret_metrics
 
 
-def test(args, model, num_classes, data_loader, device, global_step):
+def test(args, model, num_classes, writer, data_loader, device, global_step):
     # Initialize the ground truth and output tensor
     gt = torch.FloatTensor()
     gt = gt.cuda()
@@ -142,6 +156,7 @@ def test(args, model, num_classes, data_loader, device, global_step):
                 metric_name=metric, metric_avg=value
             )
         )
+    writer.add_scalar('test/dice', ret_metrics['medDice'], global_step)
 
     return ret_metrics
 
@@ -158,7 +173,7 @@ def train(args, model, exp_path, device):
     # Training steps
     print("Start training")
     start_time = time.time()
-    best_val_loss = 10000
+    best_dice = 0
     writer = SummaryWriter(os.path.join(exp_path, "log"))
 
     # Save copy of run_finetuning.sh file in exp folder
@@ -227,14 +242,14 @@ def train(args, model, exp_path, device):
             else:
                 val_step = len(train_dataloader)
 
-            if global_step % val_step == 0:
+            if global_step % val_step == 0 or global_step % t_total == 0:
                 epoch_iterator.set_description(
                     "Validating... (%d / %d Steps) (loss=%2.5f) (dice=%2.5f)"
                     % (global_step, t_total, loss, dice)
                 )
 
-                val_loss = valid(
-                    model, val_dataloader, criterion, device, writer, global_step
+                val_loss, val_metrics = valid(
+                    model, val_dataloader, criterion, num_classes, device, writer, global_step
                 )
 
                 # Log training and validation stats at validation step
@@ -258,16 +273,17 @@ def train(args, model, exp_path, device):
                 torch.save(save_obj, os.path.join(exp_path, "checkpoint_state.pth"))
 
                 # Save and test model with best validation score
-                if val_loss < best_val_loss:
+                val_dice = val_metrics["medDice"]
+                if val_dice > best_dice:
                     torch.save(save_obj, os.path.join(exp_path, "best_valid.pth"))
-                    best_val_loss = val_loss
+                    best_dice = val_dice
 
                     epoch_iterator.set_description(
-                        "Testing... (%d / %d Steps) (val_loss=%2.5f)"
-                        % (global_step, t_total, val_loss)
+                        "Testing... (%d / %d Steps) (val_loss=%2.5f) (val_dice=%2.5f)"
+                        % (global_step, t_total, val_loss, val_dice)
                     )
                     ret_metrics = test(
-                        args, model, num_classes, test_dataloader, device, global_step
+                        args, model, num_classes, writer, test_dataloader, device, global_step
                     )
 
                     with open(os.path.join(exp_path, "log.txt"), "a") as f:
@@ -318,13 +334,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--base_model", type=str, default="", choices=["vit", "resnet50"]
     )
-    parser.add_argument("--dataset", default="siim_acr_pneumothorax")
+    parser.add_argument(
+        "--dataset", type=str, default="", choices=["siim_acr_pneumothorax", "rsna_segmentation"]
+    )
     parser.add_argument(
         "--optimizer", type=str, default="", choices=["sgd", "adamw", "adam"]
     )
+    parser.add_argument("--freeze_encoder", action="store_true")
     parser.add_argument("--scheduler", type=str, default="", choices=["cosine"])
     parser.add_argument("--data_pct", type=float, default=1.0)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_steps", type=int, default=2000)
     parser.add_argument("--warmup_steps", type=int, default=50)
     parser.add_argument("--val_steps", type=int, default=-1)
@@ -340,17 +359,12 @@ if __name__ == "__main__":
     parser.add_argument("--pretrain_path", default="Path/To/checkpoint.pth")
     parser.add_argument("--output_dir", default="Path/To/Outputdir")
     parser.add_argument("--device", default="cuda")
-    parser.add_argument("--gpu", type=str, default="0", help="gpu")
-    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--num_workers", type=int, default=16)
 
     args = parser.parse_args()
 
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    torch.cuda.current_device()
-    torch.cuda._initialized = True
 
     args.phase = "segmentation"
 

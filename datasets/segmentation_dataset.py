@@ -1,7 +1,7 @@
 import os
+import pickle
 import pandas as pd
 import numpy as np
-import torch
 from torch.utils.data import Dataset
 from .utils import *
 
@@ -115,3 +115,60 @@ class SIIMImageDataset(BaseDataset):
             current_position += lengths[index]
 
         return mask.reshape(width, height)
+    
+
+class RSNASegmentDataset(BaseDataset):
+    def __init__(self, split="train", transform=None, data_pct=1., imsize=224) -> None:
+        super().__init__(split, transform)
+
+        if not os.path.exists(PNEUMONIA_ROOT_DIR):
+            raise RuntimeError(f"{PNEUMONIA_ROOT_DIR} does not exist!")
+
+        if self.split == "train":
+            with open(PNEUMONIA_DETECTION_TRAIN_PKL, "rb") as f:
+                self.filenames, self.bboxs = pickle.load(f)
+        elif self.split == "valid":
+            with open(PNEUMONIA_DETECTION_VALID_PKL, "rb") as f:
+                self.filenames, self.bboxs = pickle.load(f)
+        elif self.split == "test":
+            with open(PNEUMONIA_DETECTION_TEST_PKL, "rb") as f:
+                self.filenames, self.bboxs = pickle.load(f)
+        else:
+            raise ValueError(f"split {split} does not exist!")
+
+        # self.df["Path"] = self.df["patientId"].apply(
+        #     lambda x: RSNA_IMG_DIR / (x + ".dcm"))
+
+        self.imsize = imsize
+
+        n = len(self.filenames)
+        if split == "train":
+            indices = np.random.choice(n, int(data_pct * n), replace=False)
+            self.filenames = self.filenames[indices]
+            self.bboxs = self.bboxs[indices]
+
+    def __len__(self):
+        return len(self.filenames)
+
+    def __getitem__(self, index):
+        filename = self.filenames[index]
+        img_path = PNEUMONIA_IMG_DIR / filename
+        img = read_from_dicom(img_path, imsize=self.imsize)
+        x = np.asarray(img)
+
+        mask = np.zeros([1024, 1024])
+
+        bbox = self.bboxs[index]
+        new_bbox = bbox[bbox[:, 3] > 0].astype(np.int64)
+        if len(new_bbox) > 0:
+            for i in range(len(new_bbox)):
+                mask[new_bbox[i, 1]:new_bbox[i, 3],
+                     new_bbox[i, 0]:new_bbox[i, 2]] += 1
+        mask = (mask >= 1).astype("float32")
+        mask = resize_img(mask, self.imsize)
+        
+        augmented = self.transform(image=x, mask=mask)
+        x = augmented["image"]
+        y = augmented["mask"].squeeze()
+
+        return {"image": x, "mask": y}

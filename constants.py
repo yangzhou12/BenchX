@@ -5,12 +5,14 @@ from pathlib import Path
 #         Model Checkpoint Constants          #
 # #############################################
 
-# Should end with a .
+# Should end with a . if prefix exists, else ""
 CKPT_PREFIX = {
     "gloria": "gloria.img_encoder.model.",
     "biovil": "encoder.encoder.",
     "convirt": "img_encoder.model.",
     "mrm": "",
+    "mgca-resnet50": "img_encoder_q.model.",
+    "mgca-vit": "img_encoder_q.model."
 }
 
 
@@ -56,6 +58,10 @@ PNEUMONIA_TRAIN_CSV = PNEUMONIA_ROOT_DIR / "train.csv"
 PNEUMONIA_VALID_CSV = PNEUMONIA_ROOT_DIR / "val.csv"
 PNEUMONIA_TEST_CSV = PNEUMONIA_ROOT_DIR / "test.csv"
 PNEUMONIA_TRAIN_PCT = 0.0
+
+PNEUMONIA_DETECTION_TRAIN_PKL = PNEUMONIA_ROOT_DIR / "train.pkl"
+PNEUMONIA_DETECTION_VALID_PKL = PNEUMONIA_ROOT_DIR / "val.pkl"
+PNEUMONIA_DETECTION_TEST_PKL = PNEUMONIA_ROOT_DIR / "test.pkl"
 
 PNEUMONIA_TASKS = ["Pneumonia"]
 

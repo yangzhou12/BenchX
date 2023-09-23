@@ -68,7 +68,8 @@ class Encoder2D(nn.Module):
 
         # encode_x = self.bert_model(x)[-1] # 取出来最后一层
         # encode_x = self.bert_model(x)[:, 1:]
-        encode_x = self.bert_model(x)
+        
+        encode_x = self.bert_model(x)[:, 1:]
         if not self.is_segmentation:
             return encode_x
 

@@ -1,13 +1,13 @@
-python finetuned_segmentation.py \
-    --pretrain_path /home/faith/projects/unified-framework/checkpoints/MRM.pth \
-    --output_dir /home/faith/projects/unified-framework/experiments \
-    --model_name mrm \
-    --base_model vit \
+CUDA_VISIBLE_DEVICES=0 python finetuned_segmentation.py \
+    --pretrain_path /home/faith/unified-framework/checkpoints/MGCA-resnet50.ckpt \
+    --output_dir /home/faith/unified-framework/data \
+    --model_name mgca-resnet50 \
+    --base_model resnet50 \
+    --dataset siim_acr_pneumothorax \
     --scheduler cosine \
     --optimizer adamw \
-    --num_steps 4000 \
-    --val_steps 50 \
-    --data_pct 0.01 \
+    --num_steps 10000 \
+    --warmup_steps 500 \
+    --data_pct 1 \
     --weight_decay 0.05 \
-    --learning_rate 2e-4 \
-    --gpu 0
+    --learning_rate 2e-4

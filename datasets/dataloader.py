@@ -11,10 +11,11 @@ from torch.utils.data import DataLoader
 _DATASETS = {
     "pretrain": pretraining_dataset.MultimodalPretrainingDataset,
     "rsna_pneumonia": classification_dataset.RSNAImageDataset,
+    "rsna_segmentation": segmentation_dataset.RSNASegmentDataset,
     "nih_chest_xray": classification_dataset.NIHChestXRay14,
     "siim_acr_pneumothorax": segmentation_dataset.SIIMImageDataset,
     "mimic_5x200": zeroshot_dataset.MIMIC_5x200,
-    "chexpert_5x200": zeroshot_dataset.CheXpert_5x200,
+    "chexpert_5x200": zeroshot_dataset.CheXpert_5x200
 }
 
 
