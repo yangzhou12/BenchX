@@ -5,10 +5,7 @@ from PIL import Image
 import pandas as pd
 from torch.utils.data import Dataset
 
-import sys
-from pathlib import Path
-path_root = Path(__file__).parents[2]
-from constants import *
+from utils.constants import *
 from datasets.utils import *
 
 

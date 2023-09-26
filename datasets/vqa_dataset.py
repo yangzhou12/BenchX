@@ -3,11 +3,7 @@ import pandas as pd
 import os
 from PIL import Image
 
-import sys
-from pathlib import Path
-path_root = Path(__file__).parents[1]
-sys.path.append(str(path_root))
-from constants import *
+from utils.constants import *
 
 
 

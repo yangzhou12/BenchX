@@ -2,12 +2,8 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 
-import sys
-from pathlib import Path
-path_root = Path(__file__).parents[0]
-sys.path.append(str(path_root))
-from models.text_model import *
-from models.vision_model import ImageEncoder
+from .models.text_model import *
+from .models.vision_model import ImageEncoder
 
 
 IMAGE_MODELS = {

@@ -3,12 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-import sys
-from pathlib import Path
-
-path_root = Path(__file__).parents[1]
-sys.path.append(str(path_root))
-from constants import *
+from utils.constants import *
 
 
 # create bounding boxes

@@ -1,8 +1,6 @@
-__pycache__/
-checkpoints/
-experiments/
-modules/
-models/convirt/data/
 .vscode/
+__pycache__/
+checkpoints/*
+!checkpoints/README.md
 models/medclip/pretrained/
 data/

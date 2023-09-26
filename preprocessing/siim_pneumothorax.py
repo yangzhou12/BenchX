@@ -5,14 +5,8 @@ import pydicom
 from PIL import Image
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
 
-import sys
-from pathlib import Path
-
-path_root = Path(__file__).parents[1]
-sys.path.append(str(path_root))
-from constants import *
+from utils.constants import *
 
 
 def rle2mask(rle, width, height):

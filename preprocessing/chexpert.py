@@ -1,11 +1,7 @@
 import pandas as pd
 import numpy as np
-from pathlib import Path
 
-import sys
-path_root = Path(__file__).parents[1]
-sys.path.append(str(path_root))
-from constants import *
+from utils.constants import *
 
 
 def preprocess_chexpert_5x200_data(n=200):

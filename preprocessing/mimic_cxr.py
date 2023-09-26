@@ -5,7 +5,8 @@ import csv
 import re
 from os.path import exists
 from tqdm import tqdm
-from ..constants import *
+
+from utils.constants import *
 
 
 def extract_mimic_text(args):

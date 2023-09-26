@@ -11,15 +11,10 @@ from transformers import BertTokenizer
 from tqdm import tqdm
 from PIL import Image
 
-import sys
-from pathlib import Path
-path_root = Path(__file__).parents[1]
-sys.path.append(str(path_root))
-from constants import *
+from utils.constants import *
 from datasets.utils import *
 
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class MultimodalPretrainingDataset(Dataset):
     def __init__(self, split="train", transform=None, data_pct=1.0, imsize=224, max_words=112):
@@ -57,9 +52,7 @@ class MultimodalPretrainingDataset(Dataset):
 
     def load_text_data(self, split):
         # get study to captions mapping
-        # TODO: check this
-        filepath = os.path.join(
-            BASE_DIR, "../data/captions.pickle")
+        filepath = Path("/data/captions.pickle")
         if not os.path.isfile(filepath):
             print(
                 f"Caption file {filepath} does not exist. Creating captions...")

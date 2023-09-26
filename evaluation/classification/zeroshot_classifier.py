@@ -3,15 +3,10 @@ import torch.nn.functional as F
 import argparse
 import os
 import numpy as np
-from pathlib import Path
 from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 from sklearn.metrics import accuracy_score
 
-import sys
-
-path_root = Path(__file__).parents[2]
-sys.path.append(str(path_root))
 from evaluation.utils import *
 from evaluation.classification.classifier_head import PromptClassifier
 from evaluation.classification.prompts import *

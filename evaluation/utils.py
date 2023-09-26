@@ -4,13 +4,22 @@ import random
 import numpy as np
 from timm.scheduler.cosine_lr import CosineLRScheduler
 
-import sys
-from pathlib import Path
-
-path_root = Path(__file__).parents[1]
-sys.path.append(str(path_root))
-from models.builders import *
 from datasets.classification_dataset import *
+
+
+_MODELS = {
+    "gloria": "gloria.img_encoder.model.",
+    "biovil": "encoder.encoder.",
+    "convirt": "img_encoder.model.",
+    "mrm": "",
+    "mgca-resnet50": "img_encoder_q.model.",
+    "mgca-vit": "img_encoder_q.model."
+}
+
+
+def available_models():
+    """ Returns the names of available evaluation models """
+    return list(_MODELS.keys())
 
 
 def set_seed(args):
@@ -110,8 +119,8 @@ def load_encoder_from_checkpoint(args, encoder):
 
         ckpt_dict = {}
         for k, v in ckpt.items():
-            if k.startswith(CKPT_PREFIX[args.model_name]):
-                beginning_index = len(CKPT_PREFIX[args.model_name].split(".")) - 1
+            if k.startswith(_MODELS[args.model_name]):
+                beginning_index = len(_MODELS[args.model_name].split(".")) - 1
                 k = ".".join(k.split(".")[beginning_index:])
                 ckpt_dict[k] = v
             for layer_k in ["head.weight", "head.bias", "fc.weight", "fc.bias"]:

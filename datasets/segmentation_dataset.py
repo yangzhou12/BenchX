@@ -5,12 +5,7 @@ import numpy as np
 from torch.utils.data import Dataset
 from .utils import *
 
-import sys
-from pathlib import Path
-
-path_root = Path(__file__).parents[1]
-sys.path.append(str(path_root))
-from constants import *
+from utils.constants import *
 from datasets.transforms import SegmentationTransforms
 
 

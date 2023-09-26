@@ -11,17 +11,12 @@ from tqdm import tqdm
 from tensorboardX import SummaryWriter
 from timm.models.vision_transformer import VisionTransformer
 
-import sys
-
-path_root = Path(__file__).parents[2]
-sys.path.append(str(path_root))
-from evaluation.utils import *
 from datasets.dataloader import get_ft_dataloaders
+from evaluation.utils import *
 from evaluation.segmentation.segmentation_loss import *
 from evaluation.segmentation.metrics import *
 from evaluation.segmentation.transformer_seg import SETRModel
-from models.builders import *
-from constants import *
+from utils.constants import *
 
 
 def count_parameters(model):
@@ -329,19 +324,22 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
+    # Mandatory finetuning parameters to specify
+    parser.add_argument("--model_name", type=str, required=True, help="model name")
+    parser.add_argument("--base_model", type=str, required=True, choices=["vit", "resnet50"])
+    parser.add_argument("--dataset", type=str, required=True, choices=["siim_acr_pneumothorax", "rsna_segmentation"])
+    
+    # To be configured based on hardware/directory
+    parser.add_argument("--resume", type=int, default=0, help="input exp number")
+    parser.add_argument("--pretrain_path", default=None)
+    parser.add_argument("--output_dir", default="./data")
+    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--num_workers", type=int, default=16)
+
     # Customizable model training settings
-    parser.add_argument("--model_name", type=str, default="", help="model name")
-    parser.add_argument(
-        "--base_model", type=str, default="", choices=["vit", "resnet50"]
-    )
-    parser.add_argument(
-        "--dataset", type=str, default="", choices=["siim_acr_pneumothorax", "rsna_segmentation"]
-    )
-    parser.add_argument(
-        "--optimizer", type=str, default="", choices=["sgd", "adamw", "adam"]
-    )
+    parser.add_argument("--optimizer", type=str, default="adamw", choices=["sgd", "adamw", "adam"])
     parser.add_argument("--freeze_encoder", action="store_true")
-    parser.add_argument("--scheduler", type=str, default="", choices=["cosine"])
+    parser.add_argument("--scheduler", type=str, default="cosine")
     parser.add_argument("--data_pct", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_steps", type=int, default=2000)
@@ -353,13 +351,6 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=5e-4)
     parser.add_argument("--weight_decay", type=float, default=1e-6)
     parser.add_argument("--momentum", type=float, default=0.9)
-
-    # To be configured based on hardware/directory
-    parser.add_argument("--resume", type=int, default=0, help="input exp number")
-    parser.add_argument("--pretrain_path", default="Path/To/checkpoint.pth")
-    parser.add_argument("--output_dir", default="Path/To/Outputdir")
-    parser.add_argument("--device", default="cuda")
-    parser.add_argument("--num_workers", type=int, default=16)
 
     args = parser.parse_args()
 

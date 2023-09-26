@@ -14,13 +14,8 @@ import torch.nn.functional as F
 import argparse
 import os
 from tqdm import tqdm
-from pathlib import Path
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
-import sys
-
-path_root = Path(__file__).parents[2]
-sys.path.append(str(path_root))
 from evaluation.utils import *
 from evaluation.retrieval.retrieval_head import ZeroShotRetrieval
 from datasets.dataloader import get_zeroshot_dataloader

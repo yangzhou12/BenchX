@@ -1,9 +1,5 @@
-import sys
 import random
-from pathlib import Path
-path_root = Path(__file__).parents[2]
-sys.path.append(str(path_root))
-from constants import *
+from utils.constants import *
 
 
 def generate_chexpert_class_prompts(n = 5):

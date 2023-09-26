@@ -1,23 +1,9 @@
-import logging
 import math
-import os
-import numpy as np
-
-import torch
 from torch import nn
-from torch.nn import CrossEntropyLoss, MSELoss
 from einops import rearrange
 import math
 
-import sys
-from pathlib import Path
-
-path_root = Path(__file__).parents[1]
-sys.path.append(str(path_root))
-from evaluation.segmentation.transformer_model import (
-    TransModel2d,
-    TransConfig,
-)
+from .transformer_model import TransModel2d, TransConfig
 
 
 class Encoder2D(nn.Module):

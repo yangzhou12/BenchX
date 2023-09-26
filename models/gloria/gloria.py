@@ -12,7 +12,7 @@ path_root = Path(__file__).parents[1]
 sys.path.append(str(path_root))
 from gloria.utils.utils import *
 import builder
-import constants
+import utils.constants as constants
 from .models.vision_model import PretrainedImageClassifier
 from typing import Union, List
 

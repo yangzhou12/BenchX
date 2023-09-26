@@ -5,11 +5,7 @@ from random import sample
 from PIL import Image
 from torch.utils.data import Dataset
 
-import sys
-from pathlib import Path
-path_root = Path(__file__).parents[2]
-sys.path.append(str(path_root))
-from constants import *
+from utils.constants import *
 from datasets.utils import *
 
 
