@@ -54,7 +54,7 @@ root:[data]
 | +--train-rle.csv
 ```
 
-Note that we conduct our VQA experiments using the [Rad-ReStruct](https://github.com/ChantalMP/Rad-ReStruct/tree/master) benchmark repo and follow their data preparation steps instead for the Rad-Restruct and VQA-RAD datasets.
+Note that we conduct our VQA experiments using the [Rad-ReStruct](https://github.com/ChantalMP/Rad-ReStruct/tree/master) benchmark repo. We follow their data preparation steps instead for the Rad-Restruct and VQA-RAD datasets.
 
 
 ### 2. Pre-processing
@@ -68,7 +68,7 @@ python -m preprocessing.rsna_pneumonia
 python -m preprocessing.siim_pneumothorax
 ```
 
-Note that no preprocessing is required for the SIIM dataset.
+No preprocessing is required for the NIH Chest X-ray dataset.
 
 ### 3. Zero-shot Evaluation & Fine-tuning
 
