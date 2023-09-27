@@ -18,7 +18,14 @@ from mrm.bert.bert_encoder import BertConfig
 
 
 
-def load_biovil_model(args, eval=False):
+def build_biovil_encoder(args, eval=True):
+    biovil_model = load_biovil(args, eval)
+    image_encoder = copy.deepcopy(biovil_model.cnn.encoder)
+    del biovil_model
+    return image_encoder
+
+
+def load_biovil(args, eval=True):
     biovil_model = MedCLIP(eval=eval)
     
     if args.pretrain_path:

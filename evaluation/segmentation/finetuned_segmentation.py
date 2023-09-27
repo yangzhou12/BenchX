@@ -1,10 +1,11 @@
 import os
 import torch
 import argparse
-import shutil
 import time
 import datetime
 import json
+import yaml
+from functools import partial
 import segmentation_models_pytorch as smp
 from pathlib import Path
 from tqdm import tqdm
@@ -29,7 +30,7 @@ def build_img_segmenter(args):
     Return an image segmenter based on model argument.
     """
 
-    if args.base_model == "resnet50":
+    if "resnet50" in args.model_name:
         model = smp.Unet("resnet50", encoder_weights=None, activation=None)
         load_encoder_from_checkpoint(args, model.encoder)
 
@@ -38,8 +39,7 @@ def build_img_segmenter(args):
             for param in model.encoder.parameters():
                 param.requires_grad = False
 
-    elif args.base_model == "vit":
-
+    elif "vit" in args.model_name:
         def vit_base_patch16(**kwargs):
             model = VisionTransformer(
                 norm_layer=partial(torch.nn.LayerNorm, eps=1e-6), **kwargs
@@ -171,10 +171,8 @@ def train(args, model, exp_path, device):
     best_dice = 0
     writer = SummaryWriter(os.path.join(exp_path, "log"))
 
-    # Save copy of run_finetuning.sh file in exp folder
-    shutil.copyfile(
-        "run_finetuning_seg.sh", os.path.join(exp_path, "run_finetuning_seg.sh")
-    )
+    # Save params in txt file
+    save_params(args, exp_path)
 
     # Train by batch
     t_total = args.num_steps
@@ -324,10 +322,12 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    # Mandatory finetuning parameters to specify
-    parser.add_argument("--model_name", type=str, required=True, help="model name")
-    parser.add_argument("--base_model", type=str, required=True, choices=["vit", "resnet50"])
-    parser.add_argument("--dataset", type=str, required=True, choices=["siim_acr_pneumothorax", "rsna_segmentation"])
+    # Config file that overrides default settings when specified
+    parser.add_argument("--config", type=argparse.FileType(mode='r'))
+
+    # Choose what to finetune 
+    parser.add_argument("--model_name", type=str, default=None, help="Specify model name to finetune")
+    parser.add_argument("--dataset", type=str, default=None, choices=["siim_acr_pneumothorax", "rsna_segmentation"])
     
     # To be configured based on hardware/directory
     parser.add_argument("--resume", type=int, default=0, help="input exp number")
@@ -356,6 +356,10 @@ if __name__ == "__main__":
 
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+
+    if args.config is not None:
+        parser.set_defaults(**yaml.safe_load(args.config))
+    args = parser.parse_args() # Reload arguments to override config file values with command line values
 
     args.phase = "segmentation"
 

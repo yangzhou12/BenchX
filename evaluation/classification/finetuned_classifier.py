@@ -2,10 +2,10 @@ import os
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-import shutil
 import argparse
 import time
 import json
+import yaml
 import datetime
 import numpy as np
 from tqdm import tqdm
@@ -16,7 +16,7 @@ from sklearn.metrics import roc_auc_score, precision_recall_curve, accuracy_scor
 from evaluation.utils import *
 from evaluation.classification.classifier_head import ImageClassifier
 from datasets.dataloader import get_ft_dataloaders
-from models.builders import *
+from models import builders
 
 
 def count_parameters(model):
@@ -28,21 +28,20 @@ def build_img_classifier(args, num_classes):
     """
     Return a image classifier based on model argument.
     """
-    if args.model_name == "biovil":
-        model = load_biovil_model(args, eval=True)
-        img_backbone = model.cnn.encoder
-        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
-    elif args.model_name == "mrm":
-        img_classifier = build_mrm_classifier(args, num_classes)
-    elif args.model_name == "gloria":
-        img_backbone = build_gloria_encoder(args)
-        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
-    elif args.model_name == "convirt":
-        img_backbone = build_convirt_encoder(args)
-        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
-    else:
-        raise RuntimeError("Model not found")
 
+    if args.model_name not in available_models():
+        raise RuntimeError(f"Model {args.model_name} not supported")
+
+    model_name, backbone = args.model_name.split('-')
+
+    if backbone == "resnet50":
+        img_backbone = getattr(builders, f'build_{model_name}_encoder')(args)
+        img_classifier = ImageClassifier(backbone=img_backbone, num_classes=num_classes)
+    elif backbone == "vit":
+        img_classifier = getattr(builders, f'build_{model_name}_classifier')(args, num_classes)
+    else:
+        raise RuntimeError(f"Backbone {backbone} not found")
+    
     return img_classifier
 
 
@@ -68,7 +67,7 @@ def compute_AUCs(gt, pred, n_class):
 def valid(model, data_loader, criterion, device, writer, global_step):
     model.eval()
     val_losses = []
-    for i, sample in enumerate(tqdm(data_loader)):
+    for i, sample in enumerate(data_loader):
         image = sample["image"]
         label = sample["label"].float().to(device)
         input_image = image.to(device, non_blocking=True)
@@ -88,9 +87,8 @@ def test(args, model, data_loader, device, classes):
     pred = torch.FloatTensor()
     pred = pred.cuda()
 
-    print("Detected lower validation loss! Start testing")
     model.eval()
-    for i, sample in enumerate(tqdm(data_loader)):
+    for i, sample in enumerate(data_loader):
         image = sample["image"]
         label = sample["label"].float().to(device)
         gt = torch.cat((gt, label), 0)
@@ -118,39 +116,21 @@ def test(args, model, data_loader, device, classes):
     max_f1_thresh = thresholds[np.argmax(f1_scores)]
 
     # Print metrics
-    print("The max f1 is", max_f1)
-    print("The accuracy is", accuracy_score(gt_np, pred_np > max_f1_thresh))
-    print("The average AUROC is {AUROC_avg:.3f}".format(AUROC_avg=AUROC_avg))
+    tqdm.write("The max f1 is", max_f1)
+    tqdm.write("The accuracy is", accuracy_score(gt_np, pred_np > max_f1_thresh))
+    tqdm.write("The average AUROC is {AUROC_avg:.3f}".format(AUROC_avg=AUROC_avg))
     for i in range(num_classes):
-        print("The AUROC of {} is {}".format(classes[i], AUROCs[i]))
+        tqdm.write("The AUROC of {} is {}".format(classes[i], AUROCs[i]))
 
     return AUROC_avg
 
 
-def main(args):
-    # Set up CUDA and GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("Total CUDA devices: ", torch.cuda.device_count())
-    args.n_gpu = torch.cuda.device_count()
-    torch.set_default_tensor_type("torch.FloatTensor")
-
-    # Set seed
-    set_seed(args)
-
-    # Get experiment path
-    exp_path = get_experiment(args)
+def train(args, model, exp_path, device):
 
     # Load specified dataset
     print("Creating dataset")
     train_dataloader, val_dataloader, test_dataloader = get_ft_dataloaders(args)
     classes = DATASET_CLASSES[args.dataset]
-
-    # Load model
-    print("Loading model")
-    model = build_img_classifier(args, len(classes))
-    model = model.to(device)
-    num_params = count_parameters(model)
-    print("Total Parameter: \t%2.1fM" % num_params)
 
     # Prepare loss
     criterion = nn.BCEWithLogitsLoss()
@@ -161,10 +141,8 @@ def main(args):
     best_val_loss = 10000
     writer = SummaryWriter(os.path.join(exp_path, "log"))
 
-    # Save copy of run_finetuning.sh file in exp folder
-    shutil.copyfile(
-        "run_finetuning_cls.sh", os.path.join(exp_path, "run_finetuning_cls.sh")
-    )
+    # Save params in txt file
+    save_params(args, exp_path)
 
     # Train by batch
     t_total = args.num_steps
@@ -215,7 +193,10 @@ def main(args):
                 val_step = len(train_dataloader)
 
             if global_step % val_step == 0:
-                print("\n" + f"Start validating at step {global_step}")
+                epoch_iterator.set_description(
+                    "Validating... (%d / %d Steps) (loss=%2.5f)" % (global_step, t_total, loss)
+                )
+                
                 val_loss = valid(
                     model, val_dataloader, criterion, device, writer, global_step
                 )
@@ -244,7 +225,10 @@ def main(args):
                 if val_loss < best_val_loss:
                     torch.save(save_obj, os.path.join(exp_path, "best_valid.pth"))
                     best_val_loss = val_loss
-                    args.model_path = os.path.join(exp_path, "best_valid.pth")
+
+                    epoch_iterator.set_description(
+                        "Testing... (%d / %d Steps) (val_loss=%2.5f)" % (global_step, t_total, val_loss)
+                    )
                     test_auc = test(args, model, test_dataloader, device, classes)
 
                     with open(os.path.join(exp_path, "log.txt"), "a") as f:
@@ -269,28 +253,56 @@ def main(args):
     print("Training time {}".format(total_time_str))
 
 
+def main(args):
+    # Set up CUDA and GPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Total CUDA devices: ", torch.cuda.device_count())
+    args.n_gpu = torch.cuda.device_count()
+    torch.set_default_tensor_type("torch.FloatTensor")
+
+    # Set seed
+    set_seed(args)
+
+    # Get experiment path
+    exp_path = get_experiment(args)
+
+    # Load model
+    print("Loading model")
+    num_classes = len(DATASET_CLASSES[args.dataset])
+    model = build_img_classifier(args, num_classes)
+    model = model.to(device)
+    num_params = count_parameters(model)
+    print("Total Parameter: \t%2.1fM" % num_params)
+
+    train(args, model, exp_path, device)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
+    # Config file that overrides default settings when specified
+    parser.add_argument("--config", type=argparse.FileType(mode='r'))
+
+    # Choose what to finetune
+    parser.add_argument("--model_name", type=str, default=None, help="Specify model name to finetune")
+    parser.add_argument("--dataset", type=str, default=None, choices=["rsna_pneumonia", "nih_chest_xray"])
+
+    # To be configured based on hardware/directory
+    parser.add_argument("--resume", type=int, default=0, help="input exp number")
+    parser.add_argument("--pretrain_path", default=None)
+    parser.add_argument("--output_dir", default="./data")
+    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--num_workers", type=int, default=16)
+
     # Customizable model training settings
-    parser.add_argument(
-        "--dataset", type=str, default="", choices=["rsna_pneumonia", "nih_chest_xray"]
-    )
-    parser.add_argument("--model_name", type=str, default="", help="model name")
-    parser.add_argument(
-        "--optimizer", type=str, default="", choices=["sgd", "adamw", "adam"]
-    )
-    parser.add_argument("--scheduler", type=str, default="", choices=["cosine"])
+    parser.add_argument("--optimizer", type=str, default="adamw", choices=["sgd", "adamw", "adam"])
+    parser.add_argument("--freeze_encoder", action="store_true")
+    parser.add_argument("--scheduler", type=str, default="cosine")
     parser.add_argument("--data_pct", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=48)
     parser.add_argument("--num_steps", type=int, default=50)
     parser.add_argument("--warmup_steps", type=int, default=20)
-    parser.add_argument(
-        "--val_steps",
-        type=int,
-        default=-1,
-        help="specify a number, else default value is length of dataset",
-    )
+    parser.add_argument("--val_steps", type=int, default=-1)
     parser.add_argument("--seed", type=int, default=42)
 
     # Hyperparameter tuning
@@ -299,22 +311,14 @@ if __name__ == "__main__":
     parser.add_argument("--max_grad", type=float, default=1.0)
     parser.add_argument("--momentum", type=float, default=0.9)
 
-    # To be configured based on hardware/directory
-    parser.add_argument("--resume", type=int, default=0, help="input exp number")
-    parser.add_argument("--pretrain_path", default="Path/To/checkpoint.pth")
-    parser.add_argument("--output_dir", default="Path/To/Outputdir")
-    parser.add_argument("--device", default="cuda")
-    parser.add_argument("--gpu", type=str, default="0", help="gpu")
-    parser.add_argument("--num_workers", type=int, default=4)
-
     args = parser.parse_args()
 
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    torch.cuda.current_device()
-    torch.cuda._initialized = True
+    if args.config is not None:
+        parser.set_defaults(**yaml.safe_load(args.config))
+    args = parser.parse_args() # Reload arguments to override config file values with command line values
 
     args.phase = "classification"
 

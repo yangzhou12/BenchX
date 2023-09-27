@@ -192,6 +192,9 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
+    # Config file that overrides default settings when specified
+    parser.add_argument("--config", type=argparse.FileType(mode='r'))
+
     # Customizable model training settings
     parser.add_argument("--dataset", type=str, default="mimic_5x200")
     parser.add_argument(
@@ -213,18 +216,17 @@ if __name__ == "__main__":
     )
 
     # To be configured based on hardware/directory
-    parser.add_argument("--pretrain_path", default="Path/To/checkpoint.pth")
+    parser.add_argument("--pretrain_path", required=True)
     parser.add_argument("--device", default="cuda")
-    parser.add_argument("--gpu", type=str, default="0", help="gpu")
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=16)
 
     args = parser.parse_args()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    torch.cuda.current_device()
-    torch.cuda._initialized = True
+    if args.config is not None:
+        parser.set_defaults(**yaml.safe_load(args.config))
+    args = parser.parse_args() # Reload arguments to override config file values with command line values
 
     args.phase = "retrieval"
 

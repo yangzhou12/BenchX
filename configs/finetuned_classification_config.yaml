@@ -1,0 +1,10 @@
+model_name: 'gloria-resnet50'
+dataset: 'rsna_pneumonia'
+pretrain_path: './checkpoints/chexpert_resnet50.ckpt'
+scheduler: 'cosine'
+optimizer: 'sgd'
+num_steps: 2000
+warmup_steps: 500
+val_steps: 200
+data_pct: 0.01
+learning_rate: 1e-5

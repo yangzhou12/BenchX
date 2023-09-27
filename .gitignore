@@ -1,6 +1,6 @@
 .vscode/
 __pycache__/
-checkpoints/*
+checkpoints/
 !checkpoints/README.md
 models/medclip/pretrained/
 data/

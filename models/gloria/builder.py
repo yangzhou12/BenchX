@@ -2,8 +2,11 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 
-from .models.text_model import *
-from .models.vision_model import ImageEncoder
+import sys
+from pathlib import Path
+path_root = Path(__file__).parents[1]
+from gloria.models.text_model import *
+from gloria.models.vision_model import ImageEncoder
 
 
 IMAGE_MODELS = {

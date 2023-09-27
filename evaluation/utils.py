@@ -1,5 +1,6 @@
 import os
 import re
+import yaml
 import random
 import numpy as np
 from timm.scheduler.cosine_lr import CosineLRScheduler
@@ -8,10 +9,10 @@ from datasets.classification_dataset import *
 
 
 _MODELS = {
-    "gloria": "gloria.img_encoder.model.",
-    "biovil": "encoder.encoder.",
-    "convirt": "img_encoder.model.",
-    "mrm": "",
+    "gloria-resnet50": "gloria.img_encoder.model.",
+    "biovil-resnet50": "encoder.encoder.",
+    "convirt-resnet50": "img_encoder.model.",
+    "mrm-vit": "",
     "mgca-resnet50": "img_encoder_q.model.",
     "mgca-vit": "img_encoder_q.model."
 }
@@ -103,6 +104,12 @@ def load_training_setup(args, exp_path, model):
         global_step = 0
 
     return global_step, optimizer, lr_scheduler
+
+
+def save_params(args, exp_path):
+    del args.config
+    with open(os.path.join(exp_path, 'commandline_args.yaml'), 'w') as f:
+        yaml.dump(args.__dict__, f)
 
 
 def load_encoder_from_checkpoint(args, encoder):
