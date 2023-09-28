@@ -103,11 +103,11 @@ python -m evaluation.classification.finetuned_classifier --config configs/finetu
 ```
 #### Zero-shot Retrieval
 ```
-python -m evaluation.classification.zeroshot_retrieval --config configs/zeroshot_retrieval_config.yaml
+python -m evaluation.retrieval.zeroshot_retrieval --config configs/zeroshot_retrieval_config.yaml
 ```
 #### Finetuned Segmentation
 ```
-python -m evaluation.classification.finetuned_segmentation --config configs/finetuned_segmentation_config.yaml
+python -m evaluation.segmentation.finetuned_segmentation --config configs/finetuned_segmentation_config.yaml
 ```
 #### VQA
 We conduct all experiments for medical VQA using the Rad-Restruct benchmark repo and provide the necessary files for reproducing the experiments [here](evaluation/vqa/).
