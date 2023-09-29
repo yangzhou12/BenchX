@@ -4,3 +4,4 @@ checkpoints/
 !checkpoints/README.md
 models/medclip/pretrained/
 data/
+configs/*
