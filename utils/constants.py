@@ -256,11 +256,13 @@ SLAKE_TEST_CSV = SLAKE_DATA_DIR / "test.csv"
 #             VQA-RAD constants              #
 # ############################################
 
-VQA_RAD_DATA_DIR = Path("/home/faith/MVLM/vqa-rad")
+VQA_RAD_DATA_DIR = Path("/home/faith/MVLM/VQA_RAD")
 VQA_RAD_ORIGINAL_TRAIN_JSON = VQA_RAD_DATA_DIR / "VQA_RAD Dataset Public.json"
 VQA_RAD_IMG_DIR = VQA_RAD_DATA_DIR / "VQA_RAD_Image_Folder"
 VQA_RAD_TRAIN_CSV = VQA_RAD_DATA_DIR / "train.csv"
 VQA_RAD_TEST_CSV = VQA_RAD_DATA_DIR / "test.csv"
+VQA_RAD_TEST_CLOSE_CSV = VQA_RAD_DATA_DIR / "test_close.csv"
+VQA_RAD_TEST_OPEN_CSV = VQA_RAD_DATA_DIR / "test_open.csv"
 
 
 # ############################################
