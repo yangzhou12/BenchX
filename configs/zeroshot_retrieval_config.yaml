@@ -1,4 +1,0 @@
-dataset: 'mimic_5x200'
-pretrain_path: './checkpoints/chexpert_resnet50.ckpt'
-model_name: 'gloria'
-similarity_type: 'both'

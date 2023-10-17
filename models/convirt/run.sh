@@ -1,1 +1,0 @@
-python train.py --output_dir /home/faith/unified-framework/models/convirt/data
