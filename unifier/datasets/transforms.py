@@ -24,7 +24,7 @@ class BaseTransforms(object):
 class DataTransforms(BaseTransforms):
     """Transforms used for pretraining, classification and retrieval."""
 
-    def __init__(self, is_train: bool = True, resize: int = 256, crop_size: int = 224):
+    def __init__(self, is_train: bool = True, resize: int = 224, crop_size: int = 224):
         if is_train:
             data_transforms = [
                 transforms.Resize(resize),

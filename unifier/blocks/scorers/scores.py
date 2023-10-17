@@ -7,7 +7,7 @@ import logging
 from sklearn.metrics import classification_report, roc_auc_score
 from . import *
 
-# RadGraph package overrides logger, need to set back to default
+
 logging.setLoggerClass(logging.Logger)
 
 
@@ -53,45 +53,27 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
         #     metric = list(metric.keys())[0]
 
         # Iterating over metrics
-        # if metric == "BLEU":
-        #     scores["BLEU"] = Bleu()(refs, hyps)[0]
-        # elif metric == "METEOR":
-        #     scores["METEOR"] = Meteor()(refs, hyps)[0]
-        # elif metric == "CIDERD":
-        #     scores["CIDERD"] = CiderD()(refs, hyps)[0]
-        # elif metric == "bertscore":
-        #     scores["bertscore"] = BertScore()(refs, hyps)[0]
-        # elif metric in ["ROUGE1", "ROUGE2", "ROUGEL"]:
-        #     scores[metric] = Rouge(rouges=[metric.lower()])(refs, hyps)[0]
         if metric == "accuracy":
             scores["accuracy"] = round(
                 np.mean(np.array(refs) == np.argmax(hyps, axis=-1)) * 100, 2
             )
         elif metric == "f1-score":
             scores["f1-score"] = classification_report(refs, np.argmax(hyps, axis=-1))
-        elif metric == "auroc":
-            scores["auroc"] = roc_auc_score(
+        elif metric == "multiclass_auroc":
+            scores["multiclass_auroc"] = roc_auc_score(
                 refs,
                 F.softmax(torch.from_numpy(hyps), dim=-1).numpy(),
                 multi_class="ovr",
             )
-        # elif metric == "chexbert":
-        #     accuracy, accuracy_per_sample, chexbert_all, chexbert_5 = F1CheXbert(
-        #         refs_filename=base.format("refs.chexbert.txt") if dump else None,
-        #         hyps_filename=base.format("hyps.chexbert.txt") if dump else None,
-        #     )(hyps, refs)
-        #     scores["chexbert-5_micro avg_f1-score"] = chexbert_5["micro avg"][
-        #         "f1-score"
-        #     ]
-        #     scores["chexbert-all_micro avg_f1-score"] = chexbert_all["micro avg"][
-        #         "f1-score"
-        #     ]
-        #     scores["chexbert-5_macro avg_f1-score"] = chexbert_5["macro avg"][
-        #         "f1-score"
-        #     ]
-        #     scores["chexbert-all_macro avg_f1-score"] = chexbert_all["macro avg"][
-        #         "f1-score"
-        #     ]
+        elif metric == "multilabel_auroc":
+            AUROCs = []
+            n_classes = refs.shape(1)
+            gt_np = refs.numpy()
+            pred_np = hyps.numpy()
+            for i in range(n_classes):
+                AUROCs.append(roc_auc_score(gt_np[:, i], pred_np[:, i]))
+            scores["class_auroc"] = AUROCs
+            scores["multilabel_auroc"] = sum(AUROCs) / n_classes
         else:
             logger.warning("Metric not implemented: {}".format(metric))
 

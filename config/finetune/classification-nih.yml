@@ -1,0 +1,54 @@
+name: classification_nih
+ckpt_dir: ckpt
+
+dataset:
+  proto: NIH_Dataset
+  imgpath: /VLM/nih_chest_xray/all_classes
+  csvpath: USE_INCLUDED_FILE
+  views: ["PA", "AP"]
+
+transforms:
+  type: DataTransforms
+
+model:
+  proto: ImageClassifier
+
+  cnn:
+    proto: VisualEncoder
+    backbone: resnet50
+    output_layer: avgpool # do not return fc layer
+    dropout_out: 0.0
+    permute: batch_first
+    freeze: False
+
+  classifier:
+    proto: Classifier
+    input_size: 768
+    num_classes: 14
+    dropout: 0.
+
+  loss:
+    proto: BCEWithLogitsLoss
+
+trainer:
+  optimizer: Adam
+  optim_params:
+    lr: 0.00005
+    weight_decay: 5e-4
+  batch_size: 32
+  lr_decay: ReduceLROnPlateau
+  lr_decay_params:
+    factor: 0.5
+    patience: 1
+    min_lr: 0.000001
+    threshold: 0.01
+    threshold_mode: abs
+  epochs: 99
+  early_stop: 10
+  eval_start: 0
+  early_stop_metric: validation_loss
+
+validator:
+  batch_size: 16
+  metrics: [multilabel_auroc]
+  splits: [valid]

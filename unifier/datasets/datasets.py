@@ -152,7 +152,7 @@ class Dataset:
 
     def limit_to_selected_views(self, views):
         """This function is called by subclasses to filter the
-        images by view based on the values in .csv['view']
+        images by view based on the values in .csv['view'].
         """
         if type(views) is not list:
             views = [views]
@@ -1037,6 +1037,26 @@ class NIH_Dataset(Dataset):
                 path_mask[self.pathologies.index(row["Finding Label"])] = mask
         return path_mask
 
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            if self.pathology_masks:
+                for i, s in enumerate(batch):
+                    if i == 0:  # initialize dict of empty lists with same keys
+                        masks = dict.fromkeys(s["pathology_masks"], [])
+                    for k, v in s["pathology_masks"].items():
+                        masks[k].append(v)
+                masks = {k: torch.stack(v) for k, v in masks.items()}
+                collated.update({"pathology_masks": masks})
+            return collated
+
+        return collate_fn
+
 
 class VQA_RAD_Dataset(Dataset):
     """VQA-RAD dataset
@@ -1153,3 +1173,15 @@ class VQA_RAD_Dataset(Dataset):
         print("Label size ({}): {}".format("VQA-RAD", len(ans2label)))
 
         return ans2label, label2ans
+
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            return collated
+
+        return collate_fn

@@ -43,7 +43,7 @@ model:
     temp2: 5.0
     temp3: 10.0
 
-trainor:
+trainer:
   optimizer: Adam
   optim_params:
     lr: 0.0001
