@@ -61,6 +61,3 @@ class VQASLAKEDataset(BaseDataset): # Adapted from M2I2
 
     def __len__(self):
         return len(self.df)
-
-    def tokenize(self, tokenizer):
-        return
