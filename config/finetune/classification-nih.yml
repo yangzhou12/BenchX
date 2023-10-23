@@ -16,6 +16,8 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
+    pretrain_path: /home/faith/unified-framework/ckpt/chexpert_resnet50.ckpt
+    prefix: gloria.img_encoder.model.
     output_layer: avgpool # do not return fc layer
     dropout_out: 0.0
     permute: batch_first

@@ -99,7 +99,7 @@ def create_data_loader(
     # split can be train with validation transformation
     dataset = eval("datasets." + dataset_name)(
         transform=eval("transforms." + config.transforms.type)(
-            **config.transforms.options
+            **config.transforms.get("options", {})
         ),
         split=split,
         **OmegaConf.to_container(dataset_config)

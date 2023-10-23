@@ -11,7 +11,9 @@ transforms:
   type: DataTransforms
 
 model:
-  proto: ImageClassifier
+  proto: SETR_Naive
+  img_dim: 224
+  
 
   cnn:
     proto: VisualEncoder

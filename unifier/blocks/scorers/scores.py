@@ -55,7 +55,8 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
         # Iterating over metrics
         if metric == "accuracy":
             scores["accuracy"] = round(
-                np.mean(np.array(refs) == np.argmax(hyps, axis=-1)) * 100, 2
+                np.mean(np.array(refs) == np.argmax(hyps, axis=-1)) * 100,
+                2,  # change from array to argmax for refs
             )
         elif metric == "f1-score":
             scores["f1-score"] = classification_report(refs, np.argmax(hyps, axis=-1))

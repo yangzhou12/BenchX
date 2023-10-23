@@ -7,6 +7,18 @@
 import torch
 import torch.nn as nn
 from unifier.blocks.vision import *
+from unifier.models.utils import get_n_params
+
+
+def evaluation(models, config, dl, **kwargs):
+    loss = 0.0
+    labels = 0.0
+    preds = 0.0
+    logits = 0.0
+
+    return {
+        **{"loss": loss, "refs": labels, "hyps": preds, "logits": logits},
+    }
 
 
 class FixedPositionalEncoding(nn.Module):
@@ -55,12 +67,7 @@ class SegmentationTransformer(nn.Module):
         img_dim,
         patch_dim,
         num_channels,
-        embedding_dim,  # transformer setting
-        num_heads,  # transformer setting
-        num_layers,  # transformer setting
-        hidden_dim,  # transformer setting
         dropout_rate=0.0,  # transformer setting
-        attn_dropout_rate=0.0,  # transformer setting
         conv_patch_representation=False,
         positional_encoding_type="learned",
     ):
@@ -70,12 +77,9 @@ class SegmentationTransformer(nn.Module):
         assert img_dim % patch_dim == 0
 
         self.img_dim = img_dim
-        self.embedding_dim = embedding_dim
-        self.num_heads = num_heads
         self.patch_dim = patch_dim
         self.num_channels = num_channels
         self.dropout_rate = dropout_rate
-        self.attn_dropout_rate = attn_dropout_rate
         self.conv_patch_representation = conv_patch_representation
 
         self.num_patches = int((img_dim // patch_dim) ** 2)
@@ -94,7 +98,7 @@ class SegmentationTransformer(nn.Module):
 
         self.pe_dropout = nn.Dropout(p=self.dropout_rate)
 
-        ######## Initialize ViT Encoder here ########
+        ######## Interface parameters here ########
 
         # self.transformer = TransformerModel(
         #     embedding_dim,
@@ -106,7 +110,14 @@ class SegmentationTransformer(nn.Module):
         # )
 
         cnn_func = cnn.pop("proto")
-        self.transformer = eval(cnn_func)(**cnn)
+        self.cnn = eval(cnn_func)(**cnn)
+
+        self.loss_func = eval(loss_func)(**loss).cuda()
+
+        print(self.loss_func)
+
+        # Evaluation
+        self.eval_func = evaluation
 
         ####### END #######
 
@@ -151,13 +162,13 @@ class SegmentationTransformer(nn.Module):
         x = self.pe_dropout(x)
 
         # apply transformer
-        x, intmd_x = self.transformer(x)
+        x, intmd_x = self.cnn(x)
         x = self.pre_head_ln(x)
 
         return x, intmd_x
 
     def decode(self, x):
-        raise NotImplementedError("Should be implemented in child class!!")
+        raise NotImplementedError("Should be implemented in child class")
 
     def forward(self, x, auxillary_output_layers=None):
         encoder_output, intmd_encoder_outputs = self.encode(x)
@@ -193,6 +204,11 @@ class SegmentationTransformer(nn.Module):
         x = x.permute(0, 3, 1, 2).contiguous()
         return x
 
+    def __repr__(self):
+        s = super().__repr__() + "\n"
+        s += "{}\n".format(get_n_params(self))
+        return s
+
 
 class SETR_Naive(SegmentationTransformer):
     def __init__(
@@ -200,6 +216,7 @@ class SETR_Naive(SegmentationTransformer):
         cnn,
         img_dim,
         patch_dim,
+        embedding_dim,
         num_channels,
         num_classes,
         conv_patch_representation=False,

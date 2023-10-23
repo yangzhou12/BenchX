@@ -40,7 +40,7 @@ class MVQA(nn.Module):
         # Evaluation
         self.eval_func = evaluation
 
-    def forward(self, images, labels=None, from_training=True, **kwargs):
+    def forward(self, images, labels=None, from_training=True, iteration=None, epoch=None, **kwargs):
         out = self.cnn(images.cuda())
         out = self.adapter(out)
         out = self.transformer(out, output_attentions=True)
@@ -53,8 +53,8 @@ class MVQA(nn.Module):
         out = self.classifier(out)
 
         loss = torch.tensor(0.0)
-        if from_training:
-            loss = self.loss_func(out, labels.cuda(), **kwargs)
+        if from_training: 
+            loss = self.loss_func(out, labels.cuda(), **kwargs) # out - [32, 498], labels - [32, 1]
 
         return {"loss": loss, "output": out, "answer": torch.argmax(out, dim=-1)}
 

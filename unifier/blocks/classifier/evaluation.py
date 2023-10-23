@@ -14,8 +14,8 @@ def evaluation(models, config, dl, **kwargs):
 
     for num_batch, batch in enumerate(tqdm(dl, total=len(dl))):
         label = batch["labels"]
-        batch_size = label.shape[0]
-        num_classes = label.shape[1]
+        batch_size = label.shape[0]  # batch_size
+        num_classes = label.shape[1]  # 1
 
         batch = {
             k: v.cuda()
@@ -66,6 +66,11 @@ def evaluation(models, config, dl, **kwargs):
     #     post_processing["attentions"] = np.array(attentions)
 
     return {
-        **{"loss": loss, "refs": labels, "hyps": preds, "logits": logits},
+        **{
+            "loss": loss,
+            "refs": labels,
+            "hyps": preds,
+            "logits": logits,
+        },  # labels - [32, 1]; preds - [32, 498]
         # **post_processing,
     }

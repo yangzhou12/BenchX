@@ -111,6 +111,11 @@ class Dataset:
     between the DataFrame and the dataset items will be maintained when using 
     tools from this library. """
 
+    split: str
+    """Each dataset class should receive a split parameter containing one of
+    three values: train, valid, test. The .csv file will be filtered according
+    to the specified split."""
+
     def totals(self) -> Dict[str, Dict[str, int]]:
         """Compute counts of pathologies.
 
@@ -200,6 +205,8 @@ class MIMIC_Dataset(Dataset):
     ):
         super(MIMIC_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.split = split
 
         self.pathologies = [
             "Enlarged Cardiomediastinum",
@@ -323,8 +330,8 @@ class MIMIC_Dataset(Dataset):
     def string(self):
         return (
             self.__class__.__name__
-            + " num_samples={} views={} transforms={}".format(
-                len(self), self.views, self.transform
+            + " num_samples={} views={} transforms={} split={}".format(
+                len(self), self.views, self.transform, self.split
             )
         )
 
@@ -427,6 +434,8 @@ class CheX_Dataset(Dataset):
         super(CheX_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
 
+        self.split = split
+
         self.pathologies = [
             "Enlarged Cardiomediastinum",
             "Cardiomegaly",
@@ -515,8 +524,8 @@ class CheX_Dataset(Dataset):
     def string(self):
         return (
             self.__class__.__name__
-            + " num_samples={} views={} transforms={}".format(
-                len(self), self.views, self.transform
+            + " num_samples={} views={} transforms={} split={}".format(
+                len(self), self.views, self.transform, self.split
             )
         )
 
@@ -580,6 +589,9 @@ class RSNA_Pneumonia_Dataset(Dataset):
     ):
         super(RSNA_Pneumonia_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.split = split
+
         self.imgpath = imgpath
         self.transform = transform
         self.pathology_masks = pathology_masks
@@ -638,8 +650,8 @@ class RSNA_Pneumonia_Dataset(Dataset):
     def string(self):
         return (
             self.__class__.__name__
-            + " num_samples={} views={} transforms={}".format(
-                len(self), self.views, self.transform
+            + " num_samples={} views={} transforms={} split={}".format(
+                len(self), self.views, self.transform, self.split
             )
         )
 
@@ -728,6 +740,9 @@ class SIIM_Pneumothorax_Dataset(Dataset):
     ):
         super(SIIM_Pneumothorax_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.split = split
+
         self.imgpath = imgpath
         self.transform = transform
         self.pathology_masks = pathology_masks
@@ -762,8 +777,11 @@ class SIIM_Pneumothorax_Dataset(Dataset):
         self.file_map = _cache_dict["siim_file_map"]
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} transforms={}".format(
-            len(self), self.transform
+        return (
+            self.__class__.__name__
+            + " num_samples={} transforms={} split={}".format(
+                len(self), self.transform, self.split
+            )
         )
 
     def __len__(self):
@@ -887,6 +905,8 @@ class NIH_Dataset(Dataset):
         np.random.seed(seed)  # Reset the seed so all runs are the same.
         self.imgpath = imgpath
 
+        self.split = split
+
         if csvpath == USE_INCLUDED_FILE:
             self.csvpath = os.path.join(datapath, "Data_Entry_2017_v2020.csv.gz")
         else:
@@ -982,8 +1002,8 @@ class NIH_Dataset(Dataset):
     def string(self):
         return (
             self.__class__.__name__
-            + " num_samples={} views={} transforms={}".format(
-                len(self), self.views, self.transform
+            + " num_samples={} views={} transforms={} split={}".format(
+                len(self), self.views, self.transform, self.split
             )
         )
 
@@ -1088,10 +1108,11 @@ class VQA_RAD_Dataset(Dataset):
         split="train",
     ):
         super(VQA_RAD_Dataset, self).__init__()
-
         np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.split = split
+
         self.imgpath = imgpath
-        self.views = None
 
         if csvpath == USE_INCLUDED_FILE:
             self.csvpath = os.path.join(datapath, "vqarad_train_valset.csv.gz")
@@ -1127,13 +1148,12 @@ class VQA_RAD_Dataset(Dataset):
         # Construct labels
         labels = self.pathologies.apply(lambda x: self.ans2label[x]).tolist()
         self.labels = np.asarray(labels).T
-        self.labels = self.labels.astype(np.float32)
 
     def string(self):
         return (
             self.__class__.__name__
-            + " num_samples={} views={} transforms={}".format(
-                len(self), self.views, self.transform
+            + " num_samples={} transforms={} split={}".format(
+                len(self), self.transform, self.split
             )
         )
 
@@ -1177,9 +1197,15 @@ class VQA_RAD_Dataset(Dataset):
     def get_collate_fn(self):
         def collate_fn(batch):
             imgs = [s["img"] for s in batch]
-            labels = [s["lab"] for s in batch]
+            targets = [s["lab"] for s in batch]  # Numerical labels
+
+            # One-hot encoded labels
+            labels = torch.zeros(len(batch), len(self.ans2label))
+            for i, _label in enumerate(targets):
+                labels[i, _label] = 1.0
+
             collated = {
-                "labels": torch.stack(labels),
+                "labels": np.array(targets),  # tensor labels for each sample in batch
                 "images": torch.stack(imgs),
             }
             return collated
