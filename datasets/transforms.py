@@ -9,6 +9,7 @@ class DataTransforms(object):
         if is_train:
             # Consider use the following Normalization parameters
             # normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+            # Can try different parameters for RandomResizedCrop, e.g., transforms.RandomResizedCrop(224, scale=(0.2, 1.0), interpolation=Image.BICUBIC)
             data_transforms = [
                 # transforms.Resize(crop_size),
                 transforms.RandomResizedCrop(crop_size),  # RandomResizedCrop
