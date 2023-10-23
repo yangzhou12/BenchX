@@ -7,6 +7,8 @@ from albumentations.pytorch import ToTensorV2
 class DataTransforms(object):
     def __init__(self, is_train: bool = True, crop_size: int = 224):
         if is_train:
+            # Consider use the following Normalization parameters
+            # normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
             data_transforms = [
                 # transforms.Resize(crop_size),
                 transforms.RandomResizedCrop(crop_size),  # RandomResizedCrop
