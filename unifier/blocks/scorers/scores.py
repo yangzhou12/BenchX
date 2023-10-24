@@ -55,9 +55,17 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
         # Iterating over metrics
         if metric == "accuracy":
             scores["accuracy"] = round(
-                np.mean(np.array(refs) == np.argmax(hyps, axis=-1)) * 100,
+                np.mean(np.argmax(refs, axis=-1) == np.argmax(hyps, axis=-1)) * 100,
                 2,  # change from array to argmax for refs
             )
+        elif metric == "vqa_score":
+            hyps_tensor = torch.from_numpy(hyps)
+            refs_tensor = torch.from_numpy(refs)
+            logits = torch.max(hyps_tensor, 1)[1]
+            one_hots = torch.zeros(*refs_tensor.size()).to(refs_tensor)
+            one_hots.scatter_(1, logits.view(-1, 1), 1)
+            score = one_hots * refs_tensor
+            scores["vqa_score"] = (score.sum() / len(score)).item()
         elif metric == "f1-score":
             scores["f1-score"] = classification_report(refs, np.argmax(hyps, axis=-1))
         elif metric == "multiclass_auroc":

@@ -15,7 +15,7 @@ def evaluation(models, config, dl, **kwargs):
     for num_batch, batch in enumerate(tqdm(dl, total=len(dl))):
         label = batch["labels"]
         batch_size = label.shape[0]  # batch_size
-        num_classes = label.shape[1]  # 1
+        num_classes = config.model.classifier.num_classes
 
         batch = {
             k: v.cuda()
@@ -42,7 +42,9 @@ def evaluation(models, config, dl, **kwargs):
         for i in range(batch_size):
             for j, r in enumerate(results):
                 logits[cumulative_index + i][j] = r["output"][i].data.cpu().numpy()
-            labels[cumulative_index + i] = label[i].data.cpu().numpy()
+            # labels[cumulative_index + i] = label[i].data.cpu().numpy()
+            idx = label[i]
+            labels[cumulative_index + i][idx] = 1.0
 
         # Loss
         for j, r in enumerate(results):
@@ -71,6 +73,6 @@ def evaluation(models, config, dl, **kwargs):
             "refs": labels,
             "hyps": preds,
             "logits": logits,
-        },  # labels - [32, 1]; preds - [32, 498]
+        },  
         # **post_processing,
     }

@@ -9,6 +9,7 @@ import inspect
 import numpy as np
 import torch.nn as nn
 from omegaconf import OmegaConf
+import transformers
 
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
@@ -21,6 +22,10 @@ import torch_optimizer
 from torch.optim import *
 from torch_optimizer import *
 from torch.optim.lr_scheduler import *
+from transformers import (
+    get_polynomial_decay_schedule_with_warmup,
+    get_cosine_schedule_with_warmup,
+)
 from unifier.blocks.schedulers import LinearWarmupCosineAnnealingLR
 import sys
 
@@ -33,9 +38,12 @@ def get_eval_func(models):
     return dummy.eval_func
 
 
-def create_optimizer(config, logger, model_params, state_dict=None):
+def create_optimizer(config, logger, model, state_dict=None):
     assert "lr" in config.optim_params
     config.optim_params.lr = float(config.optim_params.lr)
+
+    if "betas" in config.optim_params:
+        config.optim_params.betas = eval(config.optim_params.betas)  # change to tuple
 
     if hasattr(torch.optim, config.optimizer):
         optim = getattr(torch.optim, config.optimizer)
@@ -45,6 +53,101 @@ def create_optimizer(config, logger, model_params, state_dict=None):
         raise NotImplementedError(config.optimizer)
 
     print(config.optim_params)
+
+    # Initialize optimizer groups
+    if not config.optim_params.pop("optim_groups"):
+        model_params = model.parameters()
+    else:
+        no_decay = [
+            "bias",
+            "LayerNorm.bias",
+            "LayerNorm.weight",
+            "norm.bias",
+            "norm.weight",
+            "norm1.bias",
+            "norm1.weight",
+            "norm2.bias",
+            "norm2.weight",
+        ]
+        head_names = [
+            "vqa_head",
+        ]
+        multi_modal_names = ["multi_modal"]
+
+        lr = config.optim_params.lr
+        wd = config.optim_params.pop("weight_decay")
+        lr_multiplier_head = config.optim_params.pop("lr_multiplier_head")
+        lr_multiplier_multi_modal = config.optim_params.pop("lr_multiplier_multi_modal")
+
+        model_params = [
+            {
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if not any(nd in n for nd in no_decay)
+                    and not any(bb in n for bb in head_names)
+                    and not any(ht in n for ht in multi_modal_names)
+                ],
+                "weight_decay": wd,
+                "lr": config.optim_params.lr,
+            },
+            {
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if any(nd in n for nd in no_decay)
+                    and not any(bb in n for bb in head_names)
+                    and not any(ht in n for ht in multi_modal_names)
+                ],
+                "weight_decay": 0.0,
+                "lr": lr,
+            },
+            {
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if not any(nd in n for nd in no_decay)
+                    and any(bb in n for bb in head_names)
+                    and not any(ht in n for ht in multi_modal_names)
+                ],
+                "weight_decay": wd,
+                "lr": lr * lr_multiplier_head,
+            },
+            {
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if any(nd in n for nd in no_decay)
+                    and any(bb in n for bb in head_names)
+                    and not any(ht in n for ht in multi_modal_names)
+                ],
+                "weight_decay": 0.0,
+                "lr": lr * lr_multiplier_head,
+            },
+            {
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if not any(nd in n for nd in no_decay)
+                    and not any(bb in n for bb in head_names)
+                    and any(ht in n for ht in multi_modal_names)
+                ],
+                "weight_decay": wd,
+                "lr": lr * lr_multiplier_multi_modal,
+            },
+            {
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if any(nd in n for nd in no_decay)
+                    and not any(bb in n for bb in head_names)
+                    and any(ht in n for ht in multi_modal_names)
+                ],
+                "weight_decay": 0.0,
+                "lr": lr * lr_multiplier_multi_modal,
+            },
+        ]
+
     optimizer = optim(model_params, **config.optim_params)
     logger.settings("Optimizer {} created".format(type(optimizer).__name__))
 
@@ -99,7 +202,7 @@ def create_data_loader(
     # split can be train with validation transformation
     dataset = eval("datasets." + dataset_name)(
         transform=eval("transforms." + config.transforms.type)(
-            **config.transforms.get("options", {})
+            is_train=(split == "train"), **config.transforms.get("options", {})
         ),
         split=split,
         **OmegaConf.to_container(dataset_config)
@@ -206,7 +309,13 @@ class CheckpointSaver(object):
 
 
 class TrainingScheduler(object):
-    iter_step_scheduler = {"CyclicLR", "OneCycleLR", "CosineAnnealingWarmRestarts"}
+    iter_step_scheduler = {
+        "CyclicLR",
+        "OneCycleLR",
+        "CosineAnnealingWarmRestarts",
+        "get_polynomial_decay_schedule_with_warmup",
+        "get_cosine_schedule_with_warmup",
+    }
     epoch_step_scheduler = {
         "LambdaLR",
         "MultiplicativeLR",

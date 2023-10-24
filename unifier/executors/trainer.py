@@ -60,7 +60,7 @@ class TrainerConfig(object):
         self.optimizer = create_optimizer(
             config=self.config,
             logger=self.logger,
-            model_params=self.model.parameters(),
+            model=self.model,
             state_dict=self.state,
         )
 
@@ -122,12 +122,14 @@ class Trainer(TrainerConfig):
                     self.optimizer.zero_grad()
                     self.training_scheduler.iteration_step()
 
+                    lr_lst = [
+                        f"{param_group['lr']:.1e}"
+                        for param_group in self.optimizer.param_groups
+                    ]
+
                     log = "Epoch {}, Lr {}, Loss {:.2f}, {} {:.2f}, ES {} {}".format(
                         epoch + 1,
-                        [
-                            param_group["lr"]
-                            for param_group in self.optimizer.param_groups
-                        ],
+                        lr_lst if len(lr_lst) <= 2 else (lr_lst[:2] + ["..."]),
                         sum(losses) / iteration,
                         self.training_scheduler.early_stop_metric,
                         self.training_scheduler.current_best_metric,

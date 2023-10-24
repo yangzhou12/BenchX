@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from albumentations import ShiftScaleRotate, Normalize, Resize, Compose
 import torchvision.transforms as transforms
+from torchvision.transforms import InterpolationMode
 from albumentations.pytorch import ToTensorV2
 from typing import List
 
@@ -42,6 +43,22 @@ class DataTransforms(BaseTransforms):
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ]
+
+        self.data_transforms = transforms.Compose(data_transforms)
+
+
+class VQATransforms(BaseTransforms):
+    """Transforms used for VQA."""
+
+    def __init__(self, is_train: bool = True, size: int = 224):
+        data_transforms = [
+            transforms.Resize(size, interpolation=InterpolationMode.BICUBIC),
+            transforms.CenterCrop(size),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                (0.5, 0.5, 0.5), (0.5, 0.5, 0.5),
+            ),
+        ]
 
         self.data_transforms = transforms.Compose(data_transforms)
 

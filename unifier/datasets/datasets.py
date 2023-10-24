@@ -11,11 +11,13 @@ from tqdm import tqdm
 from typing import Dict, List
 from PIL import Image
 import skimage.transform
+import unicodedata
 from skimage.io import imread
 import torch
 import unifier
 from collections import Counter
 from transformers import AutoTokenizer
+from unifier.datasets.utils import split_into_sents
 
 default_pathologies = [
     "Atelectasis",
@@ -1106,6 +1108,8 @@ class VQA_RAD_Dataset(Dataset):
         seed=0,
         unique_patients=True,
         split="train",
+        tokenizer=None,
+        max_words=None,
     ):
         super(VQA_RAD_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
@@ -1138,6 +1142,23 @@ class VQA_RAD_Dataset(Dataset):
 
         self.csv = self.csv.reset_index()
 
+        # Load tokenizer, if exists
+        if tokenizer is not None:
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+            self.tokenizer_args = {
+                "return_tensors": "pt",
+                "padding": True,
+                "add_special_tokens": True,
+            }
+            if max_words is not None:
+                self.tokenizer_args.update(
+                    {
+                        "padding": "max_length",
+                        "truncation": True,
+                        "max_length": max_words,
+                    }
+                )
+
         ####### VQA answer & labels ########
 
         # Normalize word (Set pathologies to be answer in Med-VQA dataset)
@@ -1166,6 +1187,9 @@ class VQA_RAD_Dataset(Dataset):
         sample["lab"] = self.labels[idx]
 
         imgid = self.csv["image_name"].iloc[idx]
+        question = self.csv["question"].iloc[idx]
+        sample["text"] = self.get_text(question)
+
         img_path = os.path.join(self.imgpath, imgid)
         img = imread(img_path)
         img = Image.fromarray(img).convert("RGB")
@@ -1194,18 +1218,151 @@ class VQA_RAD_Dataset(Dataset):
 
         return ans2label, label2ans
 
+    def get_text(self, text):
+        sents = split_into_sents(text)
+        text = " ".join(sents)
+
+        encoding = self.tokenizer(
+            text,
+            # padding="max_length",
+            # truncation=True,
+            # max_length=self.max_words,
+            return_special_tokens_mask=True,
+            return_offsets_mapping=True,
+            **self.tokenizer_args,
+        )
+
+        return encoding
+
     def get_collate_fn(self):
         def collate_fn(batch):
             imgs = [s["img"] for s in batch]
-            targets = [s["lab"] for s in batch]  # Numerical labels
+            labels = [torch.tensor(s["lab"]).long() for s in batch]  # Numerical labels
 
             # One-hot encoded labels
-            labels = torch.zeros(len(batch), len(self.ans2label))
-            for i, _label in enumerate(targets):
-                labels[i, _label] = 1.0
+            # targets = torch.zeros(len(batch), len(self.ans2label))
+            # for i, _label in enumerate(labels):
+            #     labels[i, _label] = 1.0
 
             collated = {
-                "labels": np.array(targets),  # tensor labels for each sample in batch
+                "labels": torch.stack(labels),  # tensor labels for each sample in batch
+                "images": torch.stack(imgs),
+            }
+
+            if self.tokenizer:
+                texts = {
+                    "text_ids": torch.stack(
+                        [torch.as_tensor(s["text"]["input_ids"]) for s in batch]
+                    ).squeeze(),
+                    "text_masks": torch.stack(
+                        [torch.as_tensor(s["text"]["attention_mask"]) for s in batch]
+                    ).squeeze(),
+                }
+                collated["texts"] = texts
+
+            return collated
+
+        return collate_fn
+
+
+class Med_VQA_2021(Dataset):
+    def __init__(
+        self,
+        imgpath,
+        csvpath=USE_INCLUDED_FILE,
+        labelspath=USE_INCLUDED_FILE,
+        transform=None,
+        seed=0,
+        unique_patients=True,
+        split="train",
+    ):
+        super(Med_VQA_2021, self).__init__()
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.split = split
+
+        self.imgpath = imgpath
+        self.labelspath = labelspath
+
+        if csvpath == USE_INCLUDED_FILE:
+            self.csvpath = os.path.join(datapath, "medvqa_2021.csv.gz")
+        else:
+            self.csvpath = csvpath
+
+        self.transform = transform
+
+        # Load data
+        self.check_paths_exist()
+        self.csv = pd.read_csv(self.csvpath)
+
+        # Load labels
+        self.load_labels()
+
+        self.csv = self.csv[self.csv["split"] == split]  # Filter for split
+        self.csv = self.csv.reset_index()
+
+        ####### VQA answer & labels ########
+
+        # Normalize word (Set pathologies to be answer in Med-VQA dataset)
+        self.pathologies = self.label2idx.keys()
+
+        # Construct labels
+        labels = self.csv["labels"].apply(lambda x: self.label2idx[x]).tolist()
+        self.labels = np.asarray(labels).T
+
+    def string(self):
+        return (
+            self.__class__.__name__
+            + " num_samples={} transforms={} split={}".format(
+                len(self), self.transform, self.split
+            )
+        )
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+
+        imgid = self.csv["image_path"].iloc[idx]
+        img_path = os.path.join(self.imgpath, imgid)
+        img = imread(img_path)
+        img = Image.fromarray(img).convert("RGB")
+
+        sample["img"] = img
+
+        sample = apply_transforms(sample, self.transform)
+
+        return sample
+
+    def load_labels(self):
+        if self.labelspath == USE_INCLUDED_FILE:
+            labels = [
+                unicodedata.normalize("NFKD", w.strip())
+                for w in open(os.path.join(datapath, "labels.tok"))
+            ]
+        else:
+            labels = [w.strip() for w in open(os.path.join(self.labelspath))]
+
+        self.multi_label = eval(labels.pop(0).split(":")[-1])
+        assert isinstance(self.multi_label, bool), "Bad formatting"
+        self.label2idx = {l: i for i, l in enumerate(labels)}
+        self.idx2label = {i: l for i, l in enumerate(labels)}
+
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [torch.tensor(s["lab"]).long() for s in batch]  # Numerical labels
+
+            # One-hot encoded labels
+            # targets = torch.zeros(len(batch), len(self.ans2label))
+            # for i, _label in enumerate(labels):
+            #     targets[i, _label] = 1.0
+
+            collated = {
+                "labels": torch.stack(labels),  # tensor labels for each sample in batch
                 "images": torch.stack(imgs),
             }
             return collated
