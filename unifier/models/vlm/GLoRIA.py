@@ -86,7 +86,7 @@ class GLoRIA(nn.Module):
 
             return hook
 
-        self.visual.cnn[6].register_forward_hook(
+        self.visual.model[6].register_forward_hook(
             getActivation("local_features")
         )  # corresponds to the output of layer3
 

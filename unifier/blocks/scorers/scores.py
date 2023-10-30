@@ -5,7 +5,10 @@ import torch.nn.functional as F
 import torch
 import logging
 from sklearn.metrics import classification_report, roc_auc_score
-from . import *
+
+from unifier.blocks.scorers.pycocoevalcap.bleu.bleu import Bleu
+from unifier.blocks.scorers.pycocoevalcap.meteor import Meteor
+from unifier.blocks.scorers.pycocoevalcap.rouge import Rouge
 
 
 logging.setLoggerClass(logging.Logger)
@@ -83,6 +86,20 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
                 AUROCs.append(roc_auc_score(gt_np[:, i], pred_np[:, i]))
             scores["class_auroc"] = AUROCs
             scores["multilabel_auroc"] = sum(AUROCs) / n_classes
+        elif metric == "BLEU":
+            score, _ = Bleu(4).compute_score(refs, hyps, verbose=0)
+            scores["BLEU"] = {
+                "BLEU1": score[0],
+                "BLEU2": score[1],
+                "BLEU3": score[2],
+                "BLEU4": score[3],
+            }
+        elif metric == "METEOR":
+            score, _ = Meteor().compute_score(refs, hyps)
+            scores["METEOR"] = score
+        elif metric in "ROUGEL":
+            score, _ = Rouge().compute_score(refs, hyps)
+            scores["ROUGEL"] = score
         else:
             logger.warning("Metric not implemented: {}".format(metric))
 

@@ -67,16 +67,6 @@ class MultimodalVQA(nn.Module):
         )
         self.multi_modal_vision_proj.apply(init_weights)
 
-        # Adapter
-        self.adapter = nn.Sequential(
-            nn.Linear(adapter.pop("input_size"), adapter.pop("output_size")),
-            torch.nn.LayerNorm(
-                fusion.get("hidden_size"),
-                eps=adapter.pop("eps"),
-            ),
-        )
-        self.adapter.apply(init_weights)
-
         self.modality_type_embeddings = nn.Embedding(2, fusion.get("hidden_size"))
         self.modality_type_embeddings.apply(init_weights)
 
@@ -135,10 +125,6 @@ class MultimodalVQA(nn.Module):
 
         # == Begin: Image Encoding ==
         unimodal_image_feats = self.vision_encoder.forward(img)
-
-        # Adapter to account for ResNet-50 implementations
-        unimodal_image_feats = self.adapter(unimodal_image_feats)
-
         unimodal_image_feats = self.multi_modal_vision_proj(unimodal_image_feats)
         image_masks = torch.ones(
             (unimodal_image_feats.size(0), unimodal_image_feats.size(1)),

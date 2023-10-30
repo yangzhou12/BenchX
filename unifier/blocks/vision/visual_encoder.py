@@ -129,7 +129,7 @@ class VisualEncoder(nn.Module):
         assert permute in ["batch_first", "spatial_first", "no_permute"]
 
         if freeze:
-            for name, param in self.cnn.named_parameters():
+            for name, param in self.model.named_parameters():
                 param.requires_grad = False
 
     def vision_load_pretrain(self, model_path, prefix):

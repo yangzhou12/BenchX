@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from transformers.models.auto import AutoModel, AutoConfig
@@ -30,6 +31,29 @@ class EncoderModel(nn.Module):
 
         if encoder.add_pooling_layer:
             self.pooler = BertPooler(encoder)
+
+        if encoder.pretrain_path:
+            self.encoder = self.load_pretrain(encoder.pretrain_path, encoder.prefix)
+
+    def load_pretrain(self, model_path, prefix):
+        if prefix is None:
+            prefix = "language_encoder."  # default prefix
+
+        checkpoint = torch.load(model_path, map_location="cpu")
+
+        for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
+            if key in checkpoint:
+                checkpoint = checkpoint[key]
+            break
+
+        state_dict = {
+            k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k
+        }
+
+        # TODO: Remove strict flag after clarifying
+        self.encoder.load_state_dict(state_dict, strict=False)
+
+        return self.encoder
 
     def forward(
         self,

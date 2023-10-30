@@ -8,6 +8,9 @@ from albumentations.pytorch import ToTensorV2
 from typing import List
 
 
+
+
+
 class BaseTransforms(object):
     def __init__(self):
         pass
@@ -30,18 +33,16 @@ class DataTransforms(BaseTransforms):
             data_transforms = [
                 transforms.Resize(resize),
                 transforms.RandomCrop(crop_size),  # RandomResizedCrop
-                transforms.RandomHorizontalFlip(),
+                # transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    (0.5, 0.5, 0.5), (0.5, 0.5, 0.5)
-                ),  # normalize in the range [-1, 1]
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ]
         else:
             data_transforms = [
                 transforms.Resize(crop_size),  # additional step for pre-processing
-                # transforms.CenterCrop(crop_size),
+                transforms.CenterCrop(crop_size),
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ]
 
         self.data_transforms = transforms.Compose(data_transforms)
@@ -56,7 +57,8 @@ class VQATransforms(BaseTransforms):
             transforms.CenterCrop(size),
             transforms.ToTensor(),
             transforms.Normalize(
-                (0.5, 0.5, 0.5), (0.5, 0.5, 0.5),
+                (0.5, 0.5, 0.5),
+                (0.5, 0.5, 0.5),
             ),
         ]
 

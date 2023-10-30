@@ -19,8 +19,8 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrain_path: /home/faith/unified-framework/ckpt/chexpert_resnet50.ckpt
-    prefix: gloria.img_encoder.model.
+    pretrain_path: /home/faith/unified-framework/ckpt/mgca-resnet50.ckpt
+    prefix: img_encoder_q.model.
     output_layer: layer4 # do not return fc layer
     dropout_out: 0.0
     permute: batch_first
@@ -28,7 +28,7 @@ model:
 
   fusion:
     input_text_embed_size: 768
-    input_image_embed_size: 768
+    input_image_embed_size: 2048
     hidden_size: 768
     num_top_layer: 6
     vocab_size: 50265
@@ -52,7 +52,7 @@ model:
 trainer:
   optimizer: AdamW
   optim_params:
-    optim_groups: True
+    optim_groups: heads
     lr: 5e-6
     eps: 1e-8
     betas: (0.9, 0.98)

@@ -57,4 +57,4 @@ trainer:
 
 validator:
   batch_size: 32
-  splits: [valid]
+  splits: [validate]

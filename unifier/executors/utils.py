@@ -38,26 +38,9 @@ def get_eval_func(models):
     return dummy.eval_func
 
 
-def create_optimizer(config, logger, model, state_dict=None):
-    assert "lr" in config.optim_params
-    config.optim_params.lr = float(config.optim_params.lr)
-
-    if "betas" in config.optim_params:
-        config.optim_params.betas = eval(config.optim_params.betas)  # change to tuple
-
-    if hasattr(torch.optim, config.optimizer):
-        optim = getattr(torch.optim, config.optimizer)
-    elif hasattr(torch_optimizer, config.optimizer):
-        optim = getattr(torch_optimizer, config.optimizer)
-    else:
-        raise NotImplementedError(config.optimizer)
-
-    print(config.optim_params)
-
-    # Initialize optimizer groups
-    if not config.optim_params.pop("optim_groups"):
-        model_params = model.parameters()
-    else:
+def create_optim_param_groups(config, model):
+    optim_grouping = config.optim_params.pop("optim_groups")
+    if optim_grouping == "heads":
         no_decay = [
             "bias",
             "LayerNorm.bias",
@@ -147,7 +130,42 @@ def create_optimizer(config, logger, model, state_dict=None):
                 "lr": lr * lr_multiplier_multi_modal,
             },
         ]
+    elif optim_grouping == "ve_only":
+        lr = config.optim_params.lr
+        lr_multiplier_ve = config.optim_params.pop("lr_multiplier_ve")
+        ve_params = list(map(id, model.cnn.parameters()))
+        ed_params = filter(lambda x: id(x) not in ve_params, model.parameters())
 
+        model_params = [{'params': model.cnn.parameters(), 'lr': config.optim_params.lr * lr_multiplier_ve},
+                        {'params': ed_params, 'lr': config.optim_params.lr}]
+    else:
+        raise NotImplementedError(optim_grouping)
+
+    return model_params
+
+
+def create_optimizer(config, logger, model, state_dict=None):
+    assert "lr" in config.optim_params
+    config.optim_params.lr = float(config.optim_params.lr)
+
+    if "betas" in config.optim_params:
+        config.optim_params.betas = eval(config.optim_params.betas)  # change to tuple
+
+    if hasattr(torch.optim, config.optimizer):
+        optim = getattr(torch.optim, config.optimizer)
+    elif hasattr(torch_optimizer, config.optimizer):
+        optim = getattr(torch_optimizer, config.optimizer)
+    else:
+        raise NotImplementedError(config.optimizer)
+
+    print(config.optim_params)
+
+    # Initialize optimizer groups
+    if config.optim_params.optim_groups:
+        model_params = create_optim_param_groups(config, model)
+    else:
+        model_params = model.parameters()
+        
     optimizer = optim(model_params, **config.optim_params)
     logger.settings("Optimizer {} created".format(type(optimizer).__name__))
 

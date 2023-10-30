@@ -18,6 +18,7 @@ import unifier
 from collections import Counter
 from transformers import AutoTokenizer
 from unifier.datasets.utils import split_into_sents
+from unifier.blocks.custom.r2gen import Tokenizer
 
 default_pathologies = [
     "Atelectasis",
@@ -65,7 +66,12 @@ def apply_transforms(sample, transform, seed=None) -> Dict:
     if transform is not None:
         random.seed(seed)
         torch.random.manual_seed(seed)
-        sample["img"] = transform(sample["img"])
+
+        if type(sample["img"]) == list: # multi-image
+            for i, img in enumerate(sample["img"]):
+                sample["img"][i] = transform(img)
+        else: #single image
+            sample["img"] = transform(sample["img"])
 
         if "pathology_masks" in sample:
             for i in sample["pathology_masks"].keys():
@@ -1365,6 +1371,116 @@ class Med_VQA_2021(Dataset):
                 "labels": torch.stack(labels),  # tensor labels for each sample in batch
                 "images": torch.stack(imgs),
             }
+            return collated
+
+        return collate_fn
+
+
+class IU_Dataset(Dataset):
+    """Indiana University Chest X-Ray dataset
+
+    Download link: https://www.kaggle.com/datasets/raddar/chest-xrays-indiana-university
+
+    Original source: https://openi.nlm.nih.gov/
+    """
+
+    def __init__(
+        self,
+        imgpath,
+        csvpath=USE_INCLUDED_FILE,
+        transform=None,
+        seed=0,
+        split="train",
+        max_words=None,
+    ):
+        super(IU_Dataset, self).__init__()
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.split = split
+
+        self.imgpath = imgpath
+
+        if csvpath == USE_INCLUDED_FILE:
+            self.csvpath = os.path.join(datapath, "iu_xray_annotations.csv.gz")
+        else:
+            self.csvpath = csvpath
+
+        self.transform = transform
+
+        # Load data
+        self.check_paths_exist()
+        self.csv = pd.read_csv(self.csvpath)
+
+        self.csv = self.csv[self.csv["split"] == split]  # Filter for split
+
+        self.csv = self.csv.reset_index()
+
+        # Load tokenizer
+        self.tokenizer = Tokenizer(self.csvpath)
+
+        # Tokenize
+        input_ids = []
+        masks = []
+        for i in range(len(self.csv)):
+            encoding = self.tokenizer(self.csv.iloc[i]["report"])[:max_words]
+            input_ids.append(encoding)
+            masks.append([1] * len(encoding))
+
+        self.labels = input_ids
+        self.masks = masks
+
+    def string(self):
+        return (
+            self.__class__.__name__
+            + " num_samples={} transforms={} split={}".format(
+                len(self), self.transform, self.split
+            )
+        )
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = dict()
+        row = self.csv.iloc[idx]
+
+        image_1 = Image.open(os.path.join(self.imgpath, eval(row["image_path"])[0])).convert("RGB")
+        image_2 = Image.open(os.path.join(self.imgpath, eval(row["image_path"])[1])).convert("RGB")
+
+        sample["img"] = [image_1, image_2] # multi-image
+        sample["report_ids"] = self.labels[idx]
+        sample["report_masks"] = self.masks[idx]
+        sample["seq_length"] = len(sample["report_ids"])
+
+        sample = apply_transforms(sample, self.transform)
+
+        # stack both images
+        sample["img"] = torch.stack(sample["img"], 0)
+
+        return sample["img"], sample["report_ids"], sample["report_masks"], sample["seq_length"]
+
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            images, reports_ids, reports_masks, seq_lengths = zip(*batch)
+
+            images = torch.stack(images, 0)
+            max_seq_length = max(seq_lengths)
+
+            targets = np.zeros((len(reports_ids), max_seq_length), dtype=int)
+            targets_masks = np.zeros((len(reports_ids), max_seq_length), dtype=int)
+
+            for i, report_ids in enumerate(reports_ids):
+                targets[i, :len(report_ids)] = report_ids
+
+            for i, report_masks in enumerate(reports_masks):
+                targets_masks[i, :len(report_masks)] = report_masks
+
+            collated = {
+                "images": images,
+                "reports_ids": torch.LongTensor(targets),
+                "reports_masks": torch.FloatTensor(targets_masks),
+            }
+            
             return collated
 
         return collate_fn
