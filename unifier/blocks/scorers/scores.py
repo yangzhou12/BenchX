@@ -88,12 +88,10 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
             scores["multilabel_auroc"] = sum(AUROCs) / n_classes
         elif metric == "BLEU":
             score, _ = Bleu(4).compute_score(refs, hyps, verbose=0)
-            scores["BLEU"] = {
-                "BLEU1": score[0],
-                "BLEU2": score[1],
-                "BLEU3": score[2],
-                "BLEU4": score[3],
-            }
+            scores["BLEU1"] = score[0]
+            scores["BLEU2"] = score[1]
+            scores["BLEU3"] = score[2]
+            scores["BLEU4"] = score[3]
         elif metric == "METEOR":
             score, _ = Meteor().compute_score(refs, hyps)
             scores["METEOR"] = score
