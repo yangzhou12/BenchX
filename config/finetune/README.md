@@ -1,8 +1,5 @@
-## Loading Vision and Language Checkpoints
+## Loading VLM Models
 
-Before testing the model, load vision and language encoder weights separately:
-1. `pretrained`: Path to local pretrained weights. Set to `"DEFAULT"` if using default backbone pre-trained weights, else train from scratch if `None`.
-2. `prefix`: Prefix of weights of visual/language encoder.
+To test the VLM model on a certain downstream task, list the path to its model config file under `includes:` in the downstream task config YML file. 
 
-
-## Setting Dataset
+VLM config files are stored at  [`config/finetune/models/`](config/finetune/models/).
