@@ -14,7 +14,6 @@ model:
   proto: SETR_Naive
   img_dim: 224
   
-
   cnn:
     proto: VisualEncoder
     backbone: vit

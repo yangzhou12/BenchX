@@ -8,9 +8,6 @@ from albumentations.pytorch import ToTensorV2
 from typing import List
 
 
-
-
-
 class BaseTransforms(object):
     def __init__(self):
         pass

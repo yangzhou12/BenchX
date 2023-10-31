@@ -44,8 +44,8 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    # pretrain_path: /home/faith/unified-framework/ckpt/mgca-resnet50.ckpt
-    # prefix: img_encoder_q.model.
+    pretrained: /home/faith/unified-framework/ckpt/mgca-resnet50.ckpt
+    prefix: img_encoder_q.model.
     output_layer: layer4 # do not return fc layer
     dropout_out: 0.0
     permute: no_permute

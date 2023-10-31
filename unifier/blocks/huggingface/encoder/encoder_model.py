@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 
@@ -32,28 +33,23 @@ class EncoderModel(nn.Module):
         if encoder.add_pooling_layer:
             self.pooler = BertPooler(encoder)
 
-        if encoder.pretrain_path:
-            self.encoder = self.load_pretrain(encoder.pretrain_path, encoder.prefix)
+        # Load custom pretrained weights
+        if encoder.pretrained and os.path.exists(encoder.pretrained):
+            checkpoint = torch.load(encoder.pretrained, map_location="cpu")
 
-    def load_pretrain(self, model_path, prefix):
-        if prefix is None:
-            prefix = "language_encoder."  # default prefix
+            for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
+                if key in checkpoint:
+                    checkpoint = checkpoint[key]
+                    break
+            
+            if encoder.prefix:
+                state_dict = {k.replace(encoder.prefix, ""): v for k, v in checkpoint.items() if encoder.prefix in k}
+            else:
+                state_dict = checkpoint
+                print("Checkpoint prefix not set; Full state dictionary returned")
 
-        checkpoint = torch.load(model_path, map_location="cpu")
-
-        for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
-            if key in checkpoint:
-                checkpoint = checkpoint[key]
-            break
-
-        state_dict = {
-            k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k
-        }
-
-        # TODO: Remove strict flag after clarifying
-        self.encoder.load_state_dict(state_dict, strict=False)
-
-        return self.encoder
+            msg = self.encoder.load_state_dict(state_dict, strict=False)
+            print(f"(Language) Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
 
     def forward(
         self,

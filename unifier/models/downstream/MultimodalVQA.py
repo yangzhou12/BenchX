@@ -11,6 +11,8 @@ from unifier.blocks.bert.BertCrossLayer import BertCrossLayer
 from unifier.blocks.classifier.evaluation import evaluation
 from unifier.models.utils import get_n_params
 
+from unifier.blocks.custom.refers.transformer import REFERSViT
+
 
 def init_weights(module):
     if isinstance(module, (nn.Linear, nn.Embedding)):
@@ -36,7 +38,7 @@ class Pooler(nn.Module):
 
 
 class MultimodalVQA(nn.Module):
-    def __init__(self, encoder, cnn, fusion, adapter, classifier, loss, **kwargs):
+    def __init__(self, encoder, cnn, fusion, classifier, loss, **kwargs):
         super(MultimodalVQA, self).__init__()
 
         # == Begin: 0. Initialize BERT config for co-attention ==
@@ -124,8 +126,8 @@ class MultimodalVQA(nn.Module):
         # == End  : Text Encoding ==
 
         # == Begin: Image Encoding ==
-        unimodal_image_feats = self.vision_encoder.forward(img)
-        unimodal_image_feats = self.multi_modal_vision_proj(unimodal_image_feats)
+        unimodal_image_feats = self.vision_encoder.forward(img) # [16, 768, 768] - [16, 768, 577] for positional embedding
+        unimodal_image_feats = self.multi_modal_vision_proj(unimodal_image_feats) 
         image_masks = torch.ones(
             (unimodal_image_feats.size(0), unimodal_image_feats.size(1)),
             dtype=torch.long,

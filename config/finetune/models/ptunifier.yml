@@ -1,0 +1,15 @@
+name: ptunifier
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: openai_ViT-B/16
+    permute: no_permute
+    resolution_after: 224 # 384 in original setting
+    pretrained: /home/faith/unified-framework/ckpt/PTUnifier.ckpt
+    prefix: vision_encoder.
+    dropout_out: 0.0
+    freeze: False
+
+  fusion: # for MMVQA
+    input_image_embed_size: 768

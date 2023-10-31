@@ -1,0 +1,16 @@
+name: medclip_vit
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: hfpretrained
+    encoder:
+      proto: microsoft/swin-tiny-patch4-window7-224
+      pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-vit.bin
+      prefix: vision_model.model.
+    dropout_out: 0.0
+    permute: no_permute
+    freeze: False
+
+  fusion: # for MMVQA
+    input_image_embed_size: 768

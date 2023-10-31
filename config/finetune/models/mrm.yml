@@ -1,0 +1,13 @@
+name: mrm
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: timmvit
+    permute: no_permute
+    pretrained: /home/faith/unified-framework/ckpt/official/MRM.pth # no prefix
+    dropout_out: 0.0
+    freeze: False
+
+  fusion: # for MMVQA
+    input_image_embed_size: 768

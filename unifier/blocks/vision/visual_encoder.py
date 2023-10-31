@@ -2,6 +2,7 @@ import os
 import torch
 import json
 import torch.nn as nn
+from functools import partial
 from einops import rearrange
 from collections import OrderedDict
 
@@ -23,10 +24,14 @@ from transformers.models.poolformer.modeling_poolformer import (
     PoolFormerModel as HFPoolFormerModel,
 )
 
+from timm.models.vision_transformer import VisionTransformer
+from .openai.clip_model import build_model
+from .huggingface.encoder_model import HFVisionEncoder
 
-def get_network(backbone, output_layer, pretrained, **kwargs):
+
+def get_network(backbone, output_layer, pretrained, prefix=None, **kwargs):
     """
-    Create sub-network given a backbone and an output_layer
+    Create sub-network given a backbone and an output_layer with loaded vision weights
     """
     # Create avgpool for densenet, does not exist as such
     if "densenet" in backbone and "3d" not in backbone and output_layer == "avgpool":
@@ -37,38 +42,81 @@ def get_network(backbone, output_layer, pretrained, **kwargs):
         return sub_network
 
     # HuggingFace Vision Transformer
-    if "vit" in backbone.lower():
+    elif "hfvit" in backbone.lower():
         model = ViTModel(ViTConfig(return_dict=True, **kwargs), add_pooling_layer=False)
         return model
 
-    if "deit" in backbone.lower():
+    elif "deit" in backbone.lower():
         return DeiTModel(
             DeiTConfig(return_dict=True, **kwargs), add_pooling_layer=False
         )
 
     # HuggingFace ResNet
-    if "hfresnet" in backbone.lower():
+    elif "hfresnet" in backbone.lower():
         return HFResNetModel(ResNetConfig(return_dict=True, **kwargs))
 
     # HuggingFace PoolFormer
-    if "hfpoolformer" in backbone.lower():
+    elif "hfpoolformer" in backbone.lower():
         return HFPoolFormerModel(PoolFormerConfig(return_dict=True, **kwargs))
+    
+    # OpenAI Vision Encoders
+    elif "openai" in backbone.lower():
+        model_name = backbone.replace("openai_", "")
+        return build_model(name=model_name, pretrained=pretrained, **kwargs)
+    
+    # HuggingFace pretrained model
+    elif "hfpretrained" in backbone.lower():
+        return HFVisionEncoder(**kwargs)
+    
+    #####   Models to be loaded manually below   #####
 
-    # Pretrained parameter deprecated - solution
-    weights = get_model_weights(backbone) if pretrained else None
+    # Timm Vision Transformer
+    elif "timmvit" in backbone.lower():
+        network = VisionTransformer(patch_size=16, embed_dim=768, depth=12, num_heads=12, qkv_bias=True,
+                                    norm_layer=partial(nn.LayerNorm, eps=1e-6), num_classes=0, global_pool="", **kwargs)
 
-    network = eval(backbone)(weights=weights, **kwargs)
+    # PyTorch models
+    else: 
+        is_named = kwargs.pop("named_children", True) # Named layers by default
+        weights = get_model_weights(backbone) if (pretrained == "DEFAULT") else None
+        network = eval(backbone)(weights=weights, **kwargs)
 
-    if output_layer is not None and (not output_layer == "classifier"):
-        layers = [n for n, _ in network.named_children()]
-        assert output_layer in layers, "{} not in {}".format(output_layer, layers)
+        if output_layer is not None and (not output_layer == "classifier"):
+            layers = [n for n, _ in network.named_children()]
+            assert output_layer in layers, "{} not in {}".format(output_layer, layers)
 
-        sub_network = []
-        for n, c in network.named_children():
-            sub_network.append((n, c))
-            if n == output_layer:
+            sub_network = []
+            for n, c in network.named_children():
+                sub_network.append((n, c))
+                if n == output_layer:
+                    break
+
+            if is_named:
+                network = nn.Sequential(OrderedDict(sub_network))
+            else:
+                network = nn.Sequential(*list(map(lambda x: x[1], sub_network)))
+
+    # Load custom pretrained weights
+    if pretrained and os.path.exists(pretrained):
+        checkpoint = torch.load(pretrained, map_location="cpu")
+
+        for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
+            if key in checkpoint:
+                checkpoint = checkpoint[key]
                 break
-        network = nn.Sequential(OrderedDict(sub_network))
+        
+        if prefix:
+            state_dict = {k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k}
+        else:
+            state_dict = checkpoint
+            print("Checkpoint prefix not set; Full state dictionary returned")
+
+        for layer_k in ["head.weight", "head.bias", "fc.weight", "fc.bias"]:
+            if layer_k in state_dict:
+                del state_dict[layer_k]
+        
+        msg = network.load_state_dict(state_dict, strict=False)
+        print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
 
     return network
 
@@ -81,9 +129,8 @@ class VisualEncoder(nn.Module):
         dropout_out=0.0,
         freeze=False,
         output_layer=None,
-        pretrained=True,
-        pretrain_path=None,  # vision encoder weights
-        prefix=None,  # vision encoder custom prefix
+        pretrained=None,
+        prefix=None,
         slice_encode=None,
         slice_dim=None,
         visual_projection=None,
@@ -97,13 +144,7 @@ class VisualEncoder(nn.Module):
         self.freeze = freeze
         self.pretrained = pretrained
 
-        self.model = get_network(
-            self.backbone, self.output_layer, self.pretrained, **kwargs
-        )
-
-        # Load pretrain path checkpoint
-        if pretrain_path:
-            self.model = self.vision_load_pretrain(pretrain_path, prefix)
+        self.model = get_network(self.backbone, self.output_layer, self.pretrained, prefix=prefix, **kwargs)
 
         self.dropout_out = nn.Dropout(p=dropout_out)
         self.slice_encode = slice_encode
@@ -131,28 +172,6 @@ class VisualEncoder(nn.Module):
         if freeze:
             for name, param in self.model.named_parameters():
                 param.requires_grad = False
-
-    def vision_load_pretrain(self, model_path, prefix):
-        if prefix is None:
-            prefix = "cnn.model."  # default prefix
-
-        checkpoint = torch.load(model_path, map_location="cpu")
-
-        for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
-            if key in checkpoint:
-                checkpoint = checkpoint[key]
-            break
-
-        state_dict = {
-            k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k
-        }
-        for layer_k in ["head.weight", "head.bias", "fc.weight", "fc.bias"]:
-            if layer_k in state_dict:
-                del state_dict[layer_k]
-
-        self.model.load_state_dict(state_dict)
-
-        return self.model
 
     def encode(self, images, images_mask=None, **kwargs):
         if torch.cuda.is_available():

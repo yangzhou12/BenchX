@@ -1,4 +1,7 @@
-name: multimodalvqa
+includes:
+  - path/to/model/config.yml
+
+name: multimodalvqa_vqarad
 ckpt_dir: ckpt
 
 dataset:
@@ -16,19 +19,9 @@ model:
   encoder:
     proto: allenai/biomed_roberta_base
 
-  cnn:
-    proto: VisualEncoder
-    backbone: resnet50
-    pretrain_path: /home/faith/unified-framework/ckpt/mgca-resnet50.ckpt
-    prefix: img_encoder_q.model.
-    output_layer: layer4 # do not return fc layer
-    dropout_out: 0.0
-    permute: batch_first
-    freeze: False
-
   fusion:
     input_text_embed_size: 768
-    input_image_embed_size: 2048
+    # input_image_embed_size: 2048
     hidden_size: 768
     num_top_layer: 6
     vocab_size: 50265
@@ -37,11 +30,6 @@ model:
     max_text_len: 32 # same as max_words under tokenizer
     drop_rate: 0.1
     mlp_ratio: 4
-
-  adapter:
-    input_size: 2048
-    output_size: 768
-    eps: 1.e-12
 
   classifier:
     num_classes: 498

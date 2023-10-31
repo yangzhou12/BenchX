@@ -1,0 +1,15 @@
+name: convirt
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: resnet50
+    pretrained: /home/faith/unified-framework/ckpt/ConVIRT.pth
+    prefix: visual.model.
+    output_layer: layer4 # do not return fc layer
+    dropout_out: 0.0
+    permute: batch_first
+    freeze: False
+
+  fusion: # for MMVQA
+    input_image_embed_size: 2048
