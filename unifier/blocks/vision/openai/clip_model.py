@@ -261,7 +261,7 @@ def available_models():
     return list(_MODELS.keys())
 
 
-def build_model(name, pretrained, resolution_after=224, jit=False, **kwargs):
+def build_model(name, pretrained, prefix=None, resolution_after=224, jit=False, **kwargs):
     if name in _MODELS:
         model_path = _download(_MODELS[name])
     elif os.path.isfile(name):
@@ -318,9 +318,9 @@ def build_model(name, pretrained, resolution_after=224, jit=False, **kwargs):
     if pretrained: # Use VLM pretrained weights
         ckpt = torch.load(pretrained, map_location='cpu')
         pretrained_dict = ckpt["state_dict"]
-        try:
-            pretrained_dict = {k.replace(kwargs["prefix"], ""): v for k, v in pretrained_dict.items() if kwargs["prefix"] in k}
-        except KeyError:
+        if prefix:
+            pretrained_dict = {k.replace(prefix, ""): v for k, v in pretrained_dict.items() if prefix in k}
+        else:
             print("Checkpoint prefix not set; Full state dictionary returned")
     else: # Use default weights
         pretrained_dict = state_dict
@@ -329,7 +329,7 @@ def build_model(name, pretrained, resolution_after=224, jit=False, **kwargs):
     if resolution_after != image_resolution:
         pretrained_dict = adapt_position_encoding(pretrained_dict, after=resolution_after, patch_size=vision_patch_size)
     # 1. filter out unnecessary keys
-    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+    # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
     # 2. overwrite entries in the existing state dict
     model_dict.update(pretrained_dict)
     # 3. load the new state dict

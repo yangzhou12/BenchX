@@ -62,7 +62,7 @@ def get_network(backbone, output_layer, pretrained, prefix=None, **kwargs):
     # OpenAI Vision Encoders
     elif "openai" in backbone.lower():
         model_name = backbone.replace("openai_", "")
-        return build_model(name=model_name, pretrained=pretrained, **kwargs)
+        return build_model(prefix=prefix, name=model_name, pretrained=pretrained, **kwargs)
     
     # HuggingFace pretrained model
     elif "hfpretrained" in backbone.lower():

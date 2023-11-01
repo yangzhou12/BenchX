@@ -1,12 +1,12 @@
 includes:
   - path/to/model/config.yml
 
-name: classification_nih
+name: classification_chexpert
 ckpt_dir: ckpt
 
 dataset:
-  proto: NIH_Dataset
-  imgpath: /VLM/nih_chest_xray/all_classes
+  proto: CheX_Dataset
+  imgpath: /VLM/CheXpert-v1.0-small
   views: ["PA", "AP"]
 
 transforms:

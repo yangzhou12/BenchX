@@ -424,8 +424,8 @@ class CheX_Dataset(Dataset):
     Dataset website here:
     https://stanfordmlgroup.github.io/competitions/chexpert/
 
-    A small validation set is provided with the data as well, but is so tiny,
-    it is not included here.
+    A small validation set is provided with the data as well. It is used
+    as a test set.
     """
 
     def __init__(
@@ -558,6 +558,18 @@ class CheX_Dataset(Dataset):
 
         return sample
 
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [torch.from_numpy(s["lab"]) for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            return collated
+
+        return collate_fn
+
 
 class RSNA_Pneumonia_Dataset(Dataset):
     """RSNA Pneumonia Detection Challenge
@@ -592,7 +604,7 @@ class RSNA_Pneumonia_Dataset(Dataset):
         nrows=None,
         seed=0,
         pathology_masks=False,
-        extension=".jpg",
+        extension=".dcm",
         split="train",
     ):
         super(RSNA_Pneumonia_Dataset, self).__init__()
@@ -604,7 +616,7 @@ class RSNA_Pneumonia_Dataset(Dataset):
         self.transform = transform
         self.pathology_masks = pathology_masks
 
-        self.pathologies = ["Pneumonia", "Lung Opacity"]
+        self.pathologies = ["Pneumonia"] # remove lung opacity pathology
 
         self.pathologies = sorted(self.pathologies)
 
@@ -644,7 +656,7 @@ class RSNA_Pneumonia_Dataset(Dataset):
         self.csv = self.csv.reset_index()
 
         # Get our classes.
-        labels = [self.csv["Target"].values, self.csv["Target"].values]
+        labels = [self.csv["Target"].values] # remove column for lung opacity
 
         # set if we have masks
         self.csv["has_masks"] = ~np.isnan(self.csv["x"])
@@ -721,6 +733,18 @@ class RSNA_Pneumonia_Dataset(Dataset):
 
             path_mask[self.pathologies.index(patho)] = mask
         return path_mask
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [torch.from_numpy(s["lab"]) for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            return collated
+
+        return collate_fn
 
 
 class SIIM_Pneumothorax_Dataset(Dataset):
@@ -1243,10 +1267,10 @@ class VQA_RAD_Dataset(Dataset):
     def get_collate_fn(self):
         def collate_fn(batch):
             imgs = [s["img"] for s in batch]
-            labels = [torch.tensor(s["lab"]).long() for s in batch]  # Numerical labels
+            labels = [torch.tensor(s["lab"]).long() for s in batch]  # Numerical labels, not tensors
 
             collated = {
-                "labels": torch.stack(labels),  # tensor labels for each sample in batch
+                "labels": torch.stack(labels),
                 "images": torch.stack(imgs)
             }
 
@@ -1356,11 +1380,6 @@ class Med_VQA_2021(Dataset):
         def collate_fn(batch):
             imgs = [s["img"] for s in batch]
             labels = [torch.tensor(s["lab"]).long() for s in batch]  # Numerical labels
-
-            # One-hot encoded labels
-            # targets = torch.zeros(len(batch), len(self.ans2label))
-            # for i, _label in enumerate(labels):
-            #     targets[i, _label] = 1.0
 
             collated = {
                 "labels": torch.stack(labels),  # tensor labels for each sample in batch

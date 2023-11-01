@@ -1,12 +1,12 @@
 includes:
-  - config/finetune/models/ptunifier.yml
+  - path/to/model/config.yml
 
 name: multimodalvqa_vqarad
 ckpt_dir: ckpt
 
 dataset:
-  proto: VQA_RAD_Dataset
-  imgpath: /home/faith/MVLM/VQA_RAD/VQA_RAD_Image_Folder
+  proto: Med_VQA_2021
+  imgpath: /home/faith/MVLM/image_clef/imageclef-vqa-images-512
   tokenizer: allenai/biomed_roberta_base
   max_words: 32
 
