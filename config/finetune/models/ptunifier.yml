@@ -6,10 +6,16 @@ model:
     backbone: openai_ViT-B/16
     permute: no_permute
     resolution_after: 224 # 384 in original setting
-    pretrained: /home/faith/unified-framework/ckpt/PTUnifier.ckpt
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/PTUnifier.ckpt
     prefix: vision_encoder.
     dropout_out: 0.0
     freeze: False
 
   fusion: # for MMVQA
     input_image_embed_size: 768
+
+  transformer: # for RRG
+    d_vf: 768
+
+  classifier: # for CLS
+    input_size: 768

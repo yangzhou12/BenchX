@@ -261,7 +261,7 @@ class Transformer(nn.Module):
 
 
 class REFERSViT(nn.Module):
-    def __init__(self, config_name, prelogits=False, pretrained=None, img_size=224, num_classes=21843, zero_head=False, vis=False):
+    def __init__(self, config_name, prelogits=False, pretrained=None, img_size=224, num_classes=21843, zero_head=False, vis=False, **kwargs):
         super(REFERSViT, self).__init__()
 
         config = CONFIGS[config_name]

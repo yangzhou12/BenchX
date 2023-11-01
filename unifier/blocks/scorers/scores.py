@@ -79,11 +79,9 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
             )
         elif metric == "multilabel_auroc":
             AUROCs = []
-            n_classes = refs.shape(1)
-            gt_np = refs.numpy()
-            pred_np = hyps.numpy()
+            n_classes = refs.shape[1]
             for i in range(n_classes):
-                AUROCs.append(roc_auc_score(gt_np[:, i], pred_np[:, i]))
+                AUROCs.append(roc_auc_score(refs[:, i], hyps[:, i]))
             scores["class_auroc"] = AUROCs
             scores["multilabel_auroc"] = sum(AUROCs) / n_classes
         elif metric == "BLEU":

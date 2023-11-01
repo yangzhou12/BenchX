@@ -9,6 +9,8 @@ from unifier.blocks.classifier.evaluation import evaluation
 from unifier.blocks.losses import *
 from unifier.models.utils import get_n_params
 
+from unifier.blocks.custom.refers.transformer import REFERSViT
+
 
 class ImageClassifier(nn.Module):
     def __init__(self, cnn, classifier, loss, **kwargs):
@@ -29,8 +31,12 @@ class ImageClassifier(nn.Module):
         # Evaluation
         self.eval_func = evaluation
 
-    def forward(self, images, labels=None, from_training=True, **kwargs):
-        out = self.cnn(images.cuda())
+    def forward(self, images, labels=None, from_training=True, iteration=None, epoch=None, **kwargs):
+        out = self.cnn(images.cuda()) # CNN - dim 2
+
+        if out.dim() == 3: # ViT
+            out = out[:, 0] # class token (Timm implementation)
+
         out = self.classifier(out)
 
         loss = torch.tensor(0.0)

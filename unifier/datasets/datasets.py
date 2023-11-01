@@ -945,7 +945,7 @@ class NIH_Dataset(Dataset):
         # Load data
         self.check_paths_exist()
         self.csv = pd.read_csv(self.csvpath)
-        self.csv = self.csv[self.csv["split"] == split]  # Filter for split
+        self.csv = self.csv[self.csv["split"] == split][:1000] # Filter for split
 
         # Remove images with view position other than specified
         self.csv["view"] = self.csv["View Position"]
@@ -1068,7 +1068,7 @@ class NIH_Dataset(Dataset):
     def get_collate_fn(self):
         def collate_fn(batch):
             imgs = [s["img"] for s in batch]
-            labels = [s["lab"] for s in batch]
+            labels = [torch.from_numpy(s["lab"]) for s in batch]
             collated = {
                 "labels": torch.stack(labels),
                 "images": torch.stack(imgs),
@@ -1245,14 +1245,9 @@ class VQA_RAD_Dataset(Dataset):
             imgs = [s["img"] for s in batch]
             labels = [torch.tensor(s["lab"]).long() for s in batch]  # Numerical labels
 
-            # One-hot encoded labels
-            # targets = torch.zeros(len(batch), len(self.ans2label))
-            # for i, _label in enumerate(labels):
-            #     labels[i, _label] = 1.0
-
             collated = {
                 "labels": torch.stack(labels),  # tensor labels for each sample in batch
-                "images": torch.stack(imgs),
+                "images": torch.stack(imgs)
             }
 
             if self.tokenizer:

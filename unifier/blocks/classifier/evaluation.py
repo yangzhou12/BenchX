@@ -10,10 +10,11 @@ def evaluation(models, config, dl, **kwargs):
     losses = np.array([])
     attentions = None
     cumulative_index = 0
-    # post_processing = {}
+    post_processing = {}
 
     for num_batch, batch in enumerate(tqdm(dl, total=len(dl))):
         label = batch["labels"]
+
         batch_size = label.shape[0]  # batch_size
         num_classes = config.model.classifier.num_classes
 
@@ -42,9 +43,12 @@ def evaluation(models, config, dl, **kwargs):
         for i in range(batch_size):
             for j, r in enumerate(results):
                 logits[cumulative_index + i][j] = r["output"][i].data.cpu().numpy()
-            # labels[cumulative_index + i] = label[i].data.cpu().numpy()
-            idx = label[i]
-            labels[cumulative_index + i][idx] = 1.0
+
+            if r["output"].shape == label.shape:
+                labels[cumulative_index + i] = label[i].data.cpu().numpy()
+            else:
+                idx = label[i]
+                labels[cumulative_index + i][idx] = 1.0 # convert to one-hot labels
 
         # Loss
         for j, r in enumerate(results):

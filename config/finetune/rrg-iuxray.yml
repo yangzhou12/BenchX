@@ -1,3 +1,6 @@
+includes:
+  - path/to/model/config.yml
+
 name: rrg_iu_xray
 ckpt_dir: ckpt
 
@@ -16,7 +19,7 @@ model:
     # Model settings (for Transformer)
     d_model: 512
     d_ff: 512
-    d_vf: 2048
+    # d_vf: 2048 # overwritten
     num_heads: 8
     num_layers: 3
     dropout: 0.1
@@ -42,14 +45,7 @@ model:
     block_trigrams: 1
 
   cnn:
-    proto: VisualEncoder
-    backbone: resnet50
-    pretrained: /home/faith/unified-framework/ckpt/mgca-resnet50.ckpt
-    prefix: img_encoder_q.model.
-    output_layer: layer4 # do not return fc layer
-    dropout_out: 0.0
-    permute: no_permute
-    freeze: False
+    permute: no_permute # output: [B, hidden_size, H, W]
 
   loss:
     proto: R2GenLMLoss

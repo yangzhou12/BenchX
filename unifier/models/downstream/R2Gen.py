@@ -80,10 +80,17 @@ class R2Gen(nn.Module):
 
     def forward_vision(self, images):
         # Set no_permute for visual extractor to get direct output of final layer
-        patch_feats = self.cnn(images)
-        avg_feats = self.avg_fnt(patch_feats).squeeze().reshape(-1, patch_feats.size(1))
-        batch_size, feat_size, _, _ = patch_feats.shape
-        patch_feats = patch_feats.reshape(batch_size, feat_size, -1).permute(0, 2, 1)
+        patch_feats = self.cnn(images) # [B, hidden_size, H, W]
+
+        if patch_feats.dim() == 3: # ViT
+            avg_feats = patch_feats[:, 0] # class token (Timm implementation)
+        elif patch_feats.dim() == 4: #  CNN
+            avg_feats = self.avg_fnt(patch_feats).squeeze().reshape(-1, patch_feats.size(1)) # [B, hidden_size]
+            batch_size, feat_size, _, _ = patch_feats.shape
+            patch_feats = patch_feats.reshape(batch_size, feat_size, -1).permute(0, 2, 1)
+        else:
+            raise RuntimeError("Dimensions are wrong")
+
         return patch_feats, avg_feats
 
     def forward(

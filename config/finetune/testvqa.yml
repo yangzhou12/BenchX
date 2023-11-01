@@ -1,5 +1,5 @@
 includes:
-  - path/to/model/config.yml
+  - config/finetune/models/medklip.yml
 
 name: multimodalvqa_vqarad
 ckpt_dir: ckpt

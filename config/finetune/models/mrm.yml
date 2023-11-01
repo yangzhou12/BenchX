@@ -11,3 +11,9 @@ model:
 
   fusion: # for MMVQA
     input_image_embed_size: 768
+
+  transformer: # for RRG
+    d_vf: 768
+
+  classifier: # for CLS
+    input_size: 768
