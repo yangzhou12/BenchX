@@ -1,12 +1,12 @@
 includes:
   - path/to/model/config.yml
 
-name: multimodalvqa_vqarad
+name: multimodalvqa_slake
 ckpt_dir: ckpt
 
 dataset:
-  proto: Med_VQA_2021
-  imgpath: /home/faith/MVLM/image_clef/imageclef-vqa-images-512
+  proto: SLAKE_Dataset
+  imgpath: /home/faith/MVLM/SLAKE/imgs
   tokenizer: allenai/biomed_roberta_base
   max_words: 32
 
@@ -32,7 +32,7 @@ model:
     mlp_ratio: 4
 
   classifier:
-    num_classes: 498
+    num_classes: 222
 
   loss:
     proto: BCEWithLogitsLoss
@@ -54,7 +54,7 @@ trainer:
     num_training_steps: 10000
     lr_end: 0
     power: 1
-  epochs: 50
+  epochs: 30
   early_stop: 10
   eval_start: 0
   early_stop_metric: vqa_score

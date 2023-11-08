@@ -20,6 +20,7 @@ from transformers import AutoTokenizer
 from unifier.datasets.utils import split_into_sents
 from unifier.blocks.custom.r2gen import Tokenizer
 
+
 default_pathologies = [
     "Atelectasis",
     "Consolidation",
@@ -104,7 +105,7 @@ class Dataset:
     Although it is called pathologies, the contents do not have to be 
     pathologies and may simply be attributes of the patient. """
 
-    labels: np.ndarray
+    labels: List | np.ndarray
     """A NumPy array which contains a 1, 0, or NaN for each pathology. Each 
     column is a pathology and each row corresponds to an item in the dataset. 
     A 1 represents that the pathology is present, 0 represents the pathology 
@@ -438,6 +439,7 @@ class CheX_Dataset(Dataset):
         seed=0,
         unique_patients=True,
         split="train",
+        data_pct=1
     ):
         super(CheX_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
@@ -472,6 +474,9 @@ class CheX_Dataset(Dataset):
         self.csv = self.csv[self.csv["split"] == split]  # filter for split
         self.views = views
 
+        if data_pct != 1 and self.split == "train":
+            self.csv = self.csv.sample(frac=data_pct, random_state=seed)
+
         self.csv["view"] = self.csv["Frontal/Lateral"]  # Assign view column
         self.csv.loc[(self.csv["view"] == "Frontal"), "view"] = self.csv[
             "AP/PA"
@@ -488,7 +493,7 @@ class CheX_Dataset(Dataset):
 
         # Get our classes.
         healthy = self.csv["No Finding"] == 1
-        labels = []
+        labels = [] # [13, len(dataset)]
         for pathology in self.pathologies:
             if pathology in self.csv.columns:
                 if pathology != "Support Devices":
@@ -502,15 +507,18 @@ class CheX_Dataset(Dataset):
         # Make all the -1 values into nans to keep things simple
         self.labels[self.labels == -1] = np.nan
 
+        # Set labels with nan to 0
+        self.labels[np.isnan(self.labels)] = 0
+
         # Rename pathologies
         self.pathologies = list(
             np.char.replace(self.pathologies, "Pleural Effusion", "Effusion")
         )
 
         # patientid
-        if "train" in self.csvpath:
+        if self.split == "train" or self.split == "valid":
             patientid = self.csv.Path.str.split("train/", expand=True)[1]
-        elif "valid" in self.csvpath:
+        elif self.split == "test":
             patientid = self.csv.Path.str.split("valid/", expand=True)[1]
         else:
             raise NotImplementedError
@@ -547,7 +555,7 @@ class CheX_Dataset(Dataset):
 
         imgid = self.csv["Path"].iloc[idx]
         # clean up path in csv so the user can specify the path
-        imgid = imgid.replace("CheXpert-v1.0-small/", "").replace("CheXpert-v1.0/", "")
+        imgid = imgid.replace("CheXpert-v1.0-small/", "")
         img_path = os.path.join(self.imgpath, imgid)
         img = imread(img_path)
         img = Image.fromarray(img).convert("RGB")
@@ -606,6 +614,7 @@ class RSNA_Pneumonia_Dataset(Dataset):
         pathology_masks=False,
         extension=".dcm",
         split="train",
+        data_pct=1
     ):
         super(RSNA_Pneumonia_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
@@ -631,6 +640,9 @@ class RSNA_Pneumonia_Dataset(Dataset):
 
         df = pd.read_csv(self.csvpath, nrows=nrows)
         self.raw_csv = df[df["split"] == split]  # Filter for split
+
+        if data_pct != 1 and self.split == "train":
+            self.raw_csv = self.raw_csv.sample(frac=data_pct, random_state=seed)
 
         # The labels have multiple instances for each mask
         # So we just need one to get the target label
@@ -768,7 +780,7 @@ class SIIM_Pneumothorax_Dataset(Dataset):
         seed=0,
         unique_patients=True,
         pathology_masks=False,
-        split="train",
+        split="train"
     ):
         super(SIIM_Pneumothorax_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
@@ -931,6 +943,7 @@ class NIH_Dataset(Dataset):
         unique_patients=True,
         pathology_masks=False,
         split="train",
+        data_pct=1
     ):
         super(NIH_Dataset, self).__init__()
 
@@ -969,48 +982,67 @@ class NIH_Dataset(Dataset):
         # Load data
         self.check_paths_exist()
         self.csv = pd.read_csv(self.csvpath)
-        self.csv = self.csv[self.csv["split"] == split][:1000] # Filter for split
+        self.csv = self.csv[self.csv["split"] == split] # Filter for split
+
+        if data_pct != 1 and self.split == "train":
+            if data_pct == 0.01:
+                downloaded_data_label_txt = "/VLM/nih_chest_xray/train_1.txt"
+                fileDescriptor = open(os.path.join(downloaded_data_label_txt), "r")
+                trainImages = []
+
+                line = True
+                while line:
+                    line = fileDescriptor.readline()
+                    if line:
+                        lineItems = line.split()
+                        imageFile = lineItems[0]
+                        trainImages.append(imageFile)
+
+                fileDescriptor.close()
+                self.csv = self.csv[self.csv["Image Index"].isin(pd.Series(trainImages))]
+                print("Used MRM 1 percent split", len(self.csv))
+            else:
+                self.csv = self.csv.sample(frac=data_pct, random_state=seed)
 
         # Remove images with view position other than specified
         self.csv["view"] = self.csv["View Position"]
         self.limit_to_selected_views(views)
 
-        if unique_patients:
-            self.csv = self.csv.groupby("Patient ID").first()
+        # if unique_patients:
+        #     self.csv = self.csv.groupby("Patient ID").first()
 
         self.csv = self.csv.reset_index()
 
-        ####### pathology masks ########
         # load nih pathology masks
-        if bbox_list_path == USE_INCLUDED_FILE:
-            self.bbox_list_path = os.path.join(datapath, "BBox_List_2017.csv.gz")
-        else:
-            self.bbox_list_path = bbox_list_path
-        self.pathology_maskscsv = pd.read_csv(
-            self.bbox_list_path,
-            names=[
-                "Image Index",
-                "Finding Label",
-                "x",
-                "y",
-                "w",
-                "h",
-                "_1",
-                "_2",
-                "_3",
-            ],
-            skiprows=1,
-        )
+        if self.pathology_masks:
+            if bbox_list_path == USE_INCLUDED_FILE:
+                self.bbox_list_path = os.path.join(datapath, "BBox_List_2017.csv.gz")
+            else:
+                self.bbox_list_path = bbox_list_path
+            self.pathology_maskscsv = pd.read_csv(
+                self.bbox_list_path,
+                names=[
+                    "Image Index",
+                    "Finding Label",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "_1",
+                    "_2",
+                    "_3",
+                ],
+                skiprows=1,
+            )
 
-        # change label name to match
-        self.pathology_maskscsv.loc[
-            self.pathology_maskscsv["Finding Label"] == "Infiltrate", "Finding Label"
-        ] = "Infiltration"
-        self.csv["has_masks"] = self.csv["Image Index"].isin(
-            self.pathology_maskscsv["Image Index"]
-        )
+            # change label name to match
+            self.pathology_maskscsv.loc[
+                self.pathology_maskscsv["Finding Label"] == "Infiltrate", "Finding Label"
+            ] = "Infiltration"
+            self.csv["has_masks"] = self.csv["Image Index"].isin(
+                self.pathology_maskscsv["Image Index"]
+            )
 
-        ####### pathology masks ########
         # Get our classes.
         self.labels = []
         for pathology in self.pathologies:
@@ -1020,16 +1052,6 @@ class NIH_Dataset(Dataset):
 
         self.labels = np.asarray(self.labels).T
         self.labels = self.labels.astype(np.float32)
-
-        # patientid
-        self.csv["patientid"] = self.csv["Patient ID"].astype(str)
-
-        # age
-        self.csv["age_years"] = self.csv["Patient Age"] * 1.0
-
-        # sex
-        self.csv["sex_male"] = self.csv["Patient Gender"] == "M"
-        self.csv["sex_female"] = self.csv["Patient Gender"] == "F"
 
     def string(self):
         return (
@@ -1044,20 +1066,18 @@ class NIH_Dataset(Dataset):
 
     def __getitem__(self, idx):
         sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
 
         imgid = self.csv["Image Index"].iloc[idx]
         img_path = os.path.join(self.imgpath, imgid)
-        img = imread(img_path)
-        img = Image.fromarray(img).convert("RGB")
-
-        sample["img"] = img
+        img = Image.open(img_path).convert("RGB")
 
         if self.pathology_masks:
             sample["pathology_masks"] = self.get_mask_dict(
                 imgid, sample["img"].shape[2]
             )
+        
+        sample["img"] = img
+        sample["lab"] = torch.FloatTensor(self.labels[idx])
 
         sample = apply_transforms(sample, self.transform)
 
@@ -1092,7 +1112,7 @@ class NIH_Dataset(Dataset):
     def get_collate_fn(self):
         def collate_fn(batch):
             imgs = [s["img"] for s in batch]
-            labels = [torch.from_numpy(s["lab"]) for s in batch]
+            labels = [s["lab"] for s in batch]
             collated = {
                 "labels": torch.stack(labels),
                 "images": torch.stack(imgs),
@@ -1123,10 +1143,9 @@ class VQA_RAD_Dataset(Dataset):
 
     Paper: https://arxiv.org/pdf/2305.10415v5.pdf
 
-    Download the raw dataset here:
-    https://osf.io/89kps/
+    Download the raw dataset here: https://osf.io/89kps/
 
-    Download the pre-processed dataset through this repo:
+    Download the pre-processed dataset through this repo: 
     https://github.com/aioz-ai/MICCAI19-MedVQA
     """
 
@@ -1290,7 +1309,25 @@ class VQA_RAD_Dataset(Dataset):
         return collate_fn
 
 
-class Med_VQA_2021(Dataset):
+class MedVQA_2019_Dataset(Dataset):
+    """ Med-VQA-2019 Dataset
+    
+        VQA-Med 2019 focused on radiology images and four main categories of questions: Modality, 
+        Plane, Organ system and Abnormality. These categories are designed with different degrees 
+        of difficulty leveraging both classification and text generation approaches. In this second 
+        edition of the VQA challenge, we targeted medical questions asking about one element only 
+        (e.g. what is the organ principally shown in this mri? in what plane is this mammograph taken? 
+        is this a t1 weighted, t2 weighted, or flair image? what is most alarming about this 
+        ultrasound?), and that can be answered from the image content without requiring additional 
+        medical knowledge or domain-specific inference.
+
+        The VQA-Med-2019 dataset includes a training set of 3,200 medical images with 12,792 
+        Question-Answer (QA) pairs, a validation set of 500 medical images with 2,000 QA pairs, and 
+        a test set of 500 medical images with 500 questions.
+
+        Original repo: https://github.com/abachaa/VQA-Med-2019 
+    """
+
     def __init__(
         self,
         imgpath,
@@ -1300,8 +1337,10 @@ class Med_VQA_2021(Dataset):
         seed=0,
         unique_patients=True,
         split="train",
+        tokenizer=None,
+        max_words=None,
     ):
-        super(Med_VQA_2021, self).__init__()
+        super(MedVQA_2019_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
 
         self.split = split
@@ -1310,7 +1349,7 @@ class Med_VQA_2021(Dataset):
         self.labelspath = labelspath
 
         if csvpath == USE_INCLUDED_FILE:
-            self.csvpath = os.path.join(datapath, "medvqa_2021.csv.gz")
+            self.csvpath = os.path.join(datapath, "med_vqa_2019_dataset.csv.gz")
         else:
             self.csvpath = csvpath
 
@@ -1320,19 +1359,41 @@ class Med_VQA_2021(Dataset):
         self.check_paths_exist()
         self.csv = pd.read_csv(self.csvpath)
 
-        # Load labels
-        self.load_labels()
+        # Construct global vocabulary
+        (
+            self.ans2label,
+            self.label2ans,
+        ) = self.construct_vocabulary()  # Should be called before filtering for split
 
         self.csv = self.csv[self.csv["split"] == split]  # Filter for split
         self.csv = self.csv.reset_index()
 
+        # Construct tokenizer
+        if tokenizer is not None:
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+            self.tokenizer_args = {
+                "return_tensors": "pt",
+                "padding": True,
+                "add_special_tokens": True,
+            }
+            if max_words is not None:
+                self.tokenizer_args.update(
+                    {
+                        "padding": "max_length",
+                        "truncation": True,
+                        "max_length": max_words,
+                    }
+                )
+
         ####### VQA answer & labels ########
 
         # Normalize word (Set pathologies to be answer in Med-VQA dataset)
-        self.pathologies = self.label2idx.keys()
+        self.pathologies = self.ans2label.keys()
 
         # Construct labels
-        labels = self.csv["labels"].apply(lambda x: self.label2idx[x]).tolist()
+        labels = self.csv["answer"].apply(
+                    lambda x: self.ans2label[unifier.datasets.utils.normalize_word(str(x)).lower()]
+                 ).tolist()
         self.labels = np.asarray(labels).T
 
     def string(self):
@@ -1351,8 +1412,11 @@ class Med_VQA_2021(Dataset):
         sample["idx"] = idx
         sample["lab"] = self.labels[idx]
 
+        question = self.csv["question"].iloc[idx]
+        sample["text"] = self.get_text(question)
+
         imgid = self.csv["image_path"].iloc[idx]
-        img_path = os.path.join(self.imgpath, imgid)
+        img_path = os.path.join(self.imgpath, imgid + ".jpg")
         img = imread(img_path)
         img = Image.fromarray(img).convert("RGB")
 
@@ -1362,19 +1426,39 @@ class Med_VQA_2021(Dataset):
 
         return sample
 
-    def load_labels(self):
-        if self.labelspath == USE_INCLUDED_FILE:
-            labels = [
-                unicodedata.normalize("NFKD", w.strip())
-                for w in open(os.path.join(datapath, "labels.tok"))
-            ]
-        else:
-            labels = [w.strip() for w in open(os.path.join(self.labelspath))]
+    def construct_vocabulary(self):  # Called before filtering for split
+        questions = self.csv.to_dict(orient="records")
 
-        self.multi_label = eval(labels.pop(0).split(":")[-1])
-        assert isinstance(self.multi_label, bool), "Bad formatting"
-        self.label2idx = {l: i for i, l in enumerate(labels)}
-        self.idx2label = {i: l for i, l in enumerate(labels)}
+        # Construct vocabulary
+        all_major_answers = list()
+        for q in tqdm(questions):
+            all_major_answers.append(str(q["answer"]).lower())
+        all_major_answers = [
+            unifier.datasets.utils.normalize_word(word)
+            for word in tqdm(all_major_answers)
+        ]
+        counter = {k: v for k, v in Counter(all_major_answers).items() if v >= 0}
+        ans2label = {k: i for i, k in enumerate(counter.keys())}
+        label2ans = list(counter.keys())
+        print("Label size ({}): {}".format("MedVQA-2019", len(ans2label)))
+
+        return ans2label, label2ans
+
+    def get_text(self, text):
+        sents = split_into_sents(text)
+        text = " ".join(sents)
+
+        encoding = self.tokenizer(
+            text,
+            # padding="max_length",
+            # truncation=True,
+            # max_length=self.max_words,
+            return_special_tokens_mask=True,
+            return_offsets_mapping=True,
+            **self.tokenizer_args,
+        )
+
+        return encoding
 
     def get_collate_fn(self):
         def collate_fn(batch):
@@ -1385,6 +1469,183 @@ class Med_VQA_2021(Dataset):
                 "labels": torch.stack(labels),  # tensor labels for each sample in batch
                 "images": torch.stack(imgs),
             }
+
+            if self.tokenizer:
+                texts = {
+                    "text_ids": torch.stack(
+                        [torch.as_tensor(s["text"]["input_ids"]) for s in batch]
+                    ).squeeze(),
+                    "text_masks": torch.stack(
+                        [torch.as_tensor(s["text"]["attention_mask"]) for s in batch]
+                    ).squeeze(),
+                }
+                collated["texts"] = texts
+
+            return collated
+
+        return collate_fn
+    
+
+class SLAKE_Dataset(Dataset):
+    """ SLAKE Dataset
+
+        Downloaded from: https://github.com/xiaoman-zhang/PMC-VQA
+    """
+
+    def __init__(
+        self,
+        imgpath,
+        csvpath=USE_INCLUDED_FILE,
+        transform=None,
+        seed=0,
+        unique_patients=True,
+        split="train",
+        tokenizer=None,
+        max_words=None,
+    ):
+        super(SLAKE_Dataset, self).__init__()
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.split = split
+
+        self.imgpath = imgpath
+
+        if csvpath == USE_INCLUDED_FILE:
+            self.csvpath = os.path.join(datapath, "slake_dataset.csv.gz")
+        else:
+            self.csvpath = csvpath
+
+        self.transform = transform
+
+        # Load data
+        self.check_paths_exist()
+        self.csv = pd.read_csv(self.csvpath)
+
+        # Filter only English QA pairs
+        self.csv = self.csv[self.csv["q_lang"] == "en"]
+
+        # Construct global vocabulary
+        (
+            self.ans2label,
+            self.label2ans,
+        ) = self.construct_vocabulary()  # Should be called before filtering for split
+
+        self.csv = self.csv[self.csv["split"] == split]  # Filter for split
+        self.csv = self.csv.reset_index()
+
+        # Load tokenizer, if exists
+        if tokenizer is not None:
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+            self.tokenizer_args = {
+                "return_tensors": "pt",
+                "padding": True,
+                "add_special_tokens": True,
+            }
+            if max_words is not None:
+                self.tokenizer_args.update(
+                    {
+                        "padding": "max_length",
+                        "truncation": True,
+                        "max_length": max_words,
+                    }
+                )
+
+        ####### VQA answer & labels ########
+
+        # Normalize word (Set pathologies to be answer in Med-VQA dataset)
+        self.pathologies = self.csv["answer"].apply(
+            lambda x: unifier.datasets.utils.normalize_word(str(x)).lower()
+        )
+
+        # Construct labels
+        labels = self.pathologies.apply(lambda x: self.ans2label[x]).tolist()
+        self.labels = np.asarray(labels).T
+
+    def string(self):
+        return (
+            self.__class__.__name__
+            + " num_samples={} transforms={} split={}".format(
+                len(self), self.transform, self.split
+            )
+        )
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+
+        imgid = self.csv["img_name"].iloc[idx]
+        question = self.csv["question"].iloc[idx]
+        sample["text"] = self.get_text(question)
+
+        img_path = os.path.join(self.imgpath, imgid)
+        img = imread(img_path)
+        img = Image.fromarray(img).convert("RGB")
+
+        sample["img"] = img
+
+        sample = apply_transforms(sample, self.transform)
+
+        return sample
+
+    def construct_vocabulary(self):  # Called before filtering for split
+        questions = self.csv.to_dict(orient="records")
+
+        # Construct vocabulary
+        all_major_answers = list()
+        for q in tqdm(questions):
+            all_major_answers.append(str(q["answer"]).lower())
+        all_major_answers = [
+            unifier.datasets.utils.normalize_word(word)
+            for word in tqdm(all_major_answers)
+        ]
+        counter = {k: v for k, v in Counter(all_major_answers).items() if v >= 0}
+        ans2label = {k: i for i, k in enumerate(counter.keys())}
+        label2ans = list(counter.keys())
+        print("Label size ({}): {}".format("SLAKE", len(ans2label)))
+
+        return ans2label, label2ans
+
+    def get_text(self, text):
+        sents = split_into_sents(text)
+        text = " ".join(sents)
+
+        encoding = self.tokenizer(
+            text,
+            # padding="max_length",
+            # truncation=True,
+            # max_length=self.max_words,
+            return_special_tokens_mask=True,
+            return_offsets_mapping=True,
+            **self.tokenizer_args,
+        )
+
+        return encoding
+
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [torch.tensor(s["lab"]).long() for s in batch]  # Numerical labels, not tensors
+
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs)
+            }
+
+            if self.tokenizer:
+                texts = {
+                    "text_ids": torch.stack(
+                        [torch.as_tensor(s["text"]["input_ids"]) for s in batch]
+                    ).squeeze(),
+                    "text_masks": torch.stack(
+                        [torch.as_tensor(s["text"]["attention_mask"]) for s in batch]
+                    ).squeeze(),
+                }
+                collated["texts"] = texts
+
             return collated
 
         return collate_fn

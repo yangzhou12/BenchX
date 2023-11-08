@@ -1,12 +1,12 @@
 includes:
-  - path/to/model/config.yml
+  - config/finetune/models/gloria.yml
 
 name: classification_nih
 ckpt_dir: ckpt
 
 dataset:
   proto: NIH_Dataset
-  imgpath: /VLM/nih_chest_xray/all_classes
+  imgpath: /home/ubuntu/MRM-pytorch/Datasets/NIH_ChestX-ray/all_classes
   views: ["PA", "AP"]
   data_pct: 0.01
 
@@ -17,7 +17,7 @@ model:
   proto: ImageClassifier
 
   cnn:
-    output_layer: avgpool # for resnet layers
+    output_layer: avgpool
 
   classifier:
     proto: Classifier
@@ -29,25 +29,24 @@ model:
     proto: BCEWithLogitsLoss
 
 trainer:
-  optimizer: AdamW
+  optimizer: Adam
   optim_params:
-    lr: 5e-4
-    weight_decay: 1e-6
-  batch_size: 48
-  lr_decay: ReduceLROnPlateau
+    lr: 0.0001
+    eps: 1e-08
+    weight_decay: 1e-5
+  batch_size: 96
+  clip_grad_norm: 1.0
+  lr_decay: WarmupCosineScheduler
   lr_decay_params:
-    factor: 0.5
-    patience: 1
-    min_lr: 0.000001
-    threshold: 0.01
-    threshold_mode: abs
+    warmup_steps: 50
+    t_total: 3000
   epochs: 50
   early_stop: 10
-  eval_start: 10
-  eval_interval: 10
+  eval_start: 5
+  eval_interval: 5
   early_stop_metric: multilabel_auroc
 
 validator:
-  batch_size: 48
+  batch_size: 96
   metrics: [multilabel_auroc]
   splits: [valid]

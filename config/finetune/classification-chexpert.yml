@@ -8,9 +8,10 @@ dataset:
   proto: CheX_Dataset
   imgpath: /VLM/CheXpert-v1.0-small
   views: ["PA", "AP"]
+  data_pct: 0.01
 
 transforms:
-  type: DataTransforms
+  type: CheXTransforms
 
 model:
   proto: ImageClassifier
@@ -21,7 +22,7 @@ model:
   classifier:
     proto: Classifier
     # input_size: 768 # overwritten
-    num_classes: 14
+    num_classes: 13 # No findings are all zero
     dropout: 0.
 
   loss:
@@ -30,9 +31,9 @@ model:
 trainer:
   optimizer: Adam
   optim_params:
-    lr: 0.00005
+    lr: 0.0005
     weight_decay: 5e-4
-  batch_size: 32
+  batch_size: 96
   lr_decay: ReduceLROnPlateau
   lr_decay_params:
     factor: 0.5
@@ -43,7 +44,7 @@ trainer:
   epochs: 99
   early_stop: 10
   eval_start: 0
-  early_stop_metric: validation_loss
+  early_stop_metric: multilabel_auroc
 
 validator:
   batch_size: 16

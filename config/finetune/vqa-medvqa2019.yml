@@ -1,12 +1,12 @@
 includes:
-  - config/finetune/models/ptunifier.yml
+  - path/to/model/config.yml
 
-name: multimodalvqa_vqarad
+name: multimodalvqa_medvqa2019
 ckpt_dir: ckpt
 
 dataset:
-  proto: VQA_RAD_Dataset
-  imgpath: /home/faith/MVLM/VQA_RAD/VQA_RAD_Image_Folder
+  proto: MedVQA_2019_Dataset
+  imgpath: /home/faith/MVLM/image_clef/images
   tokenizer: allenai/biomed_roberta_base
   max_words: 32
 
@@ -32,7 +32,7 @@ model:
     mlp_ratio: 4
 
   classifier:
-    num_classes: 498
+    num_classes: 1730
 
   loss:
     proto: BCEWithLogitsLoss

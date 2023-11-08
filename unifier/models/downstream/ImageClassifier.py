@@ -10,6 +10,7 @@ from unifier.blocks.losses import *
 from unifier.models.utils import get_n_params
 
 from unifier.blocks.custom.refers.transformer import REFERSViT
+from torch.nn import Identity
 
 
 class ImageClassifier(nn.Module):
@@ -34,14 +35,17 @@ class ImageClassifier(nn.Module):
     def forward(self, images, labels=None, from_training=True, iteration=None, epoch=None, **kwargs):
         out = self.cnn(images.cuda()) # CNN - dim 2
 
-        if out.dim() == 3: # ViT
-            out = out[:, 0] # class token (Timm implementation)
+        if isinstance(self.cnn, VisualEncoder) and out.dim() == 3: # ViT
+            if hasattr(self.cnn.model, "num_prefix_tokens"):
+                out = out[:, self.cnn.model.num_prefix_tokens:].mean(dim=1) # avg global pooling
+            else:
+                out = out[:, 0] # class token (Timm implementation)
 
         out = self.classifier(out)
 
         loss = torch.tensor(0.0)
         if from_training:
-            loss = self.loss_func(out, labels.cuda(), **kwargs)
+            loss = self.loss_func(out, labels.cuda().float(), **kwargs)
 
         return {"loss": loss, "output": out, "pred": torch.sigmoid(out)}
 

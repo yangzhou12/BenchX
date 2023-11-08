@@ -236,16 +236,12 @@ class Encoder(nn.Module):
 
     def forward(self, hidden_states):
         attn_weights = []
-        encoded_list = []
         for layer_block in self.layer:
             hidden_states, weights = layer_block(hidden_states)
             if self.vis:
                 attn_weights.append(weights)
-
-            encoded_list.append(self.encoder_norm(hidden_states))
-
         encoded = self.encoder_norm(hidden_states)
-        return encoded, encoded_list, attn_weights
+        return encoded, attn_weights
 
 
 class Transformer(nn.Module):
@@ -256,8 +252,8 @@ class Transformer(nn.Module):
 
     def forward(self, input_ids):
         embedding_output = self.embeddings(input_ids)
-        encoded, encoded_list, attn_weights = self.encoder(embedding_output)
-        return encoded, encoded_list, attn_weights
+        encoded, attn_weights = self.encoder(embedding_output)
+        return encoded, attn_weights
 
 
 class REFERSViT(nn.Module):
@@ -282,14 +278,12 @@ class REFERSViT(nn.Module):
             self.load_weights(self.pretrained)
 
     def forward(self, x, labels=None):
-        x, encoded_list, attn_weights = self.transformer(x)
+        x, attn_weights = self.transformer(x)
         
         if self.prelogits:
             return x
-        
-        feature = encoded_list[5][:, 0]
-        feature = torch.cat((feature, encoded_list[11][:, 0]), 1)
-        logits = self.head(feature)  # 取出第一个feature用于下游任务
+
+        logits = self.head(x[:, 0]) # 取出第一个feature用于下游任务
 
         if labels is not None:
             loss_fct = BCEWithLogitsLoss()

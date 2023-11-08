@@ -4,10 +4,9 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: timmvit
-    pretrained: /home/faith/unified-framework/ckpt/official/MGCA-vit.ckpt
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/MGCA.ckpt
     prefix: img_encoder_q.model.
     dropout_out: 0.0
-    permute: no_permute
     freeze: False
 
   fusion: # for MMVQA

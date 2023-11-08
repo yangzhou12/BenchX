@@ -26,7 +26,31 @@ from transformers.models.poolformer.modeling_poolformer import (
 
 from timm.models.vision_transformer import VisionTransformer
 from .openai.clip_model import build_model
-from .huggingface.encoder_model import HFVisionEncoder
+from .huggingface.encoder_model import HFAutoModel
+
+
+def load_pretrained(network, pretrain_path, prefix):
+    checkpoint = torch.load(pretrain_path, map_location="cpu")
+
+    for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
+        if key in checkpoint:
+            checkpoint = checkpoint[key]
+            break
+    
+    if prefix:
+        state_dict = {k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k}
+    else:
+        state_dict = checkpoint
+        print("Checkpoint prefix not set; Full state dictionary returned")
+
+    for layer_k in ["head.weight", "head.bias", "fc.weight", "fc.bias"]:
+        if layer_k in state_dict:
+            del state_dict[layer_k]
+    
+    msg = network.load_state_dict(state_dict, strict=False)
+    print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
+    
+    return network
 
 
 def get_network(backbone, output_layer, pretrained, prefix=None, **kwargs):
@@ -66,14 +90,14 @@ def get_network(backbone, output_layer, pretrained, prefix=None, **kwargs):
     
     # HuggingFace pretrained model
     elif "hfpretrained" in backbone.lower():
-        return HFVisionEncoder(**kwargs)
+        return HFAutoModel(**kwargs)
     
     #####   Models to be loaded manually below   #####
 
     # Timm Vision Transformer
     elif "timmvit" in backbone.lower():
         network = VisionTransformer(patch_size=16, embed_dim=768, depth=12, num_heads=12, qkv_bias=True,
-                                    norm_layer=partial(nn.LayerNorm, eps=1e-6), num_classes=0, global_pool="", **kwargs)
+                                    norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
 
     # PyTorch models
     else: 
@@ -97,26 +121,8 @@ def get_network(backbone, output_layer, pretrained, prefix=None, **kwargs):
                 network = nn.Sequential(*list(map(lambda x: x[1], sub_network)))
 
     # Load custom pretrained weights
-    if pretrained and os.path.exists(pretrained):
-        checkpoint = torch.load(pretrained, map_location="cpu")
-
-        for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
-            if key in checkpoint:
-                checkpoint = checkpoint[key]
-                break
-        
-        if prefix:
-            state_dict = {k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k}
-        else:
-            state_dict = checkpoint
-            print("Checkpoint prefix not set; Full state dictionary returned")
-
-        for layer_k in ["head.weight", "head.bias", "fc.weight", "fc.bias"]:
-            if layer_k in state_dict:
-                del state_dict[layer_k]
-        
-        msg = network.load_state_dict(state_dict, strict=False)
-        print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
+    if pretrained not in ["DEFAULT", None]:
+        network = load_pretrained(network, pretrained, prefix)
 
     return network
 
@@ -125,14 +131,14 @@ class VisualEncoder(nn.Module):
     def __init__(
         self,
         backbone,
-        permute,
+        permute=None,
         dropout_out=0.0,
         freeze=False,
         output_layer=None,
         pretrained=None,
         prefix=None,
-        slice_encode=None,
-        slice_dim=None,
+        # slice_encode=None,
+        # slice_dim=None,
         visual_projection=None,
         **kwargs,
     ):
@@ -147,77 +153,28 @@ class VisualEncoder(nn.Module):
         self.model = get_network(self.backbone, self.output_layer, self.pretrained, prefix=prefix, **kwargs)
 
         self.dropout_out = nn.Dropout(p=dropout_out)
-        self.slice_encode = slice_encode
-        self.slice_dim = slice_dim
 
-        if self.slice_encode and self.output_layer == "features":
-            raise Exception(
-                "If encoding per slices, output of forward pass should be a vector. "
-                "Try avgpool or features as output_layer parameter."
-            )
-        if self.slice_encode and self.slice_dim is None:
-            raise Exception(
-                "slice_encode is True but slice_dim is None, please specify slice_dim"
-            )
+        if visual_projection: # layer, prefix
+            self.visual_projection = eval(visual_projection.layer)
 
-        if visual_projection:
-            self.visual_projection = nn.Linear(
-                visual_projection.in_features, visual_projection.out_features
-            )
-        else:
-            self.visual_projection = nn.Identity()
-
-        assert permute in ["batch_first", "spatial_first", "no_permute"]
-
+            if pretrained not in ["DEFAULT", None]:
+                self.visual_projection = load_pretrained(self.visual_projection, pretrained, visual_projection.prefix)
+                
         if freeze:
             for name, param in self.model.named_parameters():
                 param.requires_grad = False
 
-    def encode(self, images, images_mask=None, **kwargs):
-        if torch.cuda.is_available():
-            images = images.cuda()
-            images_mask = images_mask.cuda() if images_mask is not None else images_mask
-
-        # Single-image forward pass
-        if len(images.shape) == 4:
-            features = self(images)
-            features_mask = torch.sum(torch.abs(features), dim=-1) != 0
-            return self.visual_projection(features), features_mask
-
-        # Multi-image or 3D:
-        assert len(images.shape) == 5, "wrong images shape"
-
-        # Multi forward pass
-        images = rearrange(images, "d0 d1 d2 d3 d4 -> (d0 d1) d2 d3 d4")
-        features = self(images)
-
-        if features.ndim <= 2:
-            raise Exception(
-                "The input size is too small for this model. The spatial dim has been shrunk to 1."
-            )
-
-        # Masking features of empty images
-        num_images = images.shape[1]
-        features = features.view(
-            int(features.shape[0] / num_images),
-            num_images,
-            features.shape[-2],
-            features.shape[-1],
-        )
-        if images_mask is not None:
-            features = features * images_mask.unsqueeze(-1).unsqueeze(-1)
-
-        # Creating features-wise attention mask
-        features = rearrange(features, "d0 d1 d2 d3 -> d0 (d1 d2) d3")
-        features_mask = torch.sum(torch.abs(features), dim=-1) != 0
-
-        return self.visual_projection(features), features_mask
-
     def forward(self, images, **kwargs):
         out = self.model(images)
+
         if isinstance(self.model, ViTModel) or isinstance(self.model, DeiTModel):
             assert isinstance(out, BaseModelOutputWithPooling)
             out = self.dropout_out(out.last_hidden_state)
+            # No permute necessary
+            return out
+
+        if isinstance(self.model, VisionTransformer):
+            out = self.dropout_out(out)
             # No permute necessary
             return out
 
@@ -241,6 +198,11 @@ class VisualEncoder(nn.Module):
             out = out.view(*out.size()[:2], -1).permute(2, 0, 1)
         else:
             raise NotImplementedError()
+
+        # Visual projection
+        if hasattr(self, "visual_projection"):
+            out = self.visual_projection(out)
+
         return out
 
     def train(self, mode: bool = True):
@@ -270,7 +232,9 @@ class VisualEncoder(nn.Module):
             "classifier": str(list(self.model.children())[-1])
             if self.output_layer == "classifier"
             else None,
-            "visual_projection": str(self.visual_projection),
+            "visual_projection": str(self.visual_projection)
+            if hasattr(self, "visual_projection")
+            else None,
         }
         # Remove None values
         repr_dict = {k: v for k, v in repr_dict.items() if v is not None}

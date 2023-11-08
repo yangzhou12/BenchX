@@ -8,9 +8,10 @@ dataset:
   proto: RSNA_Pneumonia_Dataset
   imgpath: /VLM/rsna_pneumonia/stage_2_train_images
   views: ["PA", "AP"]
+  data_pct: 0.01
 
 transforms:
-  type: DataTransforms
+  type: RSNATransforms
 
 model:
   proto: ImageClassifier
@@ -21,7 +22,7 @@ model:
   classifier:
     proto: Classifier
     # input_size: 768 # overwritten
-    num_classes: 14
+    num_classes: 1 # Pneumonia or no Pneumonia
     dropout: 0.
 
   loss:
@@ -46,6 +47,6 @@ trainer:
   early_stop_metric: validation_loss
 
 validator:
-  batch_size: 16
+  batch_size: 32
   metrics: [multilabel_auroc]
   splits: [valid]

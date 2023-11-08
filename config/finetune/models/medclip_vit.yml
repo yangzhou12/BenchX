@@ -6,11 +6,17 @@ model:
     backbone: hfpretrained
     encoder:
       proto: microsoft/swin-tiny-patch4-window7-224
-      pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-vit.bin
+      pretrained: /home/faith/unified-framework/ckpt/pretrained/MedCLIP.bin
       prefix: vision_model.model.
     dropout_out: 0.0
     permute: no_permute
     freeze: False
+
+    #####  Uncomment below for zero-shot and cls  #####
+    # visual_projection: 
+    #   layer: >
+    #     nn.Linear(768, 512, bias=False)
+    #   prefix: visual_model.projection_head.
 
   fusion: # for MMVQA
     input_image_embed_size: 768

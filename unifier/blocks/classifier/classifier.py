@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from timm.models.layers import trunc_normal_
 
 
 class Classifier(nn.Module):

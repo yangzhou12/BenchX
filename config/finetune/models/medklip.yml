@@ -4,7 +4,7 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /home/faith/unified-framework/ckpt/official/MedKLIP.pth
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/MedKLIP.pth
     prefix: module.res_features.
     output_layer: layer3 # do not return fc layer
     dropout_out: 0.0
@@ -19,4 +19,4 @@ model:
     d_vf: 1024
 
   classifier: # for CLS
-    input_size: 1024
+    input_size: 2048

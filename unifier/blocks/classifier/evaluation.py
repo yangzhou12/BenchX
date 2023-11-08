@@ -16,7 +16,7 @@ def evaluation(models, config, dl, **kwargs):
         label = batch["labels"]
 
         batch_size = label.shape[0]  # batch_size
-        num_classes = config.model.classifier.num_classes
+        num_classes = config.model.classifier.num_classes or config.model.cnn.num_classes
 
         batch = {
             k: v.cuda()

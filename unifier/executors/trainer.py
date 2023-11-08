@@ -27,6 +27,7 @@ class TrainerConfig(object):
 
         # Training
         self.eval_start = self.config.eval_start or 0
+        self.eval_interval = self.config.eval_interval or 1
         self.decay_metric_start = self.config.decay_metric_start or 0
         self.early_stop_start = self.config.early_stop_start or 0
         self.grad_accu = self.config.grad_accu or 1
@@ -148,8 +149,9 @@ class Trainer(TrainerConfig):
                     )
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
-                self.optimizer.zero_grad()
+                self.optimizer.step()
                 self.training_scheduler.iteration_step()
+                self.optimizer.zero_grad()
 
             # End of epoch
             self.logger.info(log)
@@ -160,7 +162,7 @@ class Trainer(TrainerConfig):
             decay_metric = None
             do_earl_stop = epoch + 1 >= self.early_stop_start
             do_lr_decay = epoch + 1 >= self.decay_metric_start
-            do_eval = epoch + 1 >= self.eval_start
+            do_eval = (epoch + 1 >= self.eval_start) and ((epoch + 1 - self.eval_start) % self.eval_interval == 0)
             training_loss = sum(losses) / iteration
 
             # Compute early_stop_score according to early_stop_metric if specified

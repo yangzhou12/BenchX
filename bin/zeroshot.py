@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import pandas as pd
@@ -6,17 +7,24 @@ import argparse
 import random
 from PIL import Image
 import cv2
+import copy
+from omegaconf import OmegaConf
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+import unifier.datasets.transforms as transforms
+from unifier.blocks.vision import *
+from unifier.blocks.custom.refers.transformer import REFERSViT
+from unifier.blocks.huggingface.encoder import EncoderModel
 
 from sklearn import metrics
 from sklearn.metrics import accuracy_score
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
-import unifier.datasets.transforms as transforms
-
 
 _CSVPATH = {
-    "mimic_5x200": "../../datasets/data/mimic_5x200.csv.zip",
-    "chexpert_5x200": "../../datasets/data/chexpert_5x200.csv.zip"
+    "mimic_5x200": "unifier/datasets/data/mimic_5x200.csv.zip",
+    "chexpert_5x200": "unifier/datasets/data/chexpert_5x200.csv.zip"
 }
 
 
@@ -170,7 +178,8 @@ class PromptClassifier(nn.Module):
                 local_similarities = self.get_local_similarities(img_emb_l, text_emb_l, texts["cap_lens"])
             else:
                 img_emb_g = self.img_encoder_forward(imgs)
-                text_emb_g = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
+                outputs = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
+                text_emb_l, text_emb_g = outputs[0], outputs[1]
 
             #print(img_emb_g.shape, text_emb_g.shape)
             global_similarities = self.get_global_similarities(img_emb_g, text_emb_g)
@@ -210,31 +219,28 @@ def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
 
 
-def build_prompt_classifier(args, device):
-    # TODO: Interface for loading zero-shot model
-    vlm_model = eval("load_" + args.model_name)(args, device=device) 
+def build_prompt_classifier(model_config, device):
+    cnn = copy.deepcopy(model_config.cnn)
+    lang = copy.deepcopy(model_config.language)
+    visual_encoder = eval(cnn.pop("proto"))(**cnn).to(device)
+    language_encoder = EncoderModel(lang).to(device)
+
     model = PromptClassifier(
-        vlm_model.image_encoder_forward,
-        vlm_model.text_encoder_forward,
-        get_local_similarities=vlm_model.get_local_similarities,
-        similarity_type=args.similarity_type
+        visual_encoder.forward,
+        language_encoder.forward,
+        similarity_type="global"
     )
-    return model
+    return model.to(device)
 
 
-def get_tokenizer(args):
-    if args.model_name in ["gloria", "medclip", "convirt"]:
-        return AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
-    if args.model_name in ['biovil']:
-        return AutoTokenizer.from_pretrained("microsoft/BiomedVLP-CXR-BERT-specialized", trust_remote_code=True)
-    if args.model_name in ['mrm']:
-        tokenizer = PreTrainedTokenizerFast(tokenizer_file="/home/faith/unified-framework/models/mrm/mimic_wordpiece.json",
-                                            add_special_tokens=True, pad_token='[PAD]')
-        return tokenizer
+def get_tokenizer(model_config):
+    lang = copy.deepcopy(model_config.language)
+    if lang.custom_tokenizer:
+        return PreTrainedTokenizerFast(tokenizer_file=lang.tokenizer_file, **lang.custom_tokenizer)
+    else:
+        return AutoTokenizer.from_pretrained(lang.pop("proto"), trust_remote_code=True)
 
 
 def generate_chexpert_class_prompts(n = 5):
@@ -283,21 +289,17 @@ def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
     return cls_prompt_inputs
 
 
-def process_img(self, paths, device):
-
-    transform = transforms.DataTransforms()
+def process_img(paths, tfm, device):
+    transform = eval("transforms." + tfm)()
 
     if type(paths) == str:
         paths = [paths]
 
     all_imgs = []
     for p in paths:
-
         x = cv2.imread(str(p), 0)
-
-        # tranform images
         img = Image.fromarray(x).convert("RGB")
-        img = transform(img)
+        img = transform(img) # transform images
         all_imgs.append(torch.tensor(img))
 
     all_imgs = torch.stack(all_imgs).to(device)
@@ -320,12 +322,30 @@ def main(args):
     cls_prompts = generate_chexpert_class_prompts()
 
     # Build model and tokenizer
-    model = build_prompt_classifier(args, device)
-    tokenizer = get_tokenizer(args)
+    config = OmegaConf.load(args.model_config)
+    includes = config.get("includes", [])
+
+    # Loop over includes
+    include_mapping = OmegaConf.create()
+    for include in includes:
+        if not os.path.exists(include):
+            include = os.path.join(os.path.dirname(args.config), include)
+
+        current_include_mapping = OmegaConf.load(include)
+        include_mapping = OmegaConf.merge(include_mapping, current_include_mapping)
+
+    # Override includes with current config
+    config = OmegaConf.merge(include_mapping, config)
+
+    model_config = config.model
+
+    tokenizer = get_tokenizer(model_config)
+    model = build_prompt_classifier(model_config, device)
 
     # Process input images and class prompts
     processed_txt = process_class_prompts(cls_prompts, tokenizer, device)
-    processed_imgs = process_img(df['Path'].tolist(), device)
+    processed_imgs = process_img(df['Path'].apply(lambda x: os.path.join(args.img_path, x)).tolist(), 
+                                 args.transforms, device)
 
     output = model(processed_imgs, processed_txt)
     
@@ -341,11 +361,12 @@ if __name__ == "__main__":
 
     # Customizable model training settings
     parser.add_argument("--dataset", default="chexpert_5x200", choices=["chexpert_5x200", "mimic_5x200"])
-    parser.add_argument("--model_name", type=str, default="", choices=["mrm", "biovil", "convirt", "medclip", "gloria"])
+    parser.add_argument("--transforms", type=str, default="DataTransforms")
+    parser.add_argument("--img_path", type=str)
+    parser.add_argument("--model_config", type=str)
     parser.add_argument("--similarity_type", default="global", type=str, choices=["global", "local", "both"])
 
     # To be configured based on hardware/directory
-    parser.add_argument("--pretrain_path", required=True)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--seed", type=int, default=42)
 

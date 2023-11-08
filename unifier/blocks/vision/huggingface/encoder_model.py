@@ -5,7 +5,7 @@ import torch.nn as nn
 from transformers.models.auto import AutoModel, AutoConfig
 
 
-class HFVisionEncoder(nn.Module):
+class HFAutoModel(nn.Module):
     """
     If proto is mentioned in encoder dict, loads pretrained models from proto strings.
     Otherwise, loads a BertGenerationEncoder model from encoder dict.

@@ -23,23 +23,90 @@ class BaseTransforms(object):
 
 
 class DataTransforms(BaseTransforms):
-    """Transforms used for pretraining, classification and retrieval."""
+    """Standard transforms used for pretraining or downstream tasks."""
 
     def __init__(self, is_train: bool = True, resize: int = 224, crop_size: int = 224):
         if is_train:
             data_transforms = [
                 transforms.Resize(resize),
                 transforms.RandomCrop(crop_size),  # RandomResizedCrop
-                # transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)), # imagenet
             ]
         else:
             data_transforms = [
                 transforms.Resize(crop_size),  # additional step for pre-processing
                 transforms.CenterCrop(crop_size),
                 transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)), # imagenet
+            ]
+
+        self.data_transforms = transforms.Compose(data_transforms)
+
+
+class NIHTransforms(BaseTransforms):
+    """Transforms used for finetuning on NIH dataset."""
+
+    def __init__(self, is_train: bool = True, resize: int = 224, crop_size: int = 224):
+        if is_train:
+            data_transforms = [
+                transforms.RandomResizedCrop(resize),
+                transforms.RandomHorizontalFlip(),
+                transforms.Grayscale(num_output_channels=3),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.4978], std=[0.2449]),
+            ]
+        else:
+            data_transforms = [
+                transforms.Resize(crop_size),  # additional step for pre-processing
+                transforms.CenterCrop(crop_size),
+                transforms.Grayscale(num_output_channels=3),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.4978], std=[0.2449]),
+            ]
+
+        self.data_transforms = transforms.Compose(data_transforms)
+
+
+class RSNATransforms(BaseTransforms):
+    """Transforms used for finetuning on RSNA dataset."""
+
+    def __init__(self, is_train: bool = True, resize: int = 224, crop_size: int = 224):
+        if is_train:
+            data_transforms = [
+                transforms.Resize(resize),
+                transforms.RandomCrop(crop_size),  # RandomResizedCrop
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.4904], std=[0.248]),
+            ]
+        else:
+            data_transforms = [
+                transforms.Resize(crop_size),  # additional step for pre-processing
+                transforms.CenterCrop(crop_size),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.4904], std=[0.248]),
+            ]
+
+        self.data_transforms = transforms.Compose(data_transforms)
+
+
+class CheXTransforms(BaseTransforms):
+    """Transforms used for finetuning on CheXpert-v1.0-small dataset."""
+
+    def __init__(self, is_train: bool = True, resize: int = 224, crop_size: int = 224):
+        if is_train:
+            data_transforms = [
+                transforms.Resize(resize),
+                transforms.RandomCrop(crop_size),  # RandomResizedCrop
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5330], std=[0.0349]),
+            ]
+        else:
+            data_transforms = [
+                transforms.Resize(crop_size),  # additional step for pre-processing
+                transforms.CenterCrop(crop_size),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5330], std=[0.0349]),
             ]
 
         self.data_transforms = transforms.Compose(data_transforms)
@@ -53,10 +120,7 @@ class VQATransforms(BaseTransforms):
             transforms.Resize(size, interpolation=InterpolationMode.BICUBIC),
             transforms.CenterCrop(size),
             transforms.ToTensor(),
-            transforms.Normalize(
-                (0.5, 0.5, 0.5),
-                (0.5, 0.5, 0.5),
-            ),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ]
 
         self.data_transforms = transforms.Compose(data_transforms)

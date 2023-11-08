@@ -1,0 +1,60 @@
+name: convirt_mimic_vit
+ckpt_dir: ckpt
+
+dataset:
+  proto: MIMIC_Dataset
+  imgpath: /home/faith/MVLM/mimic_512/files
+  metacsvpath: /home/faith/MVLM/mimic_512/mimic-cxr-2.0.0-metadata.csv
+  csvpath: USE_INCLUDED_FILE
+  views: ["PA", "AP"]
+  section: both
+  tokenizer: allenai/biomed_roberta_base
+  max_words: 128
+
+transforms: 
+  type: DataTransforms 
+  options:
+    resize: 256
+    crop_size: 224
+
+model:
+  proto: ConVIRT
+  forward_batch_size: 4
+  encoder:
+    proto: allenai/biomed_roberta_base
+  cnn:
+    proto: VisualEncoder
+    backbone: timmvit
+    dropout_out: 0.0
+    freeze: False
+    num_classes: 0
+    global_pool: avg
+  projection:
+    visual_embedding_dim: 768
+    textual_embedding_dim: 768
+    projection_dim: 768
+  loss:
+    proto: ConVIRTLoss
+    tau: 0.1
+    lambda_: 0.75
+
+trainer:
+  optimizer: RAdam
+  optim_params:
+    lr: 5e-5
+  batch_size: 96
+  lr_decay: ReduceLROnPlateau
+  lr_decay_params:
+    factor: 0.5
+    patience: 5
+    min_lr: 0.000001
+    threshold: 0.01
+    threshold_mode: abs
+  epochs: 99
+  eval_start: 10
+  early_stop: 20
+  early_stop_metric: validation_loss
+
+validator:
+  batch_size: 96
+  splits: [validate]

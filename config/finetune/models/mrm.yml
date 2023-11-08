@@ -4,9 +4,9 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: timmvit
-    permute: no_permute
-    pretrained: /home/faith/unified-framework/ckpt/official/MRM.pth # no prefix
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/MRM.pth # no prefix
     dropout_out: 0.0
+    drop_path_rate: 0.1
     freeze: False
 
   fusion: # for MMVQA

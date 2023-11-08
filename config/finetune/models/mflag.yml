@@ -1,12 +1,12 @@
-name: convirt
+name: mflag
 
 model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /home/faith/unified-framework/ckpt/pretrained/ConVIRT.pth
-    prefix: visual.model.
-    output_layer: layer4 # change to avgpool for zero-shot
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/M-FLAG_total.pth
+    prefix: encoder.
+    output_layer: layer4  # change to avgpool for zero-shot
     dropout_out: 0.0
     permute: batch_first
     freeze: False
@@ -15,11 +15,12 @@ model:
     # visual_projection: 
     #   layer: >
     #     nn.Sequential(
-    #       nn.Linear(projection.visual_embedding_dim, projection.projection_dim),
-    #       nn.ReLU(),
-    #       nn.Linear(projection.projection_dim, projection.projection_dim),
-    #     )
-    #   prefix: vis_proj.
+    #       nn.Linear(2048, 2048),
+    #         nn.BatchNorm1d(2048),
+    #         nn.ReLU(inplace=True),
+    #         nn.Linear(2048, 1024),
+    #         nn.BatchNorm1d(1024, affine=False))
+    #   prefix: proj_v.
 
   fusion: # for MMVQA
     input_image_embed_size: 2048

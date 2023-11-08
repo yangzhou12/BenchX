@@ -9,9 +9,8 @@ import inspect
 import numpy as np
 import torch.nn as nn
 from omegaconf import OmegaConf
-import transformers
 
-from torch.utils.data import DataLoader
+from timm.data.loader import MultiEpochsDataLoader
 from torch.utils.data.dataloader import default_collate
 from torch.utils.data.sampler import BatchSampler, SequentialSampler, RandomSampler
 
@@ -26,7 +25,7 @@ from transformers import (
     get_polynomial_decay_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
 )
-from unifier.blocks.schedulers import LinearWarmupCosineAnnealingLR
+from unifier.blocks.schedulers import LinearWarmupCosineAnnealingLR, WarmupCosineScheduler
 import sys
 
 
@@ -216,6 +215,8 @@ def create_data_loader(
     dataset_name = dataset_config.proto
     del dataset_config["proto"]
 
+    num_workers = dataset_config.pop("num_workers", 4)
+
     # Its important the dataset receive info if call from ensembler (test time):
     # split can be train with validation transformation
     dataset = eval("datasets." + dataset_name)(
@@ -250,12 +251,12 @@ def create_data_loader(
         logger.settings("DataLoader")
         logger.info(dataset)
 
-    return DataLoader(
+    return MultiEpochsDataLoader(
         dataset,
-        num_workers=dataset_config.get("num_workers", 4),
+        num_workers=num_workers,
         collate_fn=collate_fn,
         batch_sampler=sampler,
-        pin_memory=True,
+        pin_memory=True
     )
 
 
@@ -333,6 +334,7 @@ class TrainingScheduler(object):
         "CosineAnnealingWarmRestarts",
         "get_polynomial_decay_schedule_with_warmup",
         "get_cosine_schedule_with_warmup",
+        "WarmupCosineScheduler"
     }
     epoch_step_scheduler = {
         "LambdaLR",
