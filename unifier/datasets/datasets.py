@@ -986,7 +986,7 @@ class NIH_Dataset(Dataset):
 
         if data_pct != 1 and self.split == "train":
             if data_pct == 0.01:
-                downloaded_data_label_txt = "/VLM/nih_chest_xray/train_1.txt"
+                downloaded_data_label_txt = os.path.join(datapath, "train_1.txt")
                 fileDescriptor = open(os.path.join(downloaded_data_label_txt), "r")
                 trainImages = []
 

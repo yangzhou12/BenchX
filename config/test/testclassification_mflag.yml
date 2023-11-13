@@ -6,7 +6,7 @@ ckpt_dir: ckpt
 
 dataset:
   proto: NIH_Dataset
-  imgpath: /VLM/nih_chest_xray/all_classes
+  imgpath: /content/processed_images
   views: ["PA", "AP"]
   data_pct: 0.01
 
@@ -21,7 +21,7 @@ model:
 
   classifier:
     proto: Classifier
-    # input_size: 768 # overwritten
+    input_size: 1024 # overwritten
     num_classes: 14
     dropout: 0.
 
@@ -31,7 +31,7 @@ model:
 trainer:
   optimizer: Adam
   optim_params:
-    lr: 0.0001
+    lr: 0.005
     eps: 1e-08
     weight_decay: 1e-5
   batch_size: 96

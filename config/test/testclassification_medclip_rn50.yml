@@ -6,7 +6,7 @@ ckpt_dir: ckpt
 
 dataset:
   proto: NIH_Dataset
-  imgpath: /VLM/nih_chest_xray/all_classes
+  imgpath: /content/processed_images
   views: ["PA", "AP"]
   data_pct: 0.01
 
@@ -48,7 +48,7 @@ trainer:
   epochs: 50
   early_stop: 10
   eval_start: 10
-  eval_interval: 5
+  eval_interval: 1
   early_stop_metric: multilabel_auroc
 
 validator:

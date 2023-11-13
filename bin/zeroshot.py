@@ -311,7 +311,6 @@ def main(args):
     # Set up CUDA and GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Total CUDA devices: ", torch.cuda.device_count())
-    torch.set_default_tensor_type("torch.FloatTensor")
 
     df = pd.read_csv(_CSVPATH[args.dataset])
 
