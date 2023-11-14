@@ -4,7 +4,7 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /home/faith/unified-framework/ckpt/pretrained/ConVIRT.pth
+    pretrained: /content/drive/MyDrive/A*STAR Internship/Checkpoints/ConVIRT.pth
     prefix: visual.model.
     output_layer: layer4 # change to avgpool for zero-shot
     dropout_out: 0.0
@@ -12,14 +12,14 @@ model:
     freeze: False
 
     #####  Uncomment below for zero-shot and cls  #####
-    # visual_projection: 
-    #   layer: >
-    #     nn.Sequential(
-    #       nn.Linear(projection.visual_embedding_dim, projection.projection_dim),
-    #       nn.ReLU(),
-    #       nn.Linear(projection.projection_dim, projection.projection_dim),
-    #     )
-    #   prefix: vis_proj.
+    visual_projection: 
+      layer: >
+        nn.Sequential(
+          nn.Linear(2048, 768),
+          nn.ReLU(),
+          nn.Linear(768, 768),
+        )
+      prefix: vis_proj.
 
   fusion: # for MMVQA
     input_image_embed_size: 2048

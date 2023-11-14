@@ -21,7 +21,7 @@ model:
 
   classifier:
     proto: Classifier
-    # input_size: 768 # overwritten
+    input_size: 768 # overwritten
     num_classes: 14
     dropout: 0.
 
