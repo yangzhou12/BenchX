@@ -57,25 +57,11 @@ class EncoderModel(nn.Module):
             self.language_projection = eval(encoder.language_projection.layer)
 
             if encoder.pretrained:
-                self.language_projection = load_pretrained(self.visual_projection, encoder.pretrained, self.language_projection.prefix)
+                self.language_projection = load_pretrained(self.language_projection, encoder.pretrained, encoder.language_projection.prefix)
 
         # Load custom pretrained weights
         if encoder.pretrained and os.path.exists(encoder.pretrained):
-            checkpoint = torch.load(encoder.pretrained, map_location="cpu")
-
-            for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
-                if key in checkpoint:
-                    checkpoint = checkpoint[key]
-                    break
-            
-            if encoder.prefix:
-                state_dict = {k.replace(encoder.prefix, ""): v for k, v in checkpoint.items() if encoder.prefix in k}
-            else:
-                state_dict = checkpoint
-                print("Checkpoint prefix not set; Full state dictionary returned")
-
-            msg = self.encoder.load_state_dict(state_dict, strict=False)
-            print(f"(Language) Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
+            self.encoder = load_pretrained(self.encoder, encoder.pretrained, encoder.prefix)
 
     def forward(
         self,
@@ -110,6 +96,12 @@ class EncoderModel(nn.Module):
         if hasattr(self, "pooler"):
             pooled_output = self.pooler(hidden_states=out.last_hidden_state)
             setattr(out, "pooler_output", pooled_output)
+
+        # TODO: how to implement language projection layer without affecting output
+        if hasattr(self, "language_projection"):
+            last_hidden_states = torch.stack([out['hidden_states'][1], out['hidden_states'][2], out['hidden_states'][-1]]) # n_layer, batch, seqlen, emb_dim
+            out = last_hidden_states.permute(1,0,2,3).mean(2).mean(1) # pooling
+            out = self.language_projection(out)
 
         return out
 

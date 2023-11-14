@@ -9,7 +9,6 @@ model:
       pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-vit.bin
       prefix: vision_model.model.
     dropout_out: 0.0
-    permute: no_permute
     freeze: False
 
     #####  Uncomment below for zero-shot and cls  #####

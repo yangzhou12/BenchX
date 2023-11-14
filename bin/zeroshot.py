@@ -169,7 +169,7 @@ class PromptClassifier(nn.Module):
         global_similarities = metrics.pairwise.cosine_similarity(img_emb_g, text_emb_g)
         global_similarities = torch.Tensor(global_similarities)
         return global_similarities
-    
+
     def get_similarities(self, imgs, texts): 
         with torch.no_grad(): # get image features and compute similarities (global and local)
             if self.get_local_similarities:
@@ -178,8 +178,8 @@ class PromptClassifier(nn.Module):
                 local_similarities = self.get_local_similarities(img_emb_l, text_emb_l, texts["cap_lens"])
             else:
                 img_emb_g = self.img_encoder_forward(imgs)
-                outputs = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
-                text_emb_l, text_emb_g = outputs[0], outputs[1]
+                text_emb_g = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"], output_hidden_states=True)
+                # text_emb_l, text_emb_g = outputs[0], outputs[1]
 
             #print(img_emb_g.shape, text_emb_g.shape)
             global_similarities = self.get_global_similarities(img_emb_g, text_emb_g)

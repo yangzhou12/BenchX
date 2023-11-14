@@ -13,10 +13,15 @@ model:
 
     visual_projection: 
       layer: >
-        nn.Linear(768, 512, bias=False)
-      prefix: visual_model.model.fc.
+        nn.Linear(2048, 512, bias=False)
+      prefix: vision_model.model.fc.
 
   language: # for zero-shot experiments
     proto: emilyalsentzer/Bio_ClinicalBERT
     pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-resnet50.bin
     prefix: text_model.model.
+
+    language_projection:
+      layer: >
+        nn.Linear(768, 512, bias=False)
+      prefix: text_model.projection_head.

@@ -4,7 +4,7 @@ model:
   cnn:
     proto: REFERSViT
     config_name: ViT-B_16
-    pretrained: /home/faith/unified-framework/ckpt/pretrained/REFERS.pth # no prefix
+    pretrained: /home/faith/unified-framework/ckpt/official/REFERS.pth # no prefix
     num_classes: 0 # set 0 classes to retrieve last hidden state
     prelogits: True
 
