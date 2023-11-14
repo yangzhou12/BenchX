@@ -1,5 +1,5 @@
 includes:
-  - config/finetune/models/biovil_resnet50.yml
+  - config/finetune/models/convirt_vit.yml
 
 name: classification_nih
 ckpt_dir: ckpt
@@ -17,33 +17,34 @@ model:
   proto: ImageClassifier
 
   cnn:
+    num_classes: 14  # enable classifier layer
     output_layer: avgpool
+    global_pool: avg
 
   classifier:
-    proto: Classifier
+    proto: Identity
     # input_size: 768 # overwritten
-    num_classes: 14
-    dropout: 0.
+    # num_classes: 14
 
   loss:
     proto: BCEWithLogitsLoss
 
 trainer:
-  optimizer: Adam
+  optimizer: SGD
   optim_params:
-    lr: 0.0001
-    eps: 1e-08
-    weight_decay: 1e-5
+    lr: 3e-2
+    momentum: 0.9
+    weight_decay: 0 
   batch_size: 96
   clip_grad_norm: 1.0
   lr_decay: WarmupCosineScheduler
   lr_decay_params:
     warmup_steps: 50
     t_total: 3000
-  epochs: 50
+  epochs: 300
   early_stop: 10
-  eval_start: 10
-  eval_interval: 5
+  eval_start: 40
+  eval_interval: 2
   early_stop_metric: multilabel_auroc
 
 validator:

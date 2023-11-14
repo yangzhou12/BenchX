@@ -12,6 +12,26 @@ from transformers import RobertaConfig, RobertaModel
 from transformers.models.bert.modeling_bert import BertPooler
 
 
+def load_pretrained(network, pretrain_path, prefix):
+    checkpoint = torch.load(pretrain_path, map_location="cpu")
+
+    for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
+        if key in checkpoint:
+            checkpoint = checkpoint[key]
+            break
+    
+    if prefix:
+        state_dict = {k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k}
+    else:
+        state_dict = checkpoint
+        print("Checkpoint prefix not set; Full state dictionary returned")
+    
+    msg = network.load_state_dict(state_dict, strict=False)
+    print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
+    
+    return network
+
+
 class EncoderModel(nn.Module):
     """
     If proto is mentioned in encoder dict, loads pretrained models from proto strings.
@@ -32,6 +52,12 @@ class EncoderModel(nn.Module):
 
         if encoder.add_pooling_layer:
             self.pooler = BertPooler(encoder)
+
+        if encoder.language_projection:
+            self.language_projection = eval(encoder.language_projection.layer)
+
+            if encoder.pretrained:
+                self.language_projection = load_pretrained(self.visual_projection, encoder.pretrained, self.language_projection.prefix)
 
         # Load custom pretrained weights
         if encoder.pretrained and os.path.exists(encoder.pretrained):

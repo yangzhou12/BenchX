@@ -6,9 +6,9 @@ ckpt_dir: ckpt
 
 dataset:
   proto: NIH_Dataset
-  imgpath: /VLM/nih_chest_xray/all_classes
+  imgpath: /home/ubuntu/MRM-pytorch/Datasets/NIH_ChestX-ray/all_classes
   views: ["PA", "AP"]
-  data_pct: 0.01
+  data_pct: 0.1
 
 transforms:
   type: NIHTransforms
@@ -47,6 +47,6 @@ trainer:
   early_stop_metric: multilabel_auroc
 
 validator:
-  batch_size: 96
+  batch_size: 512
   metrics: [multilabel_auroc]
   splits: [valid]

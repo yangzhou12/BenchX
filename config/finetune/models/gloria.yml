@@ -19,8 +19,8 @@ model:
 
   # language: # for zero-shot experiments
   #   proto: emilyalsentzer/Bio_ClinicalBERT
-  #   pretrained: /home/faith/unified-framework/ckpt/official/GLoRIA.ckpt
-  #   prefix: gloria.text_encoder.model.
+  #   pretrained: /home/faith/unified-framework/ckpt/pretrained/GLoRIA.pth
+  #   prefix: linguistic.encoder.
 
   fusion: # for MMVQA
     input_image_embed_size: 2048

@@ -8,7 +8,7 @@ dataset:
   proto: NIH_Dataset
   imgpath: /home/ubuntu/MRM-pytorch/Datasets/NIH_ChestX-ray/all_classes
   views: ["PA", "AP"]
-  data_pct: 0.01
+  data_pct: 0.1
 
 transforms:
   type: NIHTransforms
@@ -42,11 +42,11 @@ trainer:
     t_total: 3000
   epochs: 50
   early_stop: 10
-  eval_start: 5
+  eval_start: 10
   eval_interval: 5
   early_stop_metric: multilabel_auroc
 
 validator:
-  batch_size: 96
+  batch_size: 512
   metrics: [multilabel_auroc]
   splits: [valid]

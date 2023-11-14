@@ -1,0 +1,14 @@
+name: biovil_resnet50
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: resnet50
+    pretrained: /home/faith/unified-framework/ckpt/official/biovil_image_resnet50_proj_size_128.pt
+    prefix: encoder.encoder.
+    output_layer: layer4 # do not return fc layer
+    dropout_out: 0.0
+    permute: batch_first
+    freeze: False
+
+  # TODO: Projection layer

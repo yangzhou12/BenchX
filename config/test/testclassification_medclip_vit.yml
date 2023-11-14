@@ -1,5 +1,5 @@
 includes:
-  - config/finetune/models/biovil_resnet50.yml
+  - config/finetune/models/medclip_vit.yml
 
 name: classification_nih
 ckpt_dir: ckpt

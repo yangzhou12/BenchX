@@ -13,7 +13,7 @@ class BaseTransforms(object):
         pass
 
     data_transforms: List
-    """ Composed list of transforms specified in __init__ method of custom transform class. """
+    """Composed list of transforms specified in __init__ method of custom transform class."""
 
     def __call__(self, image) -> torch.Tensor | np.ndarray:
         return self.data_transforms(image)

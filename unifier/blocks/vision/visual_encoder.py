@@ -137,8 +137,6 @@ class VisualEncoder(nn.Module):
         output_layer=None,
         pretrained=None,
         prefix=None,
-        # slice_encode=None,
-        # slice_dim=None,
         visual_projection=None,
         **kwargs,
     ):

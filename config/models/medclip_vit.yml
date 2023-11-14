@@ -1,0 +1,23 @@
+name: medclip_vit
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: hfpretrained
+    encoder:
+      proto: microsoft/swin-tiny-patch4-window7-224
+      pretrained: /home/faith/unified-framework/ckpt/pretrained/MedCLIP.bin
+      prefix: vision_model.model.
+    dropout_out: 0.0
+    permute: no_permute
+    freeze: False
+
+    visual_projection: 
+      layer: >
+        nn.Linear(768, 512, bias=False)
+      prefix: visual_model.projection_head.
+
+  language: # for zero-shot experiments
+    proto: emilyalsentzer/Bio_ClinicalBERT
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/MedCLIP.bin
+    prefix: text_model.model.

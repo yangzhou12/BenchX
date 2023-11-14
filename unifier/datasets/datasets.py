@@ -985,8 +985,18 @@ class NIH_Dataset(Dataset):
         self.csv = self.csv[self.csv["split"] == split] # Filter for split
 
         if data_pct != 1 and self.split == "train":
+            # TODO: Come up with own split instead of using MRM split
+            downloaded_data_label_txt = None
             if data_pct == 0.01:
-                downloaded_data_label_txt = "/VLM/nih_chest_xray/train_1.txt"
+                downloaded_data_label_txt = os.path.join(datapath, "train_1.txt")
+            elif data_pct == 0.1:
+                downloaded_data_label_txt = os.path.join(datapath, "train_10.txt")
+            elif data_pct == 1:
+                downloaded_data_label_txt = os.path.join(datapath, "train_list.txt")
+            else:
+                self.csv = self.csv.sample(frac=data_pct, random_state=seed)
+            
+            if downloaded_data_label_txt:
                 fileDescriptor = open(os.path.join(downloaded_data_label_txt), "r")
                 trainImages = []
 
@@ -1000,9 +1010,7 @@ class NIH_Dataset(Dataset):
 
                 fileDescriptor.close()
                 self.csv = self.csv[self.csv["Image Index"].isin(pd.Series(trainImages))]
-                print("Used MRM 1 percent split", len(self.csv))
-            else:
-                self.csv = self.csv.sample(frac=data_pct, random_state=seed)
+                print("Used MRM split", len(self.csv))
 
         # Remove images with view position other than specified
         self.csv["view"] = self.csv["View Position"]

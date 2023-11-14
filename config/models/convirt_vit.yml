@@ -1,0 +1,25 @@
+name: convirt
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: timmvit
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/ConVIRT-ViT.pth
+    prefix: visual.model.
+    dropout_out: 0.0
+    freeze: False
+
+    #####  Uncomment below for zero-shot and cls  #####
+    visual_projection: 
+      layer: >
+        nn.Sequential(
+          nn.Linear(projection.visual_embedding_dim, projection.projection_dim),
+          nn.ReLU(),
+          nn.Linear(projection.projection_dim, projection.projection_dim),
+        )
+      prefix: vis_proj.
+
+  language: # for zero-shot experiments
+    proto: allenai/biomed_roberta_base
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/ConVIRT-ViT.pth
+    prefix: linguistic.encoder.

@@ -4,7 +4,7 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /home/faith/unified-framework/ckpt/pretrained/MGCA_ResNet.ckpt
+    pretrained: /home/faith/unified-framework/ckpt/official/MGCA-resnet50.ckpt
     prefix: img_encoder_q.model.
     output_layer: layer4 # do not return fc layer
     dropout_out: 0.0

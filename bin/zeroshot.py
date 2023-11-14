@@ -300,7 +300,7 @@ def process_img(paths, tfm, device):
         x = cv2.imread(str(p), 0)
         img = Image.fromarray(x).convert("RGB")
         img = transform(img) # transform images
-        all_imgs.append(torch.tensor(img))
+        all_imgs.append(img)
 
     all_imgs = torch.stack(all_imgs).to(device)
 
@@ -311,7 +311,6 @@ def main(args):
     # Set up CUDA and GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Total CUDA devices: ", torch.cuda.device_count())
-    torch.set_default_tensor_type("torch.FloatTensor")
 
     df = pd.read_csv(_CSVPATH[args.dataset])
 
@@ -344,7 +343,7 @@ def main(args):
 
     # Process input images and class prompts
     processed_txt = process_class_prompts(cls_prompts, tokenizer, device)
-    processed_imgs = process_img(df['Path'].apply(lambda x: os.path.join(args.img_path, x)).tolist(), 
+    processed_imgs = process_img(df['Path'].apply(lambda x: os.path.join(args.img_path, x.replace("CheXpert-v1.0-small/", ""))).tolist(), 
                                  args.transforms, device)
 
     output = model(processed_imgs, processed_txt)

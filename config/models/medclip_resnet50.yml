@@ -1,0 +1,22 @@
+name: medclip_resnet50
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: resnet50
+    pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-resnet50.bin
+    prefix: vision_model.model.
+    output_layer: avgpool
+    dropout_out: 0.0
+    permute: batch_first
+    freeze: False
+
+    visual_projection: 
+      layer: >
+        nn.Linear(768, 512, bias=False)
+      prefix: visual_model.model.fc.
+
+  language: # for zero-shot experiments
+    proto: emilyalsentzer/Bio_ClinicalBERT
+    pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-resnet50.bin
+    prefix: text_model.model.
