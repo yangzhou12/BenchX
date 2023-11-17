@@ -147,20 +147,8 @@ class VisualEncoder(nn.Module):
         self.permute = permute
         self.freeze = freeze
         self.pretrained = pretrained
-        self.load_pretrained = load_pretrained
 
         self.model = get_network(self.backbone, self.output_layer, self.pretrained, prefix=prefix, **kwargs)
-
-        self.local_projection = nn.Conv2d(
-            1024,
-            768,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-            bias=False,
-        ).cuda()
-        
-        self.local_projection = self.load_pretrained(self.local_projection, self.pretrained, "gloria.img_encoder.local_embedder.")
 
         self.dropout_out = nn.Dropout(p=dropout_out)
 
@@ -168,7 +156,7 @@ class VisualEncoder(nn.Module):
             self.visual_projection = eval(visual_projection.layer)
 
             if pretrained not in ["DEFAULT", None]:
-                self.visual_projection = self.load_pretrained(self.visual_projection, self.pretrained, visual_projection.prefix)
+                self.visual_projection = load_pretrained(self.visual_projection, self.pretrained, visual_projection.prefix)
                 
         if freeze:
             for name, param in self.model.named_parameters():
@@ -183,10 +171,10 @@ class VisualEncoder(nn.Module):
             # No permute necessary
             return out
 
-        if isinstance(self.model, VisionTransformer):
-            out = self.dropout_out(out)
-            # No permute necessary
-            return out
+        # if isinstance(self.model, VisionTransformer):
+        #     out = self.dropout_out(out)
+        #     # No permute necessary
+        #     return out
 
         if isinstance(self.model, HFResNetModel):
             assert isinstance(out, BaseModelOutputWithPoolingAndNoAttention)

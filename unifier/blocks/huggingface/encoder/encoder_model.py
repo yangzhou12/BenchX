@@ -8,8 +8,10 @@ from transformers.models.bert_generation import (
     BertGenerationConfig,
 )
 
-from transformers import RobertaConfig, RobertaModel
+from transformers import RobertaConfig, RobertaModel, BertConfig
 from transformers.models.bert.modeling_bert import BertPooler
+
+from unifier.blocks.custom.mgca.bert_modelling import BertModel
 
 
 class EncoderModel(nn.Module):
@@ -22,8 +24,12 @@ class EncoderModel(nn.Module):
         super().__init__()
         if encoder.proto is not None:
             path = encoder.pop("proto")
-            self.enc_config = AutoConfig.from_pretrained(path)
-            self.encoder = AutoModel.from_pretrained(path, config=self.enc_config)
+            if encoder.json_file:
+                self.enc_config = BertConfig.from_json_file(encoder.pop("json_file"))
+                self.encoder = BertModel.from_pretrained(path, config=self.enc_config)
+            else:
+                self.enc_config = AutoConfig.from_pretrained(path)
+                self.encoder = AutoModel.from_pretrained(path, config=self.enc_config)
         else:
             enc_config = BertGenerationConfig(
                 **encoder, is_decoder=False, add_cross_attention=False
@@ -84,6 +90,7 @@ class EncoderModel(nn.Module):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=True,
+            **kwargs
         )
 
         if hasattr(self, "pooler"):

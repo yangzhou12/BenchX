@@ -24,3 +24,13 @@ model:
     proto: allenai/biomed_roberta_base
     pretrained: /home/faith/unified-framework/ckpt/pretrained/ConVIRT.pth
     prefix: linguistic.encoder.
+    last_n_layers: 4
+
+    language_projection:
+      layer: >
+        nn.Sequential(
+          nn.Linear(768, 768),
+          nn.ReLU(),
+          nn.Linear(768, 768),
+        )
+      prefix: lin_proj.

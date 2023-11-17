@@ -12,14 +12,14 @@ model:
     freeze: False
 
     #####  Uncomment below for zero-shot and cls  #####
-    visual_projection: 
-      layer: >
-        nn.Sequential(
-          nn.Linear(2048, 768),
-          nn.ReLU(),
-          nn.Linear(768, 768),
-        )
-      prefix: vis_proj.
+    # visual_projection: 
+    #   layer: >
+    #     nn.Sequential(
+    #       nn.Linear(2048, 768),
+    #       nn.ReLU(),
+    #       nn.Linear(768, 768),
+    #     )
+    #   prefix: vis_proj.
 
   fusion: # for MMVQA
     input_image_embed_size: 2048

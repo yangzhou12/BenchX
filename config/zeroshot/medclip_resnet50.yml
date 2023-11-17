@@ -20,6 +20,7 @@ model:
     proto: emilyalsentzer/Bio_ClinicalBERT
     pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-resnet50.bin
     prefix: text_model.model.
+    last_n_layers: 4
 
     language_projection:
       layer: >

@@ -12,15 +12,10 @@ model:
     freeze: False
 
     #####  Uncomment below for zero-shot and cls  #####
-    visual_projection: 
-      layer: >
-        nn.Linear(2048, 768)
-      prefix: gloria.img_encoder.global_embedder.
-
-  # language: # for zero-shot experiments
-  #   proto: emilyalsentzer/Bio_ClinicalBERT
-  #   pretrained: /home/faith/unified-framework/ckpt/pretrained/GLoRIA.pth
-  #   prefix: linguistic.encoder.
+    # visual_projection: 
+    #   layer: >
+    #     nn.Linear(2048, 768)
+    #   prefix: gloria.img_encoder.global_embedder.
 
   fusion: # for MMVQA
     input_image_embed_size: 2048
