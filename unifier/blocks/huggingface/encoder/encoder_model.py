@@ -12,26 +12,6 @@ from transformers import RobertaConfig, RobertaModel
 from transformers.models.bert.modeling_bert import BertPooler
 
 
-def load_pretrained(network, pretrain_path, prefix):
-    checkpoint = torch.load(pretrain_path, map_location="cpu")
-
-    for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
-        if key in checkpoint:
-            checkpoint = checkpoint[key]
-            break
-    
-    if prefix:
-        state_dict = {k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k}
-    else:
-        state_dict = checkpoint
-        print("Checkpoint prefix not set; Full state dictionary returned")
-    
-    msg = network.load_state_dict(state_dict, strict=False)
-    print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
-    
-    return network
-
-
 class EncoderModel(nn.Module):
     """
     If proto is mentioned in encoder dict, loads pretrained models from proto strings.
@@ -52,16 +32,6 @@ class EncoderModel(nn.Module):
 
         if encoder.add_pooling_layer:
             self.pooler = BertPooler(encoder)
-
-        if encoder.language_projection:
-            self.language_projection = eval(encoder.language_projection.layer)
-
-            if encoder.pretrained:
-                self.language_projection = load_pretrained(self.language_projection, encoder.pretrained, encoder.language_projection.prefix)
-
-        # Load custom pretrained weights
-        if encoder.pretrained and os.path.exists(encoder.pretrained):
-            self.encoder = load_pretrained(self.encoder, encoder.pretrained, encoder.prefix)
 
     def forward(
         self,
@@ -96,12 +66,6 @@ class EncoderModel(nn.Module):
         if hasattr(self, "pooler"):
             pooled_output = self.pooler(hidden_states=out.last_hidden_state)
             setattr(out, "pooler_output", pooled_output)
-
-        # TODO: how to implement language projection layer without affecting output
-        if hasattr(self, "language_projection"):
-            last_hidden_states = torch.stack([out['hidden_states'][1], out['hidden_states'][2], out['hidden_states'][-1]]) # n_layer, batch, seqlen, emb_dim
-            out = last_hidden_states.permute(1,0,2,3).mean(2).mean(1) # pooling
-            out = self.language_projection(out)
 
         return out
 

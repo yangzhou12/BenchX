@@ -133,64 +133,90 @@ CHEXPERT_CLASS_PROMPTS = {
 }
 
 
+class TextEncoder(nn.Module):
+    def __init__(self, language_config):
+        self.model = EncoderModel(language_config)
+
+        if language_config.language_projection:
+            self.projection_head = eval(language_config.language_projection.layer)
+
+            if language_config.pretrained:
+                self.projection_head = self.load_pretrained(self.projection_head, language_config.pretrained, language_config.language_projection.prefix)
+
+        # Load custom pretrained weights
+        if language_config.pretrained and os.path.exists(language_config.pretrained):
+            self.encoder = self.load_pretrained(self.encoder, language_config.pretrained, language_config.prefix)
+
+    def load_pretrained(self, network, pretrain_path, prefix):
+        checkpoint = torch.load(pretrain_path, map_location="cpu")
+
+        for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
+            if key in checkpoint:
+                checkpoint = checkpoint[key]
+                break
+        
+        if prefix:
+            state_dict = {k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k}
+        else:
+            state_dict = checkpoint
+            print("Checkpoint prefix not set; Full state dictionary returned")
+        
+        msg = network.load_state_dict(state_dict, strict=False)
+        print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
+        
+        return network
+
+    def forward(self, input_ids, attention_mask):
+        out = self.model(input_ids, attention_mask, output_hidden_states=True)
+
+        # Get hidden states as embeddings
+        last_hidden_states = torch.stack([out['hidden_states'][1], out['hidden_states'][2], out['hidden_states'][-1]]) # n_layer, batch, seqlen, emb_dim
+        out = last_hidden_states.permute(1,0,2,3).mean(2).mean(1) # pooling
+        
+        # Get projection output
+        out = self.projection_head(out)
+        return out
+
+
 class PromptClassifier(nn.Module):
-    def __init__(self, 
-                 img_encoder_forward, 
-                 text_encoder_forward, 
-                 get_global_similarities=None, 
-                 get_local_similarities=None, 
-                 similarity_type="both"):
-        
+    def __init__(self, config):
         super(PromptClassifier, self).__init__()
-        self.img_encoder_forward = img_encoder_forward
-        self.text_encoder_forward = text_encoder_forward
-        self.get_local_similarities = get_local_similarities
+        img_backbone = copy.deepcopy(config.cnn)
+        language_backbone = copy.deepcopy(config.language)
 
-        if similarity_type not in ["global", "local", "both"]:
-            raise RuntimeError(
-                "Similarity type should be one of ['global', 'local', 'both']"
-            )
-        
-        if get_local_similarities == None and similarity_type in ["both", "local"]:
-            raise RuntimeError(
-                "Local similarity function not specified"
-            )
-        
-        self.similarity_type = similarity_type
+        # Initialize backbones
+        self.visual_encoder = eval(img_backbone.pop("proto"))(**img_backbone)
+        self.language_encoder = TextEncoder(language_backbone)
 
-        if get_global_similarities: # if custom global similarity function exists, use custom function
-            self.get_global_similarities = get_global_similarities
-        else: # else, use GLoRIA global similarity function
-            self.get_global_similarities = self.calc_global_similarities
-
-    def calc_global_similarities(self, img_emb_g, text_emb_g): # Taken from GLoRIA
-        img_emb_g = img_emb_g.detach().cpu().numpy()
-        text_emb_g = text_emb_g.detach().cpu().numpy()
-        global_similarities = metrics.pairwise.cosine_similarity(img_emb_g, text_emb_g)
-        global_similarities = torch.Tensor(global_similarities)
-        return global_similarities
+    def encode_text(self, input_ids=None, attention_mask=None):
+        input_ids = input_ids.cuda()
+        if attention_mask is not None:
+            attention_mask = attention_mask.cuda()
+        text_embeds = self.language_encoder(input_ids, attention_mask)
+        text_embeds = text_embeds / text_embeds.norm(dim=-1, keepdim=True)
+        return text_embeds
+    
+    def encode_image(self, img=None):
+        vision_output = self.vision_encoder(img)
+        img_embeds = vision_output / vision_output.norm(dim=-1, keepdim=True)
+        return img_embeds
+    
+    def compute_logits(self, img_emb, text_emb, logit_scale_init_value=0.07):
+        logit_scale = torch.log(torch.tensor(1/logit_scale_init_value)) # learnable temperature for contrastive loss
+        logit_scale = torch.clamp(logit_scale.data, 0, 4.6052)
+        logit_scale = logit_scale.exp()
+        logits_per_text = torch.matmul(text_emb, img_emb.t()) * logit_scale
+        return logits_per_text.t()
 
     def get_similarities(self, imgs, texts): 
-        with torch.no_grad(): # get image features and compute similarities (global and local)
-            if self.get_local_similarities:
-                img_emb_l, img_emb_g = self.img_encoder_forward(imgs)
-                text_emb_l, text_emb_g, _ = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
-                local_similarities = self.get_local_similarities(img_emb_l, text_emb_l, texts["cap_lens"])
-            else:
-                img_emb_g = self.img_encoder_forward(imgs)
-                text_emb_g = self.text_encoder_forward(texts["input_ids"], texts["attention_mask"], texts["token_type_ids"], output_hidden_states=True)
-                # text_emb_l, text_emb_g = outputs[0], outputs[1]
+        with torch.no_grad():
+            img_embeds = self.encode_image(imgs)
+            text_embeds = self.encode_text(texts["input_ids"], texts["attention_mask"])
 
             #print(img_emb_g.shape, text_emb_g.shape)
-            global_similarities = self.get_global_similarities(img_emb_g, text_emb_g)
+            similarites = self.compute_logits(img_embeds, text_embeds)
 
-        if self.similarity_type == "global":
-            return global_similarities.detach().cpu().numpy()
-        elif self.similarity_type == "local":
-            return local_similarities.detach().cpu().numpy()
-        else:
-            similarities = (local_similarities + global_similarities) / 2 # similarity aggregation function
-            return similarities.detach().cpu().numpy()
+            return similarites.detach().cpu().numpy()
 
     def forward(self, img_values=None, prompt_inputs=None):
         class_similarities = []
