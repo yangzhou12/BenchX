@@ -4,7 +4,7 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /home/faith/unified-framework/ckpt/pretrained/GLoRIA_last.ckpt
+    pretrained: /home/faith/unified-framework/ckpt/official/GLoRIA.ckpt
     prefix: gloria.img_encoder.model.
     output_layer: avgpool
     dropout_out: 0.0
@@ -18,5 +18,6 @@ model:
 
   language: # for zero-shot experiments
     proto: emilyalsentzer/Bio_ClinicalBERT
-    pretrained: /home/faith/unified-framework/ckpt/pretrained/GLoRIA.pth
-    prefix: linguistic.encoder.
+    pretrained: /home/faith/unified-framework/ckpt/official/GLoRIA.ckpt
+    prefix: gloria.text_encoder.model.
+    last_n_layers: 4

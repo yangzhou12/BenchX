@@ -33,9 +33,9 @@ class ImageClassifier(nn.Module):
         self.eval_func = evaluation
 
     def forward(self, images, labels=None, from_training=True, iteration=None, epoch=None, **kwargs):
-        out = self.cnn(images.cuda()) # CNN - dim 2
+        out = self.cnn(images.cuda()) # Pooled outputs - dim 2
 
-        if isinstance(self.cnn, VisualEncoder) and out.dim() == 3: # ViT
+        if isinstance(self.cnn, VisualEncoder) and out.dim() == 3: # Unpooled - dim 3
             if hasattr(self.cnn.model, "num_prefix_tokens"):
                 out = out[:, self.cnn.model.num_prefix_tokens:].mean(dim=1) # avg global pooling
             else:

@@ -8,6 +8,7 @@ model:
       proto: microsoft/swin-tiny-patch4-window7-224
       pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-vit.bin
       prefix: vision_model.model.
+    pooled: True
     dropout_out: 0.0
     permute: no_permute
     freeze: False
@@ -21,8 +22,10 @@ model:
     proto: emilyalsentzer/Bio_ClinicalBERT
     pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-vit.bin
     prefix: text_model.model.
+    last_n_layers: 4
 
     language_projection:
       layer: >
         nn.Linear(768, 512, bias=False)
       prefix: text_model.projection_head.
+      

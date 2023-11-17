@@ -11,11 +11,12 @@ class HFAutoModel(nn.Module):
     Otherwise, loads a BertGenerationEncoder model from encoder dict.
     """
 
-    def __init__(self, encoder, **kwargs):
+    def __init__(self, encoder, pooled, **kwargs):
         super().__init__()
         path = encoder.pop("proto")
         self.enc_config = AutoConfig.from_pretrained(path)
         self.encoder = AutoModel.from_pretrained(path, config=self.enc_config)
+        self.pooled = pooled  # If True, retrieve pooler outputs
 
         # Load custom pretrained weights
         if encoder.pretrained and os.path.exists(encoder.pretrained):
@@ -35,12 +36,15 @@ class HFAutoModel(nn.Module):
             msg = self.encoder.load_state_dict(state_dict, strict=False)
             print(f"(Vision) Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
 
-    def forward(self, pixel_values):
+    def forward(self, pixel_values, **kwargs):
         '''args:
         pixel_values: tensor with shape [bs, 3, img_size, img_size]
         '''
         output = self.encoder(pixel_values)
-        img_embeds = output['last_hidden_state']
+        if self.pooled:
+            img_embeds = output['pooler_output'] # Return pooled output
+        else: 
+            img_embeds = output['last_hidden_state']
         return img_embeds
 
     def __repr__(self):
