@@ -33,6 +33,29 @@ class EncoderModel(nn.Module):
         if encoder.add_pooling_layer:
             self.pooler = BertPooler(encoder)
 
+        # Load custom pretrained weights
+        if encoder.pretrained and os.path.exists(encoder.pretrained):
+            self.encoder = self.load_pretrained(self.encoder, encoder.pretrained, encoder.prefix)
+
+    def load_pretrained(self, network, pretrain_path, prefix):
+        checkpoint = torch.load(pretrain_path, map_location="cpu")
+
+        for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
+            if key in checkpoint:
+                checkpoint = checkpoint[key]
+                break
+        
+        if prefix:
+            state_dict = {k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k}
+        else:
+            state_dict = checkpoint
+            print("Checkpoint prefix not set; Full state dictionary returned")
+        
+        msg = network.load_state_dict(state_dict, strict=False)
+        print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
+        
+        return network
+
     def forward(
         self,
         input_ids=None,

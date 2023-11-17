@@ -135,6 +135,8 @@ CHEXPERT_CLASS_PROMPTS = {
 
 class TextEncoder(nn.Module):
     def __init__(self, language_config):
+        super(TextEncoder, self).__init__()
+
         self.model = EncoderModel(language_config)
 
         if language_config.language_projection:
@@ -142,10 +144,6 @@ class TextEncoder(nn.Module):
 
             if language_config.pretrained:
                 self.projection_head = self.load_pretrained(self.projection_head, language_config.pretrained, language_config.language_projection.prefix)
-
-        # Load custom pretrained weights
-        if language_config.pretrained and os.path.exists(language_config.pretrained):
-            self.encoder = self.load_pretrained(self.encoder, language_config.pretrained, language_config.prefix)
 
     def load_pretrained(self, network, pretrain_path, prefix):
         checkpoint = torch.load(pretrain_path, map_location="cpu")
@@ -185,7 +183,7 @@ class PromptClassifier(nn.Module):
         language_backbone = copy.deepcopy(config.language)
 
         # Initialize backbones
-        self.visual_encoder = eval(img_backbone.pop("proto"))(**img_backbone)
+        self.vision_encoder = eval(img_backbone.pop("proto"))(**img_backbone)
         self.language_encoder = TextEncoder(language_backbone)
 
     def encode_text(self, input_ids=None, attention_mask=None):
@@ -201,7 +199,7 @@ class PromptClassifier(nn.Module):
         img_embeds = vision_output / vision_output.norm(dim=-1, keepdim=True)
         return img_embeds
     
-    def compute_logits(self, img_emb, text_emb, logit_scale_init_value=0.07):
+    def compute_logits(self, img_emb, text_emb, logit_scale_init_value=1.5):
         logit_scale = torch.log(torch.tensor(1/logit_scale_init_value)) # learnable temperature for contrastive loss
         logit_scale = torch.clamp(logit_scale.data, 0, 4.6052)
         logit_scale = logit_scale.exp()
@@ -245,20 +243,6 @@ def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-
-
-def build_prompt_classifier(model_config, device):
-    cnn = copy.deepcopy(model_config.cnn)
-    lang = copy.deepcopy(model_config.language)
-    visual_encoder = eval(cnn.pop("proto"))(**cnn).to(device)
-    language_encoder = EncoderModel(lang).to(device)
-
-    model = PromptClassifier(
-        visual_encoder.forward,
-        language_encoder.forward,
-        similarity_type="global"
-    )
-    return model.to(device)
 
 
 def get_tokenizer(model_config):
@@ -365,7 +349,7 @@ def main(args):
     model_config = config.model
 
     tokenizer = get_tokenizer(model_config)
-    model = build_prompt_classifier(model_config, device)
+    model = PromptClassifier(model_config).to(device)
 
     # Process input images and class prompts
     processed_txt = process_class_prompts(cls_prompts, tokenizer, device)

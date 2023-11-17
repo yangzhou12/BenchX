@@ -31,7 +31,7 @@ model:
 trainer:
   optimizer: Adam
   optim_params:
-    lr: 0.005
+    lr: 0.0001
     eps: 1e-08
     weight_decay: 1e-5
   batch_size: 96
@@ -43,7 +43,7 @@ trainer:
   epochs: 50
   early_stop: 10
   eval_start: 10
-  eval_interval: 5
+  eval_interval: 2
   early_stop_metric: multilabel_auroc
 
 validator:
