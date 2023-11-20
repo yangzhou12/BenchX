@@ -1,6 +1,6 @@
 # Import VLMs
-from .vlm.ConVIRT import ConVIRT
-from .vlm.GLoRIA import GLoRIA
+from .vilmedic.ConVIRT import ConVIRT
+from .vilmedic.GLoRIA import GLoRIA
 
 # Import downstream models
 from .downstream.MVQA import MVQA
