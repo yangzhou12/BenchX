@@ -120,12 +120,15 @@ class MedKLIP(nn.Module):
         
         query_embed = self.disease_embedding_layer(self.disease_book)
         query_embed = query_embed.unsqueeze(1).repeat(1, B, 1)
-        features,ws = self.decoder(query_embed, features, 
+        features, ws = self.decoder(query_embed, features, 
             memory_key_padding_mask=None, pos=None, query_pos=None)
         out = self.dropout_feas(features)
         x= self.classifier(out).transpose(0,1) #B query Atributes
         
         return x
+    
+    def image_encoder_forward(self, images):
+        pass
 
     @staticmethod
     def _init_weights(module):

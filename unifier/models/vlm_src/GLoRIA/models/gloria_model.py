@@ -92,6 +92,21 @@ class GLoRIA(nn.Module):
         )
 
         return img_emb_l, img_emb_g, text_emb_l, text_emb_g, sents
+    
+    # Get image and text embeddings
+    def forward_embeddings(self, imgs=None, texts=None):
+        # img encoder branch
+        img_emb_l, img_emb_g = self.image_encoder_forward(imgs)
+
+        # text encorder branch
+        text_emb_l, text_emb_g, _ = self.text_encoder_forward(
+            texts["input_ids"], texts["attention_mask"], texts["token_type_ids"]
+        )
+
+        return {"img_emb_l": img_emb_l, 
+                "img_emb_g": img_emb_g, 
+                "text_emb_l": text_emb_l, 
+                "text_emb_g": text_emb_g}
 
     def get_global_similarities(self, img_emb_g, text_emb_g):
         img_emb_g = img_emb_g.detach().cpu().numpy()
@@ -110,6 +125,9 @@ class GLoRIA(nn.Module):
             word = (
                 text_emb_l[i, :, 1 : words_num + 1].unsqueeze(0).contiguous()
             )  # [1, 768, 25]
+
+            # Account for when word.shape[2] < words_num (embedding is truncated)
+            words_num = min(words_num, word.shape[2]) 
 
             word = word.repeat(batch_size, 1, 1)  # [48, 768, 25]
             context = img_emb_l  # [48, 768, 19, 19]

@@ -335,6 +335,8 @@ class PTUnifierTransformerSS(pl.LightningModule):
             "extended_text_masks": extended_text_masks,
             "multi_modal_text_feats": multi_modal_text_feats,
             "multi_modal_image_feats": multi_modal_image_feats,
+            "multi_modal_text_cls_feats": multi_modal_text_cls_feats,
+            "multi_modal_image_cls_feats": multi_modal_image_cls_feats,
             "multi_modal_cls_feats": multi_modal_cls_feats,
         })
 
@@ -392,6 +394,33 @@ class PTUnifierTransformerSS(pl.LightningModule):
             ret.update(objectives.compute_clm(self, batch, test=test))
 
         return ret
+
+    def forward_embeddings(self, imgs=None, texts=None):
+        input_ids = texts["input_ids"]
+        attention_mask = texts["attention_mask"]
+        N = input_ids.shape[0]
+        
+        img_emb_g = []
+        text_emb_g = []
+        for i, img in enumerate(imgs): # for each image - 1000
+            batch = {
+                "image": [img.repeat(N, 1, 1, 1)],
+                "text_ids": input_ids,
+                "text_masks": attention_mask,
+                "text_labels": None # set text_labels to None
+            }
+            infer = self.infer(batch,
+                            pseudo_vision=self.hparams.config["language_only"],
+                            pseudo_language=self.hparams.config["vision_only"])
+            img_embs = infer["multi_modal_image_cls_feats"] # [10, 768]
+            img_emb_g.append(img_embs)
+            text_embs = infer["multi_modal_text_cls_feats"] # [10, 768]
+            text_emb_g.append(text_embs)
+        
+        img_emb_g = torch.mean(torch.stack(img_emb_g), dim=1)
+        text_emb_g = torch.mean(torch.stack(text_emb_g), dim=0)
+
+        return {"img_emb_g": img_emb_g, "text_emb_g": text_emb_g}
 
     def training_step(self, batch, batch_idx):
         ptunifier_utils.set_task(self)

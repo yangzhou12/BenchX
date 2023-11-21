@@ -69,10 +69,31 @@ class MGCA(LightningModule):
             self.hparams.emb_dim, self.hparams.num_heads, batch_first=True)
 
         self.prototype_layer = nn.Linear(emb_dim, num_prototypes, bias=False)
-        if self._use_ddp_or_dpp2(self.trainer):
-            self.get_assignments = self.distributed_sinkhorn
-        else:
-            self.get_assignments = self.sinkhorn
+        # if self._use_ddp_or_dpp2(self.trainer):
+        #     self.get_assignments = self.distributed_sinkhorn
+        # else:
+        self.get_assignments = self.sinkhorn
+
+    def forward_embeddings(self, imgs=None, texts=None):
+        # Forward of query image encoder
+        img_feat_q, patch_feat_q = self.img_encoder_q(imgs)
+        patch_emb_q = self.img_encoder_q.local_embed(patch_feat_q)
+        patch_emb_q = F.normalize(patch_emb_q, dim=-1)
+        img_emb_q = self.img_encoder_q.global_embed(img_feat_q)
+        img_emb_q = F.normalize(img_emb_q, dim=-1)
+
+        # Forward of query text encoder
+        report_feat_q, word_feat_q, word_attn_q, sents = self.text_encoder_q(
+            texts["input_ids"], texts["attention_mask"], texts["token_type_ids"])
+        word_emb_q = self.text_encoder_q.local_embed(word_feat_q)
+        word_emb_q = F.normalize(word_emb_q, dim=-1)
+        report_emb_q = self.text_encoder_q.global_embed(report_feat_q)
+        report_emb_q = F.normalize(report_emb_q, dim=-1)
+
+        return {"img_emb_l": patch_emb_q, 
+                "img_emb_g": img_emb_q, 
+                "text_emb_l": word_emb_q, 
+                "text_emb_g": report_emb_q}
 
     def forward(self, batch, batch_idx, split="train"):
         '''Forward step of our method'''

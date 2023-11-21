@@ -109,7 +109,7 @@ class MyBertModel(BertModel):
             inputs_embeds=inputs_embeds,
             past_key_values_length=past_key_values_length,
         )
-        embedding_output = embedding_output + latent.unsqueeze(1)
+        embedding_output = embedding_output + latent.unsqueeze(1) #size of tensor (10) must match size of tensor (1000)
         encoder_outputs = self.encoder(
             embedding_output,
             attention_mask=extended_attention_mask,
@@ -197,6 +197,9 @@ class MyBertMaskedLM(BertForMaskedLM):
         return MaskedLMOutput(
             loss=masked_lm_loss,
             logits=prediction_scores,
-            hidden_states=outputs.hidden_states,
+            # hidden_states=outputs.hidden_states,
+            # hidden_states=outputs.last_hidden_state[:, 0, :],
+            pooler_output=outputs.pooler_output,
+            hidden_states=outputs.last_hidden_state,
             attentions=outputs.attentions,
         )

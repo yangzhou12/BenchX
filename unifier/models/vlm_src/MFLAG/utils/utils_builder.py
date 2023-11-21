@@ -71,3 +71,18 @@ class ResNet_CXRBert(torch.nn.Module):
         return {'img_emb': img_emb,
                 'proj_img_emb': proj_img_emb,
                 'proj_text_emb': proj_text_emb}
+    
+    def forward_embeddings(self, imgs=None, texts=None):
+        img_emb = self.encoder(imgs)
+        # reshape to (b, 2048)
+        img_emb = img_emb.view(img_emb.shape[0], img_emb.shape[1])
+
+        # pooler_output: [b, 1, 768]
+        text_emb = self.get_text_emb(texts["input_ids"], texts["attention_mask"])
+
+        # project to 512 dim
+        proj_img_emb = self.proj_v(img_emb)
+        proj_text_emb = self.proj_t(text_emb[:, 0].contiguous())
+
+        return {'img_emb_g': proj_img_emb,
+                'text_emb_g': proj_text_emb}

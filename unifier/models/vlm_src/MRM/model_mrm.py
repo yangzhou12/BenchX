@@ -176,7 +176,7 @@ class MRM(nn.Module):
 
         return x, mask, ids_restore
 
-    def forward_decoder(self, x, ids_restore):
+    def forward_decoder(self, x, ids_restore, projection=True):
         # embed tokens
         x = self.decoder_embed(x)
 
@@ -195,7 +195,8 @@ class MRM(nn.Module):
         x = self.decoder_norm(x)
 
         # predictor projection
-        x = self.decoder_pred(x)
+        if projection:
+            x = self.decoder_pred(x)
 
         # remove cls token
         x = x[:, 1:, :]
@@ -206,7 +207,7 @@ class MRM(nn.Module):
         latent = self.bert_mlp(latent)
         latent = latent[:, 1:, :].mean(dim=1)
         outputs = self.bert_encoder(latent, caption_ids, labels, attention_mask, token_type_ids)
-        return outputs.loss
+        return outputs
 
     def forward_loss(self, imgs, pred, mask):
         """
@@ -239,10 +240,39 @@ class MRM(nn.Module):
         imgs = torchvision.transforms.Resize([224,224], interpolation=InterpolationMode.BICUBIC)(big_imgs)
 
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
-        report_loss = self.forward_report_decoder(latent, ids, labels, attention_mask, type_ids)
+        outputs = self.forward_report_decoder(latent, ids, labels, attention_mask, type_ids)
+        report_loss = outputs["loss"]
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         loss = self.forward_loss(big_imgs, pred, mask)
         return (loss, report_loss), pred, mask
+    
+    def forward_embeddings(self, imgs=None, texts=None):
+        imgs = imgs.cuda()
+        input_ids = texts["input_ids"].cuda()
+        attention_mask = texts["attention_mask"].cuda()
+        token_type_ids = texts["token_type_ids"].cuda()
+
+        img_emb_g = []
+        text_emb_g = []
+
+        for img in imgs:
+            N = input_ids.shape[0]
+            latent, _, ids_restore = self.forward_encoder(img.unsqueeze(0), mask_ratio=0) # set mask ratio to 0
+            latent, ids_restore = latent.repeat(N, 1, 1), ids_restore.repeat(N, 1)
+            outputs = self.forward_report_decoder(latent, input_ids, None, attention_mask, token_type_ids) # set labels to None
+            
+            pred = self.forward_decoder(latent, ids_restore, projection=False)
+            img_embeds = self.bert_mlp(pred)[:, 1:, :].mean(dim=1)
+            text_embeds = outputs["pooler_output"]
+
+            img_emb_g.append(img_embeds)
+            text_emb_g.append(text_embeds)
+            
+        img_emb_g = torch.mean(torch.stack(img_emb_g), dim=1)
+        text_emb_g = torch.mean(torch.stack(text_emb_g), dim=0)
+        
+        return {"img_emb_g": img_emb_g, "text_emb_g": text_emb_g}
+
 
 def mrm(**kwargs):
     model = MRM(

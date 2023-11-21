@@ -189,7 +189,7 @@ class MedCLIPModel(nn.Module):
         self.load_state_dict(state_dict)
         print('load model weight from:', input_dir)
 
-    def encode_text(self, input_ids=None, attention_mask=None):
+    def encode_text(self, input_ids=None, attention_mask=None, token_type_ids=None):
         input_ids = input_ids.cuda()
         if attention_mask is not None:
             attention_mask = attention_mask.cuda()
@@ -228,10 +228,22 @@ class MedCLIPModel(nn.Module):
 
         return {'img_embeds':img_embeds, 'text_embeds':text_embeds,
             'logits':logits_per_image, 'loss_value':loss, 'logits_per_text':logits_per_text}
+    
+    def forward_embeddings(self, imgs=None, texts=None):
+        input_ids = texts["input_ids"]
+        attention_mask = texts["attention_mask"]
+        
+        input_ids = input_ids.cuda()
+        if attention_mask is not None:
+            attention_mask = attention_mask.cuda()
+        imgs = imgs.cuda()
+
+        img_embeds = self.encode_image(imgs)
+        text_embeds = self.encode_text(input_ids, attention_mask)
+
+        return {"img_emb_g": img_embeds, "text_emb_g": text_embeds}
 
     def compute_logits(self, img_emb, text_emb):
-        print("Logit scale data:", self.logit_scale.data)
-
         self.logit_scale.data = torch.clamp(self.logit_scale.data, 0, 4.6052)
         logit_scale = self.logit_scale.exp()
         logits_per_text = torch.matmul(text_emb, img_emb.t()) * logit_scale

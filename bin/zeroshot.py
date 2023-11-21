@@ -7,15 +7,11 @@ import argparse
 import random
 from PIL import Image
 import cv2
-import copy
-from omegaconf import OmegaConf
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import unifier.datasets.transforms as transforms
-from unifier.blocks.vision import *
-from unifier.blocks.custom.refers.transformer import REFERSViT
-from unifier.blocks.huggingface.encoder import EncoderModel
+from unifier.models.vlm_src import *
 
 from sklearn import metrics
 from sklearn.metrics import accuracy_score
@@ -100,7 +96,7 @@ CHEXPERT_CLASS_PROMPTS = {
             "at the left lower lobe",
             "at the right lower lobe",
             "at the left upper lobe",
-            "at the right uppper lobe",
+            "at the right upper lobe",
             "at the right lung base",
             "at the left lung base",
         ],
@@ -133,77 +129,31 @@ CHEXPERT_CLASS_PROMPTS = {
 }
 
 
-class TextEncoder(nn.Module):
-    def __init__(self, language_config):
-        super(TextEncoder, self).__init__()
-
-        self.model = EncoderModel(language_config)
-
-        if language_config.language_projection:
-            self.projection_head = eval(language_config.language_projection.layer)
-
-            if language_config.pretrained:
-                self.projection_head = self.load_pretrained(self.projection_head, language_config.pretrained, language_config.language_projection.prefix)
-
-        self.last_n_layers = language_config.last_n_layers
-
-    def load_pretrained(self, network, pretrain_path, prefix):
-        checkpoint = torch.load(pretrain_path, map_location="cpu")
-
-        for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
-            if key in checkpoint:
-                checkpoint = checkpoint[key]
-                break
-        
-        if prefix:
-            state_dict = {k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k}
-        else:
-            state_dict = checkpoint
-            print("Checkpoint prefix not set; Full state dictionary returned")
-        
-        msg = network.load_state_dict(state_dict, strict=False)
-        print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
-        
-        return network
-
-    def forward(self, input_ids, attention_mask):
-        out = self.model(input_ids, attention_mask, output_hidden_states=True, mode="text")
-
-        # Aggregate tokens from last n layers
-        last_hidden_states = torch.stack(out['hidden_states'][-self.last_n_layers:]) # n_layer, batch, seqlen, emb_dim
-        out = last_hidden_states.permute(1, 0, 2, 3).mean(2).mean(1) # pooling
-
-        # Get projection output
-        if hasattr(self, "projection_head"):
-            out = self.projection_head(out)
-
-        return out
-
-
 class PromptClassifier(nn.Module):
-    def __init__(self, config):
+    def __init__(self,
+                 forward_embeddings,
+                 global_similarities_func=None,
+                 local_similarities_func=None,
+                 similarity_type="both"):
         super(PromptClassifier, self).__init__()
-        img_backbone = copy.deepcopy(config.cnn)
-        language_backbone = copy.deepcopy(config.language)
+        
+        # Initialize model's image and text forward methods
+        self.forward_embeddings = forward_embeddings
 
-        # Initialize backbones
-        self.vision_encoder = eval(img_backbone.pop("proto"))(**img_backbone)
-        self.language_encoder = TextEncoder(language_backbone)
+        # Similarity type
+        self.similarity_type = similarity_type
+        if self.similarity_type not in ["global", "local", "both"]:
+            raise NotImplementedError("Similarity type should be one of ['global', 'local', 'both']")
+        if local_similarities_func == None and self.similarity_type in ["both", "local"]:
+            raise RuntimeError("Local similarity function not specified")
 
-    def encode_text(self, input_ids=None, attention_mask=None):
-        input_ids = input_ids.cuda()
-        if attention_mask is not None:
-            attention_mask = attention_mask.cuda()
-        text_embeds = self.language_encoder(input_ids, attention_mask)
-        text_embeds = text_embeds / text_embeds.norm(dim=-1, keepdim=True)
-        return text_embeds
-    
-    def encode_image(self, img=None):
-        img_embeds = self.vision_encoder(img)
-        img_embeds = img_embeds / img_embeds.norm(dim=-1, keepdim=True)
-        return img_embeds
+        # Override similarities functions if they exist
+        if global_similarities_func:
+            self.get_global_similarities = global_similarities_func
+        if local_similarities_func:
+            self.get_local_similarities = local_similarities_func
 
-    def compute_logits(self, img_emb, text_emb): # Taken from GLoRIA
+    def get_global_similarities(self, img_emb, text_emb): # Taken from GLoRIA
         img_emb = img_emb.detach().cpu().numpy()
         text_emb = text_emb.detach().cpu().numpy()
         global_similarities = metrics.pairwise.cosine_similarity(img_emb, text_emb)
@@ -212,10 +162,20 @@ class PromptClassifier(nn.Module):
 
     def get_similarities(self, imgs, texts): 
         with torch.no_grad():
-            img_embeds = self.encode_image(imgs)
-            text_embeds = self.encode_text(texts["input_ids"], texts["attention_mask"])
-            #print(img_emb_g.shape, text_emb_g.shape)
-            similarities = self.compute_logits(img_embeds, text_embeds)
+            outputs = self.forward_embeddings(imgs, texts) # imgs - [1000, ...]; texts - [5, ...]
+            img_emb_g, text_emb_g = outputs["img_emb_g"], outputs["text_emb_g"]
+            global_similarities = self.get_global_similarities(img_emb_g, text_emb_g)
+
+            if hasattr(self, "get_local_similarities"):
+                img_emb_l, text_emb_l = outputs["img_emb_l"], outputs["text_emb_l"]
+                local_similarities = self.get_local_similarities(img_emb_l, text_emb_l, texts["cap_lens"])
+            
+        if self.similarity_type == "global":
+            return global_similarities.detach().cpu().numpy()
+        elif self.similarity_type == "local":
+            return local_similarities.detach().cpu().numpy()
+        else:
+            similarities = (local_similarities + global_similarities) / 2
             return similarities.detach().cpu().numpy()
 
     def forward(self, img_values=None, prompt_inputs=None):
@@ -247,12 +207,24 @@ def set_seed(args):
     torch.manual_seed(args.seed)
 
 
-def get_tokenizer(model_config):
-    lang = copy.deepcopy(model_config.language)
-    if lang.custom_tokenizer:
-        return PreTrainedTokenizerFast(tokenizer_file=lang.tokenizer_file, **lang.custom_tokenizer)
+def get_tokenizer(tokenizer, pretrained=False):
+    if pretrained:
+        return PreTrainedTokenizerFast(tokenizer_file=tokenizer, add_special_tokens=True, pad_token="[PAD]")
     else:
-        return AutoTokenizer.from_pretrained(lang.pop("proto"), trust_remote_code=True)
+        return AutoTokenizer.from_pretrained(tokenizer, trust_remote_code=True)
+    
+
+def build_prompt_classifier(model_name, ckpt_path, device, similarity_type="both", **kwargs):
+    model = eval(f"load_{model_name}")(ckpt_path, **kwargs).to(device)
+    
+    local_similarities_func = model.get_local_similarities if hasattr(model, "get_local_similarities") else None
+
+    clf = PromptClassifier(
+        forward_embeddings=model.forward_embeddings,
+        local_similarities_func=local_similarities_func,
+        similarity_type=similarity_type
+    )
+    return clf
 
 
 def generate_chexpert_class_prompts(n = 5):
@@ -290,7 +262,6 @@ def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
         for k, v in text_inputs.items():
             text_inputs[k] = v.to(device)
 
-        # print(cls_text)
         cap_lens = []
         for txt in cls_text:
             cap_lens.append(len([w for w in txt if not w.startswith("[")]))
@@ -330,35 +301,17 @@ def main(args):
     set_seed(args)
 
     # Generate input class text prompts
-    cls_prompts = generate_chexpert_class_prompts()
-
-    # Build model and tokenizer
-    config = OmegaConf.load(args.model_config)
-    includes = config.get("includes", [])
-
-    # Loop over includes
-    include_mapping = OmegaConf.create()
-    for include in includes:
-        if not os.path.exists(include):
-            include = os.path.join(os.path.dirname(args.config), include)
-
-        current_include_mapping = OmegaConf.load(include)
-        include_mapping = OmegaConf.merge(include_mapping, current_include_mapping)
-
-    # Override includes with current config
-    config = OmegaConf.merge(include_mapping, config)
-
-    model_config = config.model
-
-    tokenizer = get_tokenizer(model_config)
-    model = PromptClassifier(model_config).to(device)
+    cls_prompts = generate_chexpert_class_prompts(n=10)
+    tokenizer = get_tokenizer(args.tokenizer, args.pretrained_tokenizer)
+    
+    clf = build_prompt_classifier(args.model_name, args.ckpt_path, device, args.similarity_type).to(device)
 
     # Process input images and class prompts
     processed_txt = process_class_prompts(cls_prompts, tokenizer, device)
     processed_imgs = process_img(df['Path'].apply(lambda x: os.path.join(args.img_path, x.replace("CheXpert-v1.0-small/", ""))).tolist(), 
                                  args.transforms, device)
 
-    output = model(processed_imgs, processed_txt)
+    output = clf(processed_imgs, processed_txt)
     
     y_pred = np.argmax(output['logits'], axis=1)
     y_true = np.argmax(df[CHEXPERT_COMPETITION_TASKS], axis=1)
@@ -374,7 +327,11 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", default="chexpert_5x200", choices=["chexpert_5x200", "mimic_5x200"])
     parser.add_argument("--transforms", type=str, default="DataTransforms")
     parser.add_argument("--img_path", type=str)
-    parser.add_argument("--model_config", type=str)
+    parser.add_argument("--model_name", type=str)
+    parser.add_argument("--tokenizer", type=str, help="file path or huggingface model")
+    parser.add_argument("--pretrained_tokenizer", action="store_true")
+    parser.add_argument("--similarity_type", type=str, choices=["global", "local", "both"])
+    parser.add_argument("--ckpt_path", type=str)
 
     # To be configured based on hardware/directory
     parser.add_argument("--device", default="cuda")

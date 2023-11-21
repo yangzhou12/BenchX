@@ -1,20 +1,15 @@
 import torch
 from .models.modeling import CONFIGS, VisionTransformer
+from .refers.config import Config
+from .refers.factories import PretrainingModelFactory
 
 
 def load_refers(ckpt, **kwargs):
     if ckpt:    
-        config = CONFIGS["ViT-B_16"]
-        model = VisionTransformer(config, 224, zero_head=True, **kwargs) # num_classes
-
+        _C = Config()
+        model = PretrainingModelFactory.from_config(_C)
         pretrained_weights = torch.load(ckpt, map_location=torch.device('cpu'))
-        model_weights = model.state_dict()
-        load_weights = {k: v for k, v in pretrained_weights.items() if k in model_weights}
-
-        print("load weights")
-        model_weights.update(load_weights)
-        model.load_state_dict(model_weights)
+        model.load_state_dict(pretrained_weights["model"], strict=False)
         return model
-    
     else:
         raise RuntimeError("No pretrained weights found!")

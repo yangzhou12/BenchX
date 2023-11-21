@@ -14,14 +14,13 @@ def load_gloria(ckpt, **kwargs):
         raise RuntimeError("No pretrained weights found!")
 
 
-
 def build_gloria_model(cfg):
     gloria_model = models.gloria_model.GLoRIA(cfg)
     return gloria_model
 
 
 def build_gloria_from_ckpt(ckpt):
-    ckpt = torch.load(ckpt)
+    ckpt = torch.load(ckpt, map_location='cpu')
     cfg = ckpt["hyper_parameters"]
     ckpt_dict = ckpt["state_dict"]
 
