@@ -25,7 +25,7 @@ class BaseTransforms(object):
 class DataTransforms(BaseTransforms):
     """Standard transforms used for pretraining or downstream tasks."""
 
-    def __init__(self, is_train: bool = True, resize: int = 224, crop_size: int = 224):
+    def __init__(self, is_train: bool = True, resize: int = 256, crop_size: int = 224):
         if is_train:
             data_transforms = [
                 transforms.Resize(resize),
@@ -35,8 +35,8 @@ class DataTransforms(BaseTransforms):
             ]
         else:
             data_transforms = [
-                transforms.Resize(crop_size),  # additional step for pre-processing
-                transforms.CenterCrop(crop_size),
+                transforms.Resize([crop_size, crop_size]),  # additional step for pre-processing
+                # transforms.CenterCrop(crop_size),
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)), # imagenet
             ]

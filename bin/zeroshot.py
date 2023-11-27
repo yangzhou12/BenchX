@@ -14,7 +14,7 @@ import unifier.datasets.transforms as transforms
 from unifier.models.vlm_src import *
 
 from sklearn import metrics
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_recall_curve
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 
@@ -131,34 +131,40 @@ CHEXPERT_CLASS_PROMPTS = {
 
 class PromptClassifier(nn.Module):
     def __init__(self,
-                 forward_embeddings,
+                 zeroshot_forward=None,
+                 forward_embeddings=None,
                  global_similarities_func=None,
                  local_similarities_func=None,
                  similarity_type="both"):
         super(PromptClassifier, self).__init__()
+
+        if zeroshot_forward:
+            # Initialize custom zeroshot forward method that returns [num_images, num_classes]
+            self.forward = zeroshot_forward
         
-        # Initialize model's image and text forward methods
-        self.forward_embeddings = forward_embeddings
+        else:
+            # Initialize model's image and text forward methods
+            self.forward_embeddings = forward_embeddings
 
-        # Similarity type
-        self.similarity_type = similarity_type
-        if self.similarity_type not in ["global", "local", "both"]:
-            raise NotImplementedError("Similarity type should be one of ['global', 'local', 'both']")
-        if local_similarities_func == None and self.similarity_type in ["both", "local"]:
-            raise RuntimeError("Local similarity function not specified")
+            # Similarity type
+            self.similarity_type = similarity_type
+            if self.similarity_type not in ["global", "local", "both"]:
+                raise NotImplementedError("Similarity type should be one of ['global', 'local', 'both']")
+            if local_similarities_func == None and self.similarity_type in ["both", "local"]:
+                raise RuntimeError("Local similarity function not specified")
 
-        # Override similarities functions if they exist
-        if global_similarities_func:
-            self.get_global_similarities = global_similarities_func
-        if local_similarities_func:
-            self.get_local_similarities = local_similarities_func
+            # Override similarities functions if they exist
+            if global_similarities_func:
+                self.get_global_similarities = global_similarities_func
+            if local_similarities_func:
+                self.get_local_similarities = local_similarities_func
 
     def get_global_similarities(self, img_emb, text_emb): # Taken from GLoRIA
         img_emb = img_emb.detach().cpu().numpy()
         text_emb = text_emb.detach().cpu().numpy()
         global_similarities = metrics.pairwise.cosine_similarity(img_emb, text_emb)
         global_similarities = torch.Tensor(global_similarities)
-        return global_similarities
+        return global_similarities # [num_images, num_prompts]
 
     def get_similarities(self, imgs, texts): 
         with torch.no_grad():
@@ -193,9 +199,10 @@ class PromptClassifier(nn.Module):
         # standardize across class
         if class_similarities.shape[0] > 1:
             class_similarities = (class_similarities - class_similarities.mean(axis=0)) / (class_similarities.std(axis=0))
+            # class_similarities = (class_similarities - class_similarities.min(axis=0)) / (class_similarities.max(axis=0) - class_similarities.min(axis=0))
 
         outputs = {
-            'logits': class_similarities,
+            'logits': class_similarities, # [num_images, num_classes]
             'class_names': class_names
         }
         return outputs
@@ -217,9 +224,15 @@ def get_tokenizer(tokenizer, pretrained=False):
 def build_prompt_classifier(model_name, ckpt_path, device, similarity_type="both", **kwargs):
     model = eval(f"load_{model_name}")(ckpt_path, **kwargs).to(device)
     
-    local_similarities_func = model.get_local_similarities if hasattr(model, "get_local_similarities") else None
+    custom_forward_func = model.zeroshot_forward if hasattr(model, "zeroshot_forward") else None
+    if custom_forward_func:
+        return PromptClassifier(
+            zeroshot_forward=custom_forward_func
+        )
 
+    local_similarities_func = model.get_local_similarities if hasattr(model, "get_local_similarities") else None
     clf = PromptClassifier(
+        zeroshot_forward=custom_forward_func,
         forward_embeddings=model.forward_embeddings,
         local_similarities_func=local_similarities_func,
         similarity_type=similarity_type
@@ -273,7 +286,7 @@ def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
 
 
 def process_img(paths, tfm, device):
-    transform = eval("transforms." + tfm)(is_train=False, resize=256, crop_size=224)
+    transform = eval("transforms." + tfm)(is_train=False)
 
     if type(paths) == str:
         paths = [paths]
@@ -301,23 +314,40 @@ def main(args):
     set_seed(args)
 
     # Generate input class text prompts
-    cls_prompts = generate_chexpert_class_prompts(n=10)
+    cls_prompts = generate_chexpert_class_prompts(n = 5)
     tokenizer = get_tokenizer(args.tokenizer, args.pretrained_tokenizer)
     
     clf = build_prompt_classifier(args.model_name, args.ckpt_path, device, args.similarity_type).to(device)
 
     # Process input images and class prompts
     processed_txt = process_class_prompts(cls_prompts, tokenizer, device)
-    processed_imgs = process_img(df['Path'].apply(lambda x: os.path.join(args.img_path, x.replace("CheXpert-v1.0-small/", ""))).tolist(), 
-                                 args.transforms, device)
+    if args.dataset == "chexpert_5x200":
+        processed_imgs = process_img(df['Path'].apply(lambda x: os.path.join(args.img_path, x.replace("CheXpert-v1.0-small/", ""))).tolist(), 
+                                    args.transforms, device)
+    elif args.dataset == "mimic_5x200":
+        processed_imgs = process_img(df['Path'].apply(lambda x: os.path.join(args.img_path, x)).tolist(), args.transforms, device)
 
     output = clf(processed_imgs, processed_txt)
+    gt = df[CHEXPERT_COMPETITION_TASKS].to_numpy()
+    logits = output['logits']
+    target_classes = output['class_names']
     
-    y_pred = np.argmax(output['logits'], axis=1)
-    y_true = np.argmax(df[CHEXPERT_COMPETITION_TASKS], axis=1)
-    accuracy = accuracy_score(y_true, y_pred)
+    max_f1s = []
+    accs = []
+    for i in range(len(target_classes)):
+        gt_np = gt[:, i]
+        pred_np = logits[:, i]
+        precision, recall, thresholds = precision_recall_curve(gt_np, pred_np)
+        numerator = 2 * recall * precision
+        denom = recall + precision
+        f1_scores = np.divide(numerator, denom, out=np.zeros_like(denom), where=(denom!=0))
+        max_f1 = np.max(f1_scores)
+        max_f1_thresh = thresholds[np.argmax(f1_scores)]
+        max_f1s.append(max_f1)
+        accs.append(accuracy_score(gt_np, pred_np > max_f1_thresh))
 
-    print(f"Mean accuracy: {accuracy}")
+    print('The average f1 is {F1_avg:.4f}'.format(F1_avg=np.array(max_f1s).mean()))
+    print('The average ACC is {ACC_avg:.4f}'.format(ACC_avg=np.array(accs).mean()))
 
 
 if __name__ == "__main__":

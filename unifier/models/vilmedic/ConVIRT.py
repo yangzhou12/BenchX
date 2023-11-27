@@ -108,6 +108,17 @@ class ConVIRT(nn.Module):
             "linguistic": linguistics,
             "visual": visuals,
         }
+    
+    def forward_embeddings(self, imgs=None, texts=None):
+        imgs = imgs.cuda()
+        input_ids = texts["input_ids"].cuda()
+        attention_mask = texts["attention_mask"].cuda()
+
+        text_emb_g = self.linguistic(input_ids=input_ids, attention_mask=attention_mask)
+        text_emb_g = self.lin_proj(text_emb_g["pooler_output"])
+        img_emb_g = self.vis_proj(self.visual(imgs))
+
+        return {"img_emb_g": img_emb_g, "text_emb_g": text_emb_g}
 
     def __repr__(self):
         s = "ConVIRT\n"

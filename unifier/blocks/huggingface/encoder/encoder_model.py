@@ -24,7 +24,7 @@ class EncoderModel(nn.Module):
         super().__init__()
         if encoder.proto is not None:
             path = encoder.pop("proto")
-            if encoder.json_file:
+            if encoder.get("json_file", None):
                 self.enc_config = BertConfig.from_json_file(encoder.pop("json_file"))
                 self.encoder = BertModel.from_pretrained(path, config=self.enc_config)
             else:
@@ -36,11 +36,11 @@ class EncoderModel(nn.Module):
             )
             self.encoder = BertGenerationEncoder(enc_config)
 
-        if encoder.add_pooling_layer:
+        if encoder.get("add_pooling_layer", None):
             self.pooler = BertPooler(encoder)
 
         # Load custom pretrained weights
-        if encoder.pretrained and os.path.exists(encoder.pretrained):
+        if encoder.get("pretrained", None) and os.path.exists(encoder.pretrained):
             self.encoder = self.load_pretrained(self.encoder, encoder.pretrained, encoder.prefix)
 
     def load_pretrained(self, network, pretrain_path, prefix):

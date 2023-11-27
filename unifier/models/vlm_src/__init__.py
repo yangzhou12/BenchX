@@ -6,3 +6,4 @@ from .MedCLIP import load_medclip_vit, load_medclip_resnet50
 from .REFERS import load_refers
 from .PTUnifier import load_ptunifier
 from .MFLAG import load_mflag 
+from .ConVIRT import load_convirt

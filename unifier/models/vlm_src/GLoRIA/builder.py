@@ -31,7 +31,7 @@ def build_gloria_from_ckpt(ckpt):
     ckpt_dict = fixed_ckpt_dict
 
     gloria_model = build_gloria_model(cfg)
-    gloria_model.load_state_dict(ckpt_dict)
+    gloria_model.load_state_dict(ckpt_dict, strict=False)
 
     return gloria_model
 

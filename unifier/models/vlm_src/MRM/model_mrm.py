@@ -262,16 +262,21 @@ class MRM(nn.Module):
             outputs = self.forward_report_decoder(latent, input_ids, None, attention_mask, token_type_ids) # set labels to None
             
             pred = self.forward_decoder(latent, ids_restore, projection=False)
-            img_embeds = self.bert_mlp(pred)[:, 1:, :].mean(dim=1)
-            text_embeds = outputs["pooler_output"]
+            img_embeds = self.bert_mlp(pred)[:, 1:, :].mean(dim=1) # [1, 384]
+            text_embeds = outputs["pooler_output"] # [5, 384]
 
             img_emb_g.append(img_embeds)
             text_emb_g.append(text_embeds)
+
+            # 1 Image 5 prompts for 5 classes
+            # Cos sim img in [1,384] text [5,5,384] - [1000, 384]; [25, 384]
+            # [1, 5] for the prompts of certain class, avg to get the class score.
+            # 1000 images, [1000,5] for 5 classes
             
         img_emb_g = torch.mean(torch.stack(img_emb_g), dim=1)
-        text_emb_g = torch.mean(torch.stack(text_emb_g), dim=0)
+        text_emb_g = torch.mean(torch.stack(text_emb_g), dim=0) # [1000, 5, 384]
         
-        return {"img_emb_g": img_emb_g, "text_emb_g": text_emb_g}
+        return {"img_emb_g": img_emb_g, "text_emb_g": text_emb_g} #[1000, 384] [5, 384]
 
 
 def mrm(**kwargs):

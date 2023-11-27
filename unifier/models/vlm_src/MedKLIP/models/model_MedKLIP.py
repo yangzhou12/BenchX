@@ -21,6 +21,15 @@ args.attribute_set_size
 '''
 
 
+ORIGINAL_CLASSES = [
+            'normal', 'clear', 'sharp', 'sharply', 'unremarkable', 'intact', 'stable', 'free',
+            'effusion', 'opacity', 'pneumothorax', 'edema', 'atelectasis', 'tube', 'consolidation', 'process', 'abnormality', 'enlarge', 'tip', 'low',
+            'pneumonia', 'line', 'congestion', 'catheter', 'cardiomegaly', 'fracture', 'air', 'tortuous', 'lead', 'disease', 'calcification', 'prominence',
+            'device', 'engorgement', 'picc', 'clip', 'elevation', 'expand', 'nodule', 'wire', 'fluid', 'degenerative', 'pacemaker', 'thicken', 'marking', 'scar',
+            'hyperinflate', 'blunt', 'loss', 'widen', 'collapse', 'density', 'emphysema', 'aerate', 'mass', 'crowd', 'infiltrate', 'obscure', 'deformity', 'hernia',
+            'drainage', 'distention', 'shift', 'stent', 'pressure', 'lesion', 'finding', 'borderline', 'hardware', 'dilation', 'chf', 'redistribution', 'aspiration',
+            'tail_abnorm_obs', 'excluded_obs'
+        ]
 
 
 class MedKLIP(nn.Module):
@@ -63,7 +72,7 @@ class MedKLIP(nn.Module):
         self.dropout_feas = nn.Dropout(config['dropout'] )
 
         # Attribute classifier
-        self.classifier = nn.Linear(self.d_model,config['attribute_set_size'])
+        self.classifier = nn.Linear(self.d_model, config['attribute_set_size'])
 
         self.apply(self._init_weights)
 
@@ -105,7 +114,6 @@ class MedKLIP(nn.Module):
         x = self.res_l1(h)
         x = F.relu(x)
         
-        
         x = self.res_l2(x)
         out_emb = rearrange(x,'(b n) d -> b n d',b=batch_size)
         return out_emb
@@ -113,22 +121,45 @@ class MedKLIP(nn.Module):
     def forward(self, images):
         B = images.shape[0]
         
-        device = images.device
         ''' Visual Backbone '''
-        x = self.image_encoder(images) #batch_size,patch_num,dim
+        x = self.image_encoder(images) #batch_size, patch_num, dim
         features = x.transpose(0,1) #patch_num b dim
         
-        query_embed = self.disease_embedding_layer(self.disease_book)
+        query_embed = self.disease_embedding_layer(self.disease_book.cuda())
         query_embed = query_embed.unsqueeze(1).repeat(1, B, 1)
         features, ws = self.decoder(query_embed, features, 
             memory_key_padding_mask=None, pos=None, query_pos=None)
         out = self.dropout_feas(features)
-        x= self.classifier(out).transpose(0,1) #B query Atributes
+        x = self.classifier(out).transpose(0,1) #B query Atributes
         
-        return x
+        return x  #batch_size, num_classes, dim
     
-    def image_encoder_forward(self, images):
-        pass
+    def zeroshot_forward(self, imgs=None, texts=None):
+        imgs = imgs.cuda()
+
+        texts["Effusion"] = texts.pop("Pleural Effusion")
+        predicted_classes = list(texts.keys())
+
+        mapping = []
+        for disease in predicted_classes:
+            disease = disease.lower()
+            if disease in ORIGINAL_CLASSES:
+                mapping.append(ORIGINAL_CLASSES.index(disease))
+            else:
+                mapping.append(-1)
+        MIMIC_mapping = [ _ for i,_ in enumerate(mapping) if _ != -1]
+
+        with torch.no_grad():
+            pred_class = self.forward(imgs) #num_images, len(ORIGINAL_CLASSES), dim
+            pred_class = F.softmax(pred_class.reshape(-1,2)).reshape(-1, len(ORIGINAL_CLASSES), 2)
+            preds = pred_class[:, MIMIC_mapping, 1] # num_images, len(MIMIC_mapping)
+
+        outputs = {
+            'logits': preds.detach().cpu(), # [num_images, num_classes]
+            'class_names': predicted_classes
+        }
+
+        return outputs
 
     @staticmethod
     def _init_weights(module):
