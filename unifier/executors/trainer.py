@@ -23,18 +23,18 @@ class TrainerConfig(object):
         self.seed = seed
         self.state = None
         self.ckpt_dir = self.config.ckpt_dir
-        self.ckpt = self.config.ckpt
+        self.ckpt = self.config.get("ckpt")
 
         # Training
-        self.eval_start = self.config.eval_start or 0
-        self.eval_interval = self.config.eval_interval or 1
-        self.decay_metric_start = self.config.decay_metric_start or 0
-        self.early_stop_start = self.config.early_stop_start or 0
-        self.grad_accu = self.config.grad_accu or 1
-        self.clip_grad_norm = self.config.clip_grad_norm
+        self.eval_start = self.config.get("eval_start", 0)
+        self.eval_interval = self.config.get("eval_interval", 1)
+        self.decay_metric_start = self.config.get("decay_metric_start", 0)
+        self.early_stop_start = self.config.get("early_stop_start", 0)
+        self.grad_accu = self.config.get("grad_accu", 1)
+        self.clip_grad_norm = self.config.get("clip_grad_norm")
 
         # Do we resume training?
-        if config.ckpt is not None:
+        if config.get("ckpt") is not None:
             self.state = torch.load(config.ckpt)
 
         # Logger
@@ -166,7 +166,7 @@ class Trainer(TrainerConfig):
             training_loss = sum(losses) / iteration
 
             # Compute early_stop_score according to early_stop_metric if specified
-            if self.config.early_stop_metric == "training_loss" and do_earl_stop:
+            if self.config.get("early_stop_metric") == "training_loss" and do_earl_stop:
                 early_stop_score = training_loss
 
             # Do eval ?
@@ -174,7 +174,7 @@ class Trainer(TrainerConfig):
                 self.evaluator.epoch = epoch
                 self.evaluator.start()
                 # Compute early stop according to evaluation metric if specified
-                if self.config.early_stop_metric != "training_loss" and do_earl_stop:
+                if self.config.get("early_stop_metric") != "training_loss" and do_earl_stop:
                     early_stop_score = np.mean(
                         [
                             s[self.config.early_stop_metric]

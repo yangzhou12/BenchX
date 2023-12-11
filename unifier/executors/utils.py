@@ -261,7 +261,7 @@ def create_data_loader(
 
 
 def create_scaler(config, logger, state_dict=None):
-    scaler = torch.cuda.amp.GradScaler(enabled=(config.use_amp or False))
+    scaler = torch.cuda.amp.GradScaler(enabled=(config.get("use_amp", False)))
     logger.settings("Using scaler : {}".format(scaler.is_enabled()))
     if state_dict is not None and "scaler" in state_dict:
         scaler.load_state_dict(state_dict["scaler"])
@@ -372,7 +372,7 @@ class TrainingScheduler(object):
 
         # 4info: You can decay_on_training_loss and have a early_stop_metric different than training loss
         self.decay_on_training_loss = (
-            self.lr_decay_params.decay_on_training_loss or False
+            self.lr_decay_params.get("decay_on_training_loss", False)
         )
 
         if early_stop_metric in ["validation_loss", "training_loss"]:

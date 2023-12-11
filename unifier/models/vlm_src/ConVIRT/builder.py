@@ -3,7 +3,7 @@ from omegaconf import OmegaConf
 from unifier.models.vilmedic.ConVIRT import ConVIRT
 
 
-CONFIG_FILEPATH = "config/pretrain/convirt-mimic_resnet50.yml"
+CONFIG_FILEPATH = "config/templates/pretrain/convirt-mimic_resnet50.yml"
 
 def load_convirt(ckpt, **kwargs):
     if ckpt:

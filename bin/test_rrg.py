@@ -44,11 +44,8 @@ def main():
                           seed=seed,
                           from_training=True)
 
-    # Lets be gentle, give evaluator to trainer
-    trainer.evaluator = evaluator
-
     # Boom
-    trainer.start()
+    evaluator.start()
 
 
 if __name__ == "__main__":

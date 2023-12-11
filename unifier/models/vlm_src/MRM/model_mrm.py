@@ -255,6 +255,11 @@ class MRM(nn.Module):
         img_emb_g = []
         text_emb_g = []
 
+        # 1 Image 5 prompts for 5 classes
+        # Cos sim img in [1,384] text [5,5,384] - [1000, 384]; [25, 384]
+        # [1, 5] for the prompts of certain class, avg to get the class score.
+        # 1000 images, [1000,5] for 5 classes
+
         for img in imgs:
             N = input_ids.shape[0]
             latent, _, ids_restore = self.forward_encoder(img.unsqueeze(0), mask_ratio=0) # set mask ratio to 0
@@ -267,11 +272,6 @@ class MRM(nn.Module):
 
             img_emb_g.append(img_embeds)
             text_emb_g.append(text_embeds)
-
-            # 1 Image 5 prompts for 5 classes
-            # Cos sim img in [1,384] text [5,5,384] - [1000, 384]; [25, 384]
-            # [1, 5] for the prompts of certain class, avg to get the class score.
-            # 1000 images, [1000,5] for 5 classes
             
         img_emb_g = torch.mean(torch.stack(img_emb_g), dim=1)
         text_emb_g = torch.mean(torch.stack(text_emb_g), dim=0) # [1000, 5, 384]

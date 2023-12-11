@@ -25,7 +25,7 @@ class InitValidator(object):
         if self.metrics and not isinstance(self.metrics, (list, ListConfig)):
             self.metrics = [self.metrics]
 
-        self.post_processing = config.post_processing
+        self.post_processing = config.get("post_processing")
 
         self.epoch = 0
 
@@ -41,7 +41,7 @@ class InitValidator(object):
                     called_by_ensemblor=not from_training,
                 ),
             )
-            for split in self.config.splits
+            for split in self.config.get("splits")
         ]
 
 

@@ -8,14 +8,15 @@ model:
       proto: microsoft/swin-tiny-patch4-window7-224
       pretrained: /home/faith/unified-framework/ckpt/official/MedCLIP-vit.bin
       prefix: vision_model.model.
+    pooled: False
     dropout_out: 0.0
     freeze: False
 
     #####  Uncomment below for zero-shot and cls  #####
-    visual_projection: 
-      layer: >
-        nn.Linear(768, 512, bias=False)
-      prefix: visual_model.projection_head.
+    # visual_projection: 
+    #   layer: >
+    #     nn.Linear(768, 512, bias=False)
+    #   prefix: visual_model.projection_head.
 
   fusion: # for MMVQA
     input_image_embed_size: 768

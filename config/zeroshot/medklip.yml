@@ -12,9 +12,3 @@ model:
     freeze: False
     named_children: False
 
-    # TODO: Visual projection using res_l1, relu, res_l2
-    # visual_projection: 
-    #   layer: >
-    #     nn.Linear(256, 768, bias=False)
-    #   prefix: visual_model.projection_head.
-

@@ -135,6 +135,9 @@ class MedKLIP(nn.Module):
         return x  #batch_size, num_classes, dim
     
     def zeroshot_forward(self, imgs=None, texts=None):
+        if self.mode != "classification":
+            raise NotImplementedError(f"Zero-shot task {self.mode} not supported for MedKLIP")
+
         imgs = imgs.cuda()
 
         texts["Effusion"] = texts.pop("Pleural Effusion")
@@ -151,7 +154,7 @@ class MedKLIP(nn.Module):
 
         with torch.no_grad():
             pred_class = self.forward(imgs) #num_images, len(ORIGINAL_CLASSES), dim
-            pred_class = F.softmax(pred_class.reshape(-1,2)).reshape(-1, len(ORIGINAL_CLASSES), 2)
+            pred_class = F.softmax(pred_class, dim=-1)
             preds = pred_class[:, MIMIC_mapping, 1] # num_images, len(MIMIC_mapping)
 
         outputs = {
