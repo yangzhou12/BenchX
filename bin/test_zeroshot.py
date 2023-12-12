@@ -72,44 +72,10 @@ def process_class_prompts(cls_prompts, tokenizer, device, max_length=97):
     return cls_prompt_inputs
 
 
-def process_report(report_text, tokenizer, device, max_length=97):
-    text_inputs = tokenizer(report_text, truncation=True, padding="max_length", 
-                                    return_tensors='pt', max_length=max_length)
-    for k, v in text_inputs.items():
-        text_inputs[k] = v.to(device)
-
-    cap_lens = []
-    for txt in report_text:
-        cap_lens.append(len([w for w in txt if not w.startswith("[")]))
-    text_inputs["cap_lens"] = cap_lens
-
-    return text_inputs
-
-
-def process_img(paths, tfm, device):
-    transform = eval("transforms." + tfm)(is_train=False)
-
-    if type(paths) == str:
-        paths = [paths]
-
-    all_imgs = []
-    for p in paths:
-        x = cv2.imread(str(p), 0)       
-        img = Image.fromarray(x).convert("RGB")
-        img = transform(img) # transform images
-        all_imgs.append(img)
-
-    all_imgs = torch.stack(all_imgs).to(device)
-
-    return all_imgs
-
-
 def main(args):
     # Set up CUDA and GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Total CUDA devices: ", torch.cuda.device_count())
-
-    df = pd.read_csv(_CSVPATH[args.dataset])
 
     # Set seed
     get_seed(seed = args.seed)
@@ -123,11 +89,16 @@ def main(args):
 
     dataset = eval(args.dataset)(img_path=args.img_path, transform=args.transforms, tokenizer=tokenizer)
 
+    sampler = torch.utils.data.RandomSampler(
+        dataset, replacement=False, num_samples=len(dataset)
+    )
+
     zeroshot_dataloader = DataLoader(
         dataset,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         pin_memory=True,
+        sampler=sampler, 
         shuffle=False,
         collate_fn=dataset.collate_fn if hasattr(dataset, "collate_fn") else None,
         drop_last=False,
@@ -135,11 +106,12 @@ def main(args):
 
     results = []
     for i, sample in enumerate(tqdm(zeroshot_dataloader)):
-        image = sample['image']
-        target = sample['target']
+        image = sample['image'].to(device)
+        target = sample['target'].to(device)
 
         if args.mode == "retrieval":
             text = sample['text'] # throws error if there is no reports for dataset
+            text = {k: v.to(device) for k, v in text.items() if type(v) == torch.Tensor}
         elif args.mode == "classification":
             text = process_class_prompts(cls_prompts, tokenizer, device)
         
@@ -163,7 +135,7 @@ if __name__ == "__main__":
     parser.add_argument("--tokenizer", type=str, help="file path or huggingface model")
     parser.add_argument("--similarity_type", type=str, choices=["global", "local", "both"])
     parser.add_argument("--mode", type=str, default="retrieval", choices=["retrieval", "classification"])
-    parser.add_argument("--batch_size", default=1000)
+    parser.add_argument("--batch_size", type=int, default=1000)
 
     # To be configured based on hardware/directory
     parser.add_argument("--ckpt_path", type=str)

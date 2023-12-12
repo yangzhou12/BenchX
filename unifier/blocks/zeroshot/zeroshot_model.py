@@ -119,8 +119,8 @@ class ZeroshotModel(nn.Module):
                 accs.append(accuracy_score(gt_np, pred_np > max_f1_thresh))
 
             return {
-                "F1-score", np.array(max_f1s).mean(),
-                "ACC", np.array(accs).mean()
+                "F1-score": np.array(max_f1s).mean(),
+                "ACC": np.array(accs).mean()
             }
 
         elif self.mode == "retrieval":

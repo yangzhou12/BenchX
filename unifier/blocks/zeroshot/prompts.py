@@ -119,6 +119,15 @@ PNEUMONIA_CLASS_PROMPTS = {
 }
 
 
+DISEASE_BOOK_CLASS_PROMPTS = {
+    "Atelectasis": "It is the collapse or closure of a lung resulting in reduced or absent gas exchange. Findings can include lung opacification and loss of lung volume.",
+    "Cardiomegaly": "Cardiomegaly (sometimes megacardia or megalocardia) is a medical condition in which the heart is enlarged.",
+    "Consolidation": "It is a region of normally compressible lung tissue that has filled with liquid instead of air. Consolidation must be present to diagnose pneumonia: the signs of lobar pneumonia are characteristic and clinically referred to as consolidation.",
+    "Edema": "Pulmonary edema, also known as pulmonary congestion, is excessive liquid accumulation in the tissue and air spaces of the lungs. It will show fluid in the alveolar walls",
+    "Pleural Effusion": "A pleural effusion is accumulation of excessive fluid in the pleural space, the potential space that surrounds each lung. A pleural effusion infiltrates the space between the visceral pleura and the parietal pleura"
+}
+
+
 def generate_chexpert_class_prompts(n = 5):
     prompts = {}    
     for k, v in CHEXPERT_CLASS_PROMPTS.items():

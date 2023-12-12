@@ -402,7 +402,8 @@ class PTUnifierTransformerSS(pl.LightningModule):
         
         img_emb_g = []
         text_emb_g = []
-        for i, img in enumerate(imgs): # for each image - 1000
+
+        for i, img in enumerate(imgs):
             batch = {
                 "image": [img.repeat(N, 1, 1, 1)],
                 "text_ids": input_ids,
@@ -412,9 +413,9 @@ class PTUnifierTransformerSS(pl.LightningModule):
             infer = self.infer(batch,
                             pseudo_vision=self.hparams.config["language_only"],
                             pseudo_language=self.hparams.config["vision_only"])
-            img_embs = infer["multi_modal_image_cls_feats"] # [10, 768]
+            img_embs = infer["multi_modal_image_cls_feats"]
             img_emb_g.append(img_embs)
-            text_embs = infer["multi_modal_text_cls_feats"] # [10, 768]
+            text_embs = infer["multi_modal_text_cls_feats"]
             text_emb_g.append(text_embs)
         
         img_emb_g = torch.mean(torch.stack(img_emb_g), dim=1)

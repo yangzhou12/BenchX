@@ -53,10 +53,8 @@ class MIMIC_5x200(Dataset):
         text_inputs = self.tokenizer(report, truncation=True, padding="max_length", 
                                      return_tensors='pt', max_length=max_length)
         
-        cap_lens = []
-        for txt in report:
-            cap_lens.append(len([w for w in txt if not w.startswith("[")]))
-        text_inputs["cap_lens"] = cap_lens
+        cap_lens = len([w for w in report if not w.startswith("[")])
+        text_inputs["cap_lens"] = torch.tensor(cap_lens)
         
         return text_inputs
     
@@ -84,17 +82,9 @@ class MIMIC_5x200(Dataset):
             image_list.append(img)
             text_list.append(text)
             target_list.append(target)
-
-        input_ids = torch.stack([x["input_ids"] for x in text_list]).squeeze()
-        attention_masks = torch.stack([x["attention_mask"] for x in text_list]).squeeze()
-        token_type_ids = torch.stack([x["token_type_ids"] for x in text_list]).squeeze()
         
         all_imgs = torch.stack(image_list)
-        all_txt = {
-            "input_ids": input_ids,
-            "attention_mask": attention_masks,
-            "token_type_ids": token_type_ids,
-        }
+        all_txt = {k: torch.stack([dic[k] for dic in text_list]).squeeze() for k in text_list[0]}
         all_targets = torch.stack(target_list)    
 
         return {"image": all_imgs,
