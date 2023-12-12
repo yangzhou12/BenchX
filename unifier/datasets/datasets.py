@@ -433,7 +433,7 @@ class CheX_Dataset(Dataset):
         self,
         imgpath,
         csvpath=USE_INCLUDED_FILE,
-        views=["PA"],
+        views=["PA", "AP"],
         transform=None,
         flat_dir=True,
         seed=0,
@@ -607,7 +607,7 @@ class RSNA_Pneumonia_Dataset(Dataset):
         imgpath,
         csvpath=USE_INCLUDED_FILE,
         dicomcsvpath=USE_INCLUDED_FILE,
-        views=["PA"],
+        views=["PA", "AP"],
         transform=None,
         nrows=None,
         seed=0,
@@ -778,7 +778,6 @@ class SIIM_Pneumothorax_Dataset(Dataset):
         csvpath=USE_INCLUDED_FILE,
         transform=None,
         seed=0,
-        unique_patients=True,
         pathology_masks=False,
         split="train"
     ):
@@ -845,15 +844,16 @@ class SIIM_Pneumothorax_Dataset(Dataset):
             raise Exception("Please install pydicom to work with this dataset")
         img = pydicom.filereader.dcmread(img_path).pixel_array
         img = Image.fromarray(img).convert("RGB")
-
-        sample["img"] = img
-
+        
         if self.pathology_masks:
-            sample["pathology_masks"] = self.get_pathology_mask_dict(
-                imgid, sample["img"].shape[2]
+            from torchvision import transforms
+            pathology_masks = self.get_pathology_mask_dict(
+                imgid, transforms.ToTensor()(img).shape[2]
             )
 
-        sample = apply_transforms(sample, self.transform)
+        augmented = self.transform(img, mask=pathology_masks)
+        sample["img"] = augmented["image"]
+        sample["pathology_masks"] = augmented["mask"].squeeze()
 
         return sample
 
@@ -903,6 +903,26 @@ class SIIM_Pneumothorax_Dataset(Dataset):
                 path_mask[self.pathologies.index(patho)] = mask
 
         return path_mask
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            if self.pathology_masks:
+                for i, s in enumerate(batch):
+                    if i == 0:  # initialize dict of empty lists with same keys
+                        masks = dict.fromkeys(s["pathology_masks"], [])
+                    for k, v in s["pathology_masks"].items():
+                        masks[k].append(v)
+                masks = {k: torch.stack(v) for k, v in masks.items()}
+                collated.update({"pathology_masks": masks})
+            return collated
+
+        return collate_fn
 
 
 class NIH_Dataset(Dataset):
@@ -937,7 +957,7 @@ class NIH_Dataset(Dataset):
         imgpath,
         csvpath=USE_INCLUDED_FILE,
         bbox_list_path=USE_INCLUDED_FILE,
-        views=["PA"],
+        views=["PA", "AP"],
         transform=None,
         seed=0,
         unique_patients=True,

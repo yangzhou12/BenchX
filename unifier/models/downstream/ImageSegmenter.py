@@ -5,30 +5,33 @@ from tqdm import tqdm
 from segmentation_models_pytorch import Unet
 
 from unifier.blocks.custom.setr import SETRModel
+from unifier.blocks.losses import MixedLoss
 from unifier.models.utils import get_n_params
 
 
 
-def evaluation(models, config, dl, **kwargs)
-    logits = np.zeros((len(dl.dataset), len(models), num_classes))
-    labels = np.zeros((len(dl.dataset), num_classes))
+def evaluation(models, config, dl, **kwargs):
+    logits = np.zeros((len(dl.dataset), len(models)))
+    masks = np.zeros(len(dl.dataset))
     losses = np.zeros((len(dl), len(models)))
-    cumulative_index = 0
 
     with torch.no_grad():
         for num_batch, batch in enumerate(tqdm(dl, total=len(dl))):
             batch = {k: v.cuda() if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+            masks[num_batch] = batch["pathology_masks"]
 
             for num_model, model in enumerate(models):
-                result = model(batch["images"], from_training=False)
+                result = model(batch["images"])
                 losses[num_batch][num_model] = result["loss"].cpu().item()
+                logits[num_batch][num_model] = result["output"].cpu().item()
 
+    preds = np.mean(logits, axis=1)
     loss = np.mean(losses)
 
     return {
         "loss": loss,
-        "refs": eval_gts,
-        "hyps": eval_res,
+        "refs": masks,
+        "hyps": preds,
     }
 
 
@@ -85,16 +88,15 @@ class ImageSegmenter(nn.Module):
             if layer_k in state_dict:
                 del state_dict[layer_k]
     
-        msg = self.visual_encoder.load_state_dict(state_dict, strict=False)
-        print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
+        msg = self.visual_encoder.load_state_dict(state_dict, strict=True)
 
-    def forward(self, images, labels=None, from_training=True, iteration=None, epoch=None, **kwargs):
+    def forward(self, images, pathology_masks=None, from_training=True, iteration=None, epoch=None, **kwargs):
         logit = self.model(images)
         out = logit.squeeze(dim=1)
 
         loss = torch.tensor(0.0)
         if from_training:
-            loss = self.loss_func(out, labels.cuda().float(), **kwargs)
+            loss = self.loss_func(out, pathology_masks.cuda().float(), **kwargs)
 
         return {"loss": loss, "output": out, "pred": torch.sigmoid(out)}
 

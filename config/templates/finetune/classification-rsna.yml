@@ -7,7 +7,6 @@ ckpt_dir: ckpt
 dataset:
   proto: RSNA_Pneumonia_Dataset
   imgpath: /VLM/rsna_pneumonia/stage_2_train_images
-  views: ["PA", "AP"]
   data_pct: 0.01
 
 transforms:

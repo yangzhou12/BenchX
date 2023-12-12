@@ -25,6 +25,7 @@ from transformers import (
     get_polynomial_decay_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
 )
+from timm.scheduler.cosine_lr import CosineLRScheduler
 from unifier.blocks.schedulers import LinearWarmupCosineAnnealingLR, WarmupCosineScheduler
 import sys
 
@@ -160,7 +161,7 @@ def create_optimizer(config, logger, model, state_dict=None):
     print(config.optim_params)
 
     # Initialize optimizer groups
-    if config.optim_params.optim_groups:
+    if config.optim_params.get("optim_groups", None):
         model_params = create_optim_param_groups(config, model)
     else:
         model_params = model.parameters()
@@ -334,7 +335,8 @@ class TrainingScheduler(object):
         "CosineAnnealingWarmRestarts",
         "get_polynomial_decay_schedule_with_warmup",
         "get_cosine_schedule_with_warmup",
-        "WarmupCosineScheduler"
+        "WarmupCosineScheduler",
+        "CosineLRScheduler"
     }
     epoch_step_scheduler = {
         "LambdaLR",

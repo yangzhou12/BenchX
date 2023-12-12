@@ -7,7 +7,6 @@ ckpt_dir: ckpt
 dataset:
   proto: NIH_Dataset
   imgpath: /VLM/nih_chest_xray/all_classes
-  views: ["PA", "AP"]
   data_pct: 0.01
 
 transforms:

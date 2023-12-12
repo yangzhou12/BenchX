@@ -152,3 +152,9 @@ class SegmentationTransforms(BaseTransforms):
         )
 
         self.data_transforms = Compose(data_transforms)
+
+    def __call__(self, image, mask=None):
+        if mask:
+            return self.data_transforms(image=np.array(image), mask=np.array(mask))
+        else:
+            return self.data_transforms(image=np.array(image))

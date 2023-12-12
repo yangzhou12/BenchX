@@ -45,16 +45,6 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
             f.close()
 
     for metric in metrics:
-        # metric_args = dict()
-        #
-        # # if metric has arguments
-        # if OmegaConf.is_dict(metric):
-        #     if len(metric) != 1:
-        #         logger.warning("Metric badly formatted: {}. Skipping.".format(metric))
-        #         continue
-        #     metric_args = metric[list(metric.keys())[0]]
-        #     metric = list(metric.keys())[0]
-
         # Iterating over metrics
         if metric == "accuracy":
             scores["accuracy"] = round(
@@ -96,6 +86,26 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
         elif metric in "ROUGEL":
             score, _ = Rouge().compute_score(refs, hyps)
             scores["ROUGEL"] = score
+        elif metric == "medDice":
+            dice = 0
+            for result, gt in zip(hyps, refs):
+                p = result
+                t = gt
+                t_sum = t.sum()
+                p_sum = p.sum()
+
+                if t_sum == 0:
+                    dice_instance = float(p_sum == 0)
+                    dice += dice_instance
+                else:
+                    mask = t != 0
+                    p_not0 = p[mask]
+                    t_not0 = t[mask]
+                    inter = (p_not0 == t_not0).sum() * 2
+                    dice_instance = inter / (p_sum + t_sum)
+                    dice += dice_instance
+            dice /= len(refs)
+            score["medDice"] = dice
         else:
             logger.warning("Metric not implemented: {}".format(metric))
 

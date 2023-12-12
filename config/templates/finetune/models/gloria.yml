@@ -4,7 +4,7 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /content/drive/MyDrive/A*STAR Internship/Checkpoints/GLoRIA.ckpt
+    pretrained: /home/faith/unified-framework/ckpt/official/GLoRIA.ckpt
     prefix: gloria.img_encoder.model.
     output_layer: layer4 # change to avgpool for zero-shot
     dropout_out: 0.0
