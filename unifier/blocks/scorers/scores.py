@@ -47,10 +47,7 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
     for metric in metrics:
         # Iterating over metrics
         if metric == "accuracy":
-            scores["accuracy"] = round(
-                np.mean(np.argmax(refs, axis=-1) == np.argmax(hyps, axis=-1)) * 100,
-                2,  # change from array to argmax for refs
-            )
+            scores["accuracy"] = round(np.mean(np.argmax(refs, axis=-1) == np.argmax(hyps, axis=-1)) * 100, 2)
         elif metric == "vqa_score":
             hyps_tensor = torch.from_numpy(hyps)
             refs_tensor = torch.from_numpy(refs)
@@ -119,7 +116,3 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
                 )
             )
     return scores
-
-
-if __name__ == "__main__":
-    pass

@@ -1,5 +1,5 @@
 includes:
-  - config/finetune/models/medclip_vit.yml
+  - config/classification/models/medclip_vit.yml
 
 name: classification_nih
 ckpt_dir: ckpt

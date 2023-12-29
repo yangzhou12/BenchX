@@ -1,5 +1,5 @@
 includes:
-  - config/finetune/models/mflag.yml
+  - config/classification/models/mflag.yml
 
 name: classification_nih
 ckpt_dir: ckpt

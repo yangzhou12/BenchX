@@ -10,13 +10,13 @@ def evaluation(models, config, dl, **kwargs):
     losses = np.array([])
     attentions = None
     cumulative_index = 0
-    post_processing = {}
+    # post_processing = {}
 
     for num_batch, batch in enumerate(tqdm(dl, total=len(dl))):
         label = batch["labels"]
 
         batch_size = label.shape[0]  # batch_size
-        num_classes = config.model.classifier.num_classes or config.model.cnn.num_classes
+        num_classes = config.model.classifier.get("num_classes", config.model.cnn.num_classes)
 
         batch = {
             k: v.cuda()

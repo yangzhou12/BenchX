@@ -1,5 +1,5 @@
 includes:
-  - config/finetune/models/convirt.yml
+  - config/classification/models/convirt.yml
 
 name: classification_nih
 ckpt_dir: ckpt

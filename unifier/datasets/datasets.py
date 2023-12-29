@@ -11,15 +11,20 @@ from tqdm import tqdm
 from typing import Dict, List
 from PIL import Image
 import skimage.transform
-import unicodedata
 from skimage.io import imread
 import torch
+import cv2
+from ast import literal_eval
+
+import sys
+sys.path.append("/raid/zhouyang/unified-framework")
+
 import unifier
 from collections import Counter
 from transformers import AutoTokenizer
-from unifier.datasets.utils import split_into_sents
+from unifier.datasets.utils import split_into_sents, convert_dcm_to_filetype
 from unifier.blocks.custom.r2gen import Tokenizer
-
+import tarfile
 
 default_pathologies = [
     "Atelectasis",
@@ -48,7 +53,7 @@ USE_INCLUDED_FILE = "USE_INCLUDED_FILE"
 thispath = os.path.dirname(os.path.realpath(__file__))
 datapath = os.path.join(thispath, "data")
 
-# this is for caching small things for speed
+# This is for caching small things for speed
 _cache_dict = {}
 
 
@@ -71,7 +76,7 @@ def apply_transforms(sample, transform, seed=None) -> Dict:
         if type(sample["img"]) == list: # multi-image
             for i, img in enumerate(sample["img"]):
                 sample["img"][i] = transform(img)
-        else: #single image
+        else: # single image
             sample["img"] = transform(sample["img"])
 
         if "pathology_masks" in sample:
@@ -105,7 +110,7 @@ class Dataset:
     Although it is called pathologies, the contents do not have to be 
     pathologies and may simply be attributes of the patient. """
 
-    labels: List | np.ndarray
+    labels: np.ndarray | torch.Tensor
     """A NumPy array which contains a 1, 0, or NaN for each pathology. Each 
     column is a pathology and each row corresponds to an item in the dataset. 
     A 1 represents that the pathology is present, 0 represents the pathology 
@@ -181,7 +186,6 @@ class Dataset:
         if "*" not in views:
             self.csv = self.csv[self.csv["view"].isin(self.views)]  # Select the view
 
-
 class MIMIC_Dataset(Dataset):
     """MIMIC-CXR Dataset
 
@@ -207,6 +211,7 @@ class MIMIC_Dataset(Dataset):
         seed=0,
         unique_patients=False,
         split="train",
+        data_pct=1,
         section=None,  # impression, findings, or both
         tokenizer=None,
         max_words=112,
@@ -300,13 +305,12 @@ class MIMIC_Dataset(Dataset):
             if pathology in self.csv.columns:
                 self.csv.loc[healthy, pathology] = 0
                 mask = self.csv[pathology]
+            labels.append(torch.FloatTensor(mask.values))
 
-            labels.append(mask.values)
-        self.labels = np.asarray(labels).T
-        self.labels = self.labels.astype(np.float32)
+        self.labels = torch.stack(labels).T
 
         # Make all the -1 values into nans to keep things simple
-        self.labels[self.labels == -1] = np.nan
+        self.labels[self.labels == -1] = float('nan')
 
         # Rename pathologies
         self.pathologies = list(
@@ -399,15 +403,16 @@ class MIMIC_Dataset(Dataset):
         def collate_fn(batch):  # collate function for multimodal dataset
             seq = self.tokenizer([s["report"] for s in batch], **self.tokenizer_args)
             imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
             collated = {
                 "input_ids": seq.input_ids,
                 "attention_mask": seq.attention_mask,
                 "images": torch.stack(imgs),
+                "labels": torch.stack(labels)
             }
             return collated
 
         return collate_fn
-
 
 class CheX_Dataset(Dataset):
     """CheXpert Dataset
@@ -499,16 +504,15 @@ class CheX_Dataset(Dataset):
                 if pathology != "Support Devices":
                     self.csv.loc[healthy, pathology] = 0
                 mask = self.csv[pathology]
+            labels.append(torch.FloatTensor(mask.values))
 
-            labels.append(mask.values)
-        self.labels = np.asarray(labels).T
-        self.labels = self.labels.astype(np.float32)
+        self.labels = torch.stack(labels).T
 
         # Make all the -1 values into nans to keep things simple
-        self.labels[self.labels == -1] = np.nan
+        self.labels[self.labels == -1] = float('nan')
 
         # Set labels with nan to 0
-        self.labels[np.isnan(self.labels)] = 0
+        self.labels[torch.isnan(self.labels)] = 0
 
         # Rename pathologies
         self.pathologies = list(
@@ -569,7 +573,7 @@ class CheX_Dataset(Dataset):
     def get_collate_fn(self):
         def collate_fn(batch):
             imgs = [s["img"] for s in batch]
-            labels = [torch.from_numpy(s["lab"]) for s in batch]
+            labels = [s["lab"] for s in batch]
             collated = {
                 "labels": torch.stack(labels),
                 "images": torch.stack(imgs),
@@ -578,6 +582,727 @@ class CheX_Dataset(Dataset):
 
         return collate_fn
 
+class PC_Dataset(Dataset):
+    """PadChest dataset from the Hospital San Juan de Alicante - University of
+    Alicante
+
+    Note that images with null labels (as opposed to normal), and images that
+    cannot be properly loaded (listed as 'missing' in the code) are excluded,
+    which makes the total number of available images slightly less than the
+    total number of image files.
+
+    Citation:
+
+    PadChest: A large chest x-ray image dataset with multi-label annotated
+    reports. Aurelia Bustos, Antonio Pertusa, Jose-Maria Salinas, and Maria
+    de la Iglesia-Vayá. arXiv preprint, 2019. https://arxiv.org/abs/1901.07441
+
+    Dataset website:
+    http://bimcv.cipf.es/bimcv-projects/padchest/
+
+    Download full size images here:
+    https://academictorrents.com/details/dec12db21d57e158f78621f06dcbe78248d14850
+
+    Download resized (224x224) images here (recropped):
+    https://academictorrents.com/details/96ebb4f92b85929eadfb16761f310a6d04105797
+    """
+
+    def __init__(self,
+                 imgpath,
+                 csvpath=USE_INCLUDED_FILE,
+                 views=["PA"],
+                 transform=None,
+                 data_aug=None,
+                 flat_dir=True,
+                 seed=0,
+                 unique_patients=True,
+                 split="train",
+                 data_pct=1
+                ):
+
+        super(PC_Dataset, self).__init__()
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.pathologies = ["Atelectasis", "Consolidation", "Infiltration",
+                            "Pneumothorax", "Edema", "Emphysema", "Fibrosis",
+                            "Effusion", "Pneumonia", "Pleural_Thickening",
+                            "Cardiomegaly", "Nodule", "Mass", "Hernia", "Fracture",
+                            "Granuloma", "Flattened Diaphragm", "Bronchiectasis",
+                            "Aortic Elongation", "Scoliosis",
+                            "Hilar Enlargement", "Tuberculosis",
+                            "Air Trapping", "Costophrenic Angle Blunting", "Aortic Atheromatosis",
+                            "Hemidiaphragm Elevation",
+                            "Support Devices", "Tube'"]  # the Tube' is intentional
+
+        self.pathologies = sorted(self.pathologies)
+
+        mapping = dict()
+
+        mapping["Infiltration"] = ["infiltrates",
+                                   "interstitial pattern",
+                                   "ground glass pattern",
+                                   "reticular interstitial pattern",
+                                   "reticulonodular interstitial pattern",
+                                   "alveolar pattern",
+                                   "consolidation",
+                                   "air bronchogram"]
+        mapping["Pleural_Thickening"] = ["pleural thickening"]
+        mapping["Consolidation"] = ["air bronchogram"]
+        mapping["Hilar Enlargement"] = ["adenopathy",
+                                        "pulmonary artery enlargement"]
+        mapping["Support Devices"] = ["device",
+                                      "pacemaker"]
+        mapping["Tube'"] = ["stent'"]  # the ' is to select findings which end in that word
+
+        self.imgpath = imgpath
+        self.transform = transform
+        self.data_aug = data_aug
+        self.flat_dir = flat_dir
+
+        if csvpath == USE_INCLUDED_FILE:
+            self.csvpath = os.path.join(datapath, "PADCHEST_chest_x_ray_images_labels_160K_01.02.19.csv")
+        else:
+            self.csvpath = csvpath
+
+        self.check_paths_exist()
+        self.csv = pd.read_csv(self.csvpath, low_memory=False)
+
+        # Standardize view names
+        self.csv.loc[self.csv["Projection"].isin(["AP_horizontal"]), "Projection"] = "AP Supine"
+
+        self.csv["view"] = self.csv['Projection']
+        self.limit_to_selected_views(views)
+
+        # Remove null stuff
+        self.csv = self.csv[~self.csv["Labels"].isnull()]
+
+        # Remove missing files
+        missing = ["216840111366964012819207061112010307142602253_04-014-084.png",
+                   "216840111366964012989926673512011074122523403_00-163-058.png",
+                   "216840111366964012959786098432011033083840143_00-176-115.png",
+                   "216840111366964012558082906712009327122220177_00-102-064.png",
+                   "216840111366964012339356563862009072111404053_00-043-192.png",
+                   "216840111366964013076187734852011291090445391_00-196-188.png",
+                   "216840111366964012373310883942009117084022290_00-064-025.png",
+                   "216840111366964012283393834152009033102258826_00-059-087.png",
+                   "216840111366964012373310883942009170084120009_00-097-074.png",
+                   "216840111366964012819207061112010315104455352_04-024-184.png",
+                   "216840111366964012819207061112010306085429121_04-020-102.png",
+                   "216840111366964012989926673512011083134050913_00-168-009.png",  # broken PNG file (chunk b'\x00\x00\x00\x00')
+                   "216840111366964012373310883942009152114636712_00-102-045.png",  # "OSError: image file is truncated"
+                   "216840111366964012819207061112010281134410801_00-129-131.png",  # "OSError: image file is truncated"
+                   "216840111366964012487858717522009280135853083_00-075-001.png",  # "OSError: image file is truncated"
+                   "216840111366964012989926673512011151082430686_00-157-045.png",  # broken PNG file (chunk b'\x00\x00\x00\x00')
+                   "216840111366964013686042548532013208193054515_02-026-007.png",  # "OSError: image file is truncated"
+                   "216840111366964013590140476722013058110301622_02-056-111.png",  # "OSError: image file is truncated"
+                   "216840111366964013590140476722013043111952381_02-065-198.png",  # "OSError: image file is truncated"
+                   "216840111366964013829543166512013353113303615_02-092-190.png",  # "OSError: image file is truncated"
+                   "216840111366964013962490064942014134093945580_01-178-104.png",  # "OSError: image file is truncated"
+                   ]
+        self.csv = self.csv[~self.csv["ImageID"].isin(missing)]
+
+        if unique_patients:
+            self.csv = self.csv.groupby("PatientID").first().reset_index()
+
+        # Filter out age < 10 (paper published 2019)
+        self.csv = self.csv[(2019 - self.csv.PatientBirth > 10)]
+
+        # Get our classes.
+        labels = []
+        for pathology in self.pathologies:
+            mask = self.csv["Labels"].str.contains(pathology.lower())
+            if pathology in mapping:
+                for syn in mapping[pathology]:
+                    # print("mapping", syn)
+                    mask |= self.csv["Labels"].str.contains(syn.lower())
+            labels.append(torch.FloatTensor(mask.values))
+        
+        self.labels = torch.stack(labels).T
+
+        self.pathologies[self.pathologies.index("Tube'")] = "Tube"
+
+        # Add consistent csv values
+
+        # offset_day_int
+        dt = pd.to_datetime(self.csv["StudyDate_DICOM"], format="%Y%m%d")
+        self.csv["offset_day_int"] = dt.astype(np.int64) // 10**9 // 86400
+
+        # patientid
+        self.csv["patientid"] = self.csv["PatientID"].astype(str)
+
+        # age
+        self.csv['age_years'] = (2017 - self.csv['PatientBirth'])
+
+        # sex
+        self.csv['sex_male'] = self.csv['PatientSex_DICOM'] == 'M'
+        self.csv['sex_female'] = self.csv['PatientSex_DICOM'] == 'F'
+
+    def string(self):
+        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+
+        imgid = self.csv['ImageID'].iloc[idx]
+        img_path = os.path.join(self.imgpath, imgid)
+        
+        img = Image.open(img_path).convert("RGB")
+        sample["img"] = img
+
+        sample = apply_transforms(sample, self.transform)
+        sample = apply_transforms(sample, self.data_aug)
+
+        return sample
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            return collated
+
+        return collate_fn
+    
+class OpenI_Dataset(Dataset):
+    """OpenI Dataset
+
+    Dina Demner-Fushman, Marc D. Kohli, Marc B. Rosenman, Sonya E. Shooshan,
+    Laritza Rodriguez, Sameer Antani, George R. Thoma, and Clement J.
+    McDonald. Preparing a collection of radiology examinations for
+    distribution and retrieval. Journal of the American Medical Informatics
+    Association, 2016. doi: 10.1093/jamia/ocv080.
+
+    Views have been determined by projection using T-SNE.  To use the T-SNE
+    view rather than the view defined by the record,
+    set use_tsne_derived_view to true.
+
+    Dataset website:
+    https://openi.nlm.nih.gov/faq
+    """
+
+    def __init__(self, imgpath,
+                 xmlpath=USE_INCLUDED_FILE,
+                 #  dicomcsv_path=USE_INCLUDED_FILE,
+                 #  tsnepacsv_path=USE_INCLUDED_FILE,
+                 #  use_tsne_derived_view=False,
+                 #  views=["PA"],
+                 transform=None,
+                 data_aug=None,
+                 seed=0,
+                 unique_patients=True,
+                 split="train",
+                 data_pct=1
+                ):
+
+        super(OpenI_Dataset, self).__init__()
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+        self.imgpath = imgpath
+        self.transform = transform
+        self.data_aug = data_aug
+
+        self.pathologies = ["Atelectasis", "Fibrosis",
+                            "Pneumonia", "Effusion", "Lesion",
+                            "Cardiomegaly", "Calcified Granuloma",
+                            "Fracture", "Edema", "Granuloma", "Emphysema",
+                            "Hernia", "Mass", "Nodule", "Opacity", "Infiltration",
+                            "Pleural_Thickening", "Pneumothorax", ]
+
+        self.pathologies = sorted(self.pathologies)
+
+        mapping = dict()
+        mapping["Pleural_Thickening"] = ["pleural thickening"]
+        mapping["Infiltration"] = ["Infiltrate"]
+        mapping["Atelectasis"] = ["Atelectases"]
+
+        # Load data
+        
+        if xmlpath == USE_INCLUDED_FILE:
+            self.xmlpath = os.path.join(datapath, "NLMCXR_reports.tgz")
+        else:
+            self.xmlpath = xmlpath
+
+        tarf = tarfile.open(self.xmlpath, 'r:gz')
+
+        # self.projcsv_path = os.path.join(datapath, "indiana_projections.csv")
+        # projcsv = pd.read_csv(self.projcsv_path)
+        # self.csv = self.csv.join(tsne_pa, on="imageid")
+
+        samples = []
+
+        import xml
+        for filename in tarf.getnames():
+            if (filename.endswith(".xml")):
+                tree = xml.etree.ElementTree.parse(tarf.extractfile(filename))
+                root = tree.getroot()
+                uid = root.find("uId").attrib["id"]
+                labels_m = [node.text.lower() for node in root.findall(".//MeSH/major")]
+                labels_m = "|".join(np.unique(labels_m))
+                labels_a = [node.text.lower() for node in root.findall(".//MeSH/automatic")]
+                labels_a = "|".join(np.unique(labels_a))
+                image_nodes = root.findall(".//parentImage")
+                for image in image_nodes:
+                    sample = {}
+                    sample["uid"] = uid
+                    sample["imageid"] = image.attrib["id"]
+                    sample["labels_major"] = labels_m
+                    sample["labels_automatic"] = labels_a
+                    samples.append(sample)
+
+        self.csv = pd.DataFrame(samples)
+
+        # if dicomcsv_path == USE_INCLUDED_FILE:
+        #     self.dicomcsv_path = os.path.join(datapath, "nlmcxr_dicom_metadata.csv.gz")
+        # else:
+        #     self.dicomcsv_path = dicomcsv_path
+
+        # self.dicom_metadata = pd.read_csv(self.dicomcsv_path, index_col="imageid", low_memory=False)
+
+        # # Merge in dicom metadata
+        # self.csv = self.csv.join(self.dicom_metadata, on="imageid")
+
+        # if tsnepacsv_path == USE_INCLUDED_FILE:
+        #     self.tsnepacsv_path = os.path.join(datapath, "nlmcxr_tsne_pa.csv.gz")
+        # else:
+        #     self.tsnepacsv_path = tsnepacsv_path
+
+        # # Attach view computed by tsne
+        # tsne_pa = pd.read_csv(self.tsnepacsv_path, index_col="imageid")
+        # self.csv = self.csv.join(tsne_pa, on="imageid")
+
+        # if use_tsne_derived_view:
+        #     self.csv["view"] = self.csv["tsne-view"]
+        # else:
+        #     self.csv["view"] = self.csv["View Position"]
+
+        # self.limit_to_selected_views(views)
+
+        if unique_patients:
+            self.csv = self.csv.groupby("uid").first().reset_index()
+
+        # Get our classes.
+        labels = []
+        for pathology in self.pathologies:
+            mask = self.csv["labels_automatic"].str.contains(pathology.lower())
+            if pathology in mapping:
+                for syn in mapping[pathology]:
+                    # print("mapping", syn)
+                    mask |= self.csv["labels_automatic"].str.contains(syn.lower())
+            labels.append(torch.FloatTensor(mask.values))
+
+        self.labels = torch.stack(labels).T
+
+        # Rename pathologies
+        self.pathologies = list(np.char.replace(self.pathologies, "Opacity", "Lung Opacity"))
+        self.pathologies = list(np.char.replace(self.pathologies, "Lesion", "Lung Lesion"))
+
+        # add consistent csv values
+
+        # offset_day_int
+        # self.csv["offset_day_int"] =
+
+        # patientid
+        self.csv["patientid"] = self.csv["uid"].astype(str)
+
+    def string(self):
+        return self.__class__.__name__ + " num_samples={}".format(len(self))
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+
+        imageid = self.csv.iloc[idx].imageid
+        img_path = os.path.join(self.imgpath, imageid + ".png")
+
+        # img = imread(img_path)
+        # sample["img"] = normalize(img, maxval=255, reshape=True)
+
+        img = Image.open(img_path).convert("RGB")
+        sample["img"] = img
+
+        sample = apply_transforms(sample, self.transform)
+        sample = apply_transforms(sample, self.data_aug)
+
+        return sample
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            return collated
+
+        return collate_fn
+
+class COVID19_Dataset(Dataset):
+    """COVID-19 Image Data Collection
+
+    This dataset currently contains hundreds of frontal view X-rays and is
+    the largest public resource for COVID-19 image and prognostic data,
+    making it a necessary resource to develop and evaluate tools to aid in
+    the treatment of COVID-19. It was manually aggregated from publication
+    figures as well as various web based repositories into a machine learning
+    (ML) friendly format with accompanying dataloader code. We collected
+    frontal and lateral view imagery and metadata such as the time since
+    first symptoms, intensive care unit (ICU) status, survival status,
+    intubation status, or hospital location. We present multiple possible use
+    cases for the data such as predicting the need for the ICU, predicting
+    patient survival, and understanding a patient's trajectory during
+    treatment.
+
+    Citations:
+
+    COVID-19 Image Data Collection: Prospective Predictions Are the Future
+    Joseph Paul Cohen and Paul Morrison and Lan Dao and Karsten Roth and Tim
+    Q Duong and Marzyeh Ghassemi arXiv:2006.11988, 2020
+
+    COVID-19 image data collection,
+    Joseph Paul Cohen and Paul Morrison and Lan Dao
+    arXiv:2003.11597, 2020
+
+    Dataset: https://github.com/ieee8023/covid-chestxray-dataset
+
+    Paper: https://arxiv.org/abs/2003.11597
+    """
+
+    dataset_url = "https://github.com/ieee8023/covid-chestxray-dataset"
+
+    def __init__(self,
+                 imgpath: str,
+                 csvpath: str,
+                 views=["PA", "AP"],
+                 transform=None,
+                 data_aug=None,
+                 seed: int = 0,
+                 split="train",
+                 data_pct=1
+                ):
+        """
+        Args:
+            imgpath: Path to the directory containing images
+            csvpath: Path to the image directory
+        """
+
+        super(COVID19_Dataset, self).__init__()
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+        self.imgpath = imgpath
+        self.transform = transform
+        self.data_aug = data_aug
+        self.views = views
+
+        if not os.path.exists(csvpath):
+            raise FileNotFoundError(f'The csvpath does not point to a valid metadata.csv file. Please download it from {self.dataset_url}')
+
+        # Load data
+        self.csvpath = csvpath
+        self.csv = pd.read_csv(self.csvpath)
+
+        # Keep only the selected views.
+        self.limit_to_selected_views(views)
+
+        # Filter out in progress samples
+        self.csv = self.csv[~(self.csv.finding == "todo")]
+        self.csv = self.csv[~(self.csv.finding == "Unknown")]
+
+        self.pathologies = self.csv.finding.str.split("/", expand=True).values.ravel()
+        self.pathologies = self.pathologies[~pd.isnull(self.pathologies)]
+        self.pathologies = sorted(np.unique(self.pathologies))
+
+        labels = []
+        for pathology in self.pathologies:
+            mask = self.csv["finding"].str.contains(pathology)
+            labels.append(torch.FloatTensor(mask.values))
+
+        self.labels = torch.stack(labels).T
+
+        self.csv = self.csv.reset_index()
+
+        # offset_day_int
+        self.csv["offset_day_int"] = self.csv["offset"]
+
+    def string(self):
+        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+
+        imgid = self.csv['filename'].iloc[idx]
+        img_path = os.path.join(self.imgpath, imgid)
+
+        # img = imread(img_path)
+        # sample["img"] = normalize(img, maxval=255, reshape=True)
+
+        img = Image.open(img_path).convert("RGB")
+        sample["img"] = img
+
+        # if self.semantic_masks:
+        #     sample["semantic_masks"] = self.get_semantic_mask_dict(imgid, sample["img"].shape)
+
+        sample = apply_transforms(sample, self.transform)
+        sample = apply_transforms(sample, self.data_aug)
+
+        return sample
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }                
+            return collated
+        
+        return collate_fn
+
+class ObjectCXR_Dataset(Dataset):
+    """ObjectCXR Dataset
+
+    "We provide a large dataset of chest X-rays with strong annotations of
+    foreign objects, and the competition for automatic detection of foreign
+    objects. Specifically, 5000 frontal chest X-ray images with foreign
+    objects presented and 5000 frontal chest X-ray images without foreign
+    objects are provided. All the chest X-ray images were filmed in township
+    hospitals in China and collected through our telemedicine platform.
+    Foreign objects within the lung field of each chest X-ray are annotated
+    with bounding boxes, ellipses or masks depending on the shape of the
+    objects."
+
+    Challenge dataset from MIDL2020
+
+    https://jfhealthcare.github.io/object-CXR/
+
+    https://academictorrents.com/details/fdc91f11d7010f7259a05403fc9d00079a09f5d5
+    """
+
+    def __init__(self,
+                 imgpath,
+                 csvpath,
+                 transform=None,
+                 data_aug=None,
+                 seed=0,
+                 pathology_masks=False,
+                 split="train",
+                 data_pct=1
+                ):
+        super(ObjectCXR_Dataset, self).__init__()
+
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+        self.imgpath = imgpath
+        self.csvpath = csvpath
+        self.transform = transform
+        self.data_aug = data_aug
+        self.pathology_masks = pathology_masks
+        self.views = []
+        self.pathologies = ['Foreign Object']
+
+        # Load data
+        self.csv = pd.read_csv(self.csvpath)
+
+        labels = []
+        labels.append(torch.FloatTensor(~self.csv["annotation"].isnull()))
+
+        self.labels = torch.stack(labels).T
+
+        self.csv = self.csv.reset_index()
+
+        self.csv["has_masks"] = ~self.csv["annotation"].isnull()
+
+        # self.imgzip = zipfile.ZipFile(self.imgzippath)
+
+    def string(self):
+        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+        imgid = self.csv.iloc[idx]["image_name"]
+
+        img_path = os.path.join(self.imgpath, imgid)
+        img = Image.open(img_path).convert("RGB")
+        sample["img"] = img
+
+        if self.pathology_masks:
+            sample["pathology_masks"] = self.get_mask_dict(idx, sample["img"].size)
+
+        sample = apply_transforms(sample, self.transform)
+        sample = apply_transforms(sample, self.data_aug)
+
+        return sample
+
+    def get_mask_dict(self, idx, this_size):
+        h, w = this_size
+
+        path_mask = {}
+        row = self.csv.iloc[idx]
+        annotation = row.annotation
+        for i, pathology in enumerate(self.pathologies):
+            mask = np.zeros([w, h], dtype=np.uint8)
+            if row.has_masks:
+                for anno in annotation.split(";"):
+                    anno = np.fromstring(anno, sep=" ", dtype=int)
+                    anno_type = anno[0]
+                    anno = anno[1:]
+                    if anno_type != 2:
+                        # bbox annotation (xywh)
+                        cv2.rectangle(mask, (anno[0], anno[1]), (anno[2], anno[3]), color=1, thickness=cv2.FILLED)
+                        # mask[anno[1]:anno[3], anno[0]:anno[2]] = 1
+                    else:
+                        # polygon annotation 
+                        poly = anno.reshape((-1,2))
+                        cv2.fillPoly(mask, [poly], color=1)
+            path_mask[i] = mask[None, :, :]
+
+        return path_mask
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            if self.pathology_masks:
+                for i, s in enumerate(batch):
+                    if i == 0:  # initialize dict of empty lists with same keys
+                        masks = dict.fromkeys(s["pathology_masks"], [])
+                    for k, v in s["pathology_masks"].items():
+                        masks[k].append(v)
+                masks = {k: torch.stack(v) for k, v in masks.items()}
+                collated.update({"pathology_masks": masks})
+            return collated
+
+        return collate_fn
+
+class ChestXDet_Dataset(Dataset):
+    """ChestX-Det10-Dataset
+
+    "We select 3,543 images from NIH ChestX-14 and invite three board-certified 
+    radiologists to annotate them with 10 common categories of diseases or abnormalities. 
+    The 10 categories are Atelectasis, Calcification, Consolidation, Effusion, 
+    Emphysema, Fibrosis, Fracture, Mass, Nodule, Pneumothorax."
+
+    Dataset: https://github.com/Deepwise-AILab/ChestX-Det10-Dataset
+    """
+
+    def __init__(self,
+                 imgpath,
+                 csvpath,
+                 transform=None,
+                 data_aug=None,
+                 seed=0,
+                 pathology_masks=True,
+                 split="train",
+                 data_pct=1
+                ):
+        super(ChestXDet_Dataset, self).__init__()
+
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+        self.imgpath = imgpath
+        self.csvpath = csvpath
+        self.transform = transform
+        self.data_aug = data_aug
+        self.pathology_masks = pathology_masks
+        self.pathologies = ["Atelectasis", "Calcification", "Consolidation", "Effusion", 
+                            "Emphysema", "Fibrosis", "Fracture", "Mass", "Nodule", "Pneumothorax"]
+
+        # Load data
+        self.csv = pd.read_csv(self.csvpath)
+
+        labels = []
+        for pathology in self.pathologies:
+            mask = self.csv["syms"].str.lower().str.contains(pathology.lower())
+            labels.append(torch.FloatTensor(mask.values))
+        self.labels = torch.stack(labels).T
+
+        self.csv["has_masks"] = self.csv["boxes"].map(lambda x: bool(literal_eval(x)))
+
+    def string(self):
+        return self.__class__.__name__ + " num_samples={} data_aug={}".format(len(self), self.data_aug)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+        imgid = self.csv.iloc[idx]["file_name"]
+
+        img_path = os.path.join(self.imgpath, imgid)
+        img = Image.open(img_path).convert("RGB")
+        sample["img"] = img
+
+        if self.pathology_masks:
+            sample["pathology_masks"] = self.get_mask_dict(idx, sample["img"].size)
+
+        sample = apply_transforms(sample, self.transform)
+        sample = apply_transforms(sample, self.data_aug)
+
+        return sample
+
+    def get_mask_dict(self, idx, this_size):
+        h, w = this_size
+
+        row = self.csv.iloc[idx]
+        annotation = literal_eval(row.boxes)
+        pathologies = literal_eval(row.syms)
+        assert len(annotation) == len(pathologies)
+        path_mask = {self.pathologies.index(pathology): np.zeros([1, w, h], dtype=np.uint8) for pathology in pathologies}
+        
+        for i, pathology in enumerate(pathologies):
+            anno = annotation[i]
+            pathology_idx = self.pathologies.index(pathology)
+            # cv2.rectangle(mask, (anno[0], anno[1]), (anno[2], anno[3]), color=1, thickness=cv2.FILLED)
+            path_mask[pathology_idx][:, anno[1]:anno[3], anno[0]:anno[2]] = 1
+        return path_mask
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            # TODO: Double check how to group a batch of masks
+            if self.pathology_masks:
+                for i, s in enumerate(batch):
+                    if i == 0:  # initialize dict of empty lists with same keys
+                        masks = dict.fromkeys(s["pathology_masks"], [])
+                    for k, v in s["pathology_masks"].items():
+                        masks[k].append(v)
+                masks = {k: torch.stack(v) for k, v in masks.items()}
+                collated.update({"pathology_masks": masks})
+            return collated
+
+        return collate_fn
 
 class RSNA_Pneumonia_Dataset(Dataset):
     """RSNA Pneumonia Detection Challenge
@@ -668,13 +1393,12 @@ class RSNA_Pneumonia_Dataset(Dataset):
         self.csv = self.csv.reset_index()
 
         # Get our classes.
-        labels = [self.csv["Target"].values] # remove column for lung opacity
+        labels = [torch.FloatTensor(self.csv["Target"].values)] # remove column for lung opacity
 
         # set if we have masks
         self.csv["has_masks"] = ~np.isnan(self.csv["x"])
 
-        self.labels = np.asarray(labels).T
-        self.labels = self.labels.astype(np.float32)
+        self.labels = torch.stack(labels).T
 
         # patientid
         self.csv["patientid"] = self.csv["patientId"].astype(str)
@@ -699,21 +1423,39 @@ class RSNA_Pneumonia_Dataset(Dataset):
         img_path = os.path.join(self.imgpath, imgid + self.extension)
 
         if self.use_pydicom:
-            try:
-                import pydicom
-            except ImportError as e:
-                raise Exception("Please install pydicom to work with this dataset")
+            img = convert_dcm_to_filetype(img_path).convert("RGB")
+            # try:
+            #     import pydicom
+            #     from pydicom.pixel_data_handlers.util import apply_voi_lut
+            # except ImportError as e:
+            #     raise Exception("Please install pydicom to work with this dataset")
 
-            img = pydicom.filereader.dcmread(img_path).pixel_array
+            # # img = pydicom.filereader.dcmread(img_path).pixel_array
+
+            # dc_image = pydicom.dcmread(img_path, force=True)
+            # image_array = dc_image.pixel_array.astype(float)
+            # image_array = apply_voi_lut(image_array, dc_image)
+            # # depending on this value, X-ray may look inverted - fix that:
+            # if dc_image.PhotometricInterpretation == "MONOCHROME1":
+            #     image_array = np.amax(image_array) - image_array
+
+            # img = (np.maximum(image_array, 0) / image_array.max()) * 255.0
+            # img = np.uint8(img)
+
+            # final_image = Image.fromarray(scaled_image)
+            # old_size = final_image.size
+            # desired_size = 512
+            # ratio = float(desired_size)/max(old_size)
+            # new_size = tuple([int(x*ratio) for x in old_size])
+            # final_image = final_image.resize(new_size, Image.ANTIALIAS)
         else:
-            img = imread(img_path)
-        img = Image.fromarray(img).convert("RGB")
+            img = Image.open(img_path).convert("RGB")
 
         sample["img"] = img  # remove normalization step
 
         if self.pathology_masks:
             sample["pathology_masks"] = self.get_mask_dict(
-                imgid, sample["img"].shape[2]
+                imgid, max(sample["img"].size)
             )
 
         sample = apply_transforms(sample, self.transform)
@@ -721,14 +1463,11 @@ class RSNA_Pneumonia_Dataset(Dataset):
         return sample
 
     def get_mask_dict(self, image_name, this_size):
-        base_size = 1024
-        scale = this_size / base_size
-
         images_with_masks = self.raw_csv[self.raw_csv["patientId"] == image_name]
         path_mask = {}
 
         # All masks are for both pathologies
-        for patho in ["Pneumonia", "Lung Opacity"]:
+        for patho in ["Pneumonia"]:
             mask = np.zeros([this_size, this_size])
 
             # Don't add masks for labels we don't have
@@ -736,7 +1475,6 @@ class RSNA_Pneumonia_Dataset(Dataset):
                 for i in range(len(images_with_masks)):
                     row = images_with_masks.iloc[i]
                     xywh = np.asarray([row.x, row.y, row.width, row.height])
-                    xywh = xywh * scale
                     xywh = xywh.astype(int)
                     mask[xywh[1] : xywh[1] + xywh[3], xywh[0] : xywh[0] + xywh[2]] = 1
 
@@ -749,15 +1487,22 @@ class RSNA_Pneumonia_Dataset(Dataset):
     def get_collate_fn(self):
         def collate_fn(batch):
             imgs = [s["img"] for s in batch]
-            labels = [torch.from_numpy(s["lab"]) for s in batch]
+            labels = [s["lab"] for s in batch]
             collated = {
                 "labels": torch.stack(labels),
                 "images": torch.stack(imgs),
             }
+            if self.pathology_masks:
+                for i, s in enumerate(batch):
+                    if i == 0:  # initialize dict of empty lists with same keys
+                        masks = dict.fromkeys(s["pathology_masks"], [])
+                    for k, v in s["pathology_masks"].items():
+                        masks[k].append(v)
+                masks = {k: torch.stack(v) for k, v in masks.items()}
+                collated.update({"pathology_masks": masks})
             return collated
 
         return collate_fn
-
 
 class SIIM_Pneumothorax_Dataset(Dataset):
     """SIIM Pneumothorax Dataset
@@ -779,7 +1524,9 @@ class SIIM_Pneumothorax_Dataset(Dataset):
         transform=None,
         seed=0,
         pathology_masks=False,
-        split="train"
+        extension=".png",
+        split="train",
+        data_pct=1
     ):
         super(SIIM_Pneumothorax_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
@@ -801,9 +1548,11 @@ class SIIM_Pneumothorax_Dataset(Dataset):
 
         self.pathologies = ["Pneumothorax"]
 
-        labels = [self.csv[" EncodedPixels"] != " -1"]
-        self.labels = np.asarray(labels).T
-        self.labels = self.labels.astype(np.float32)
+        self.extension = extension
+        self.use_pydicom = extension == ".dcm"
+
+        labels = [torch.FloatTensor((self.csv[" EncodedPixels"] != " -1").values)]
+        self.labels = torch.stack(labels).T
 
         self.csv = self.csv.reset_index()
 
@@ -836,28 +1585,27 @@ class SIIM_Pneumothorax_Dataset(Dataset):
         sample["lab"] = self.labels[idx]
 
         imgid = self.csv["ImageId"].iloc[idx]
-        img_path = self.file_map[imgid + ".dcm"]
+        img_path = self.file_map[imgid + self.extension]
+        
+        if self.use_pydicom:
+            img = convert_dcm_to_filetype(img_path).convert("RGB")
+        else:
+            img = Image.open(img_path).convert("RGB")
 
-        try:
-            import pydicom
-        except ImportError as e:
-            raise Exception("Please install pydicom to work with this dataset")
-        img = pydicom.filereader.dcmread(img_path).pixel_array
-        img = Image.fromarray(img).convert("RGB")
+        sample["img"] = img
         
         if self.pathology_masks:
             from torchvision import transforms
-            pathology_masks = self.get_pathology_mask_dict(
-                imgid, transforms.ToTensor()(img).shape[2]
+            sample["pathology_masks"] = self.get_pathology_mask_dict(
+                imgid, sample["img"].size[1]
             )
 
-        augmented = self.transform(img, mask=pathology_masks)
-        sample["img"] = augmented["image"]
-        sample["pathology_masks"] = augmented["mask"].squeeze()
+        sample = apply_transforms(sample, self.transform)
 
         return sample
 
     def get_pathology_mask_dict(self, image_name, this_size):
+        # TODO: Double check this, we will preprocess the image to 512x512
         base_size = 1024
         images_with_masks = self.csv[
             np.logical_and(
@@ -924,7 +1672,6 @@ class SIIM_Pneumothorax_Dataset(Dataset):
 
         return collate_fn
 
-
 class NIH_Dataset(Dataset):
     """NIH ChestX-ray14 dataset
 
@@ -960,7 +1707,6 @@ class NIH_Dataset(Dataset):
         views=["PA", "AP"],
         transform=None,
         seed=0,
-        unique_patients=True,
         pathology_masks=False,
         split="train",
         data_pct=1
@@ -1036,12 +1782,9 @@ class NIH_Dataset(Dataset):
         self.csv["view"] = self.csv["View Position"]
         self.limit_to_selected_views(views)
 
-        # if unique_patients:
-        #     self.csv = self.csv.groupby("Patient ID").first()
-
         self.csv = self.csv.reset_index()
 
-        # load nih pathology masks
+        # load NIH pathology masks
         if self.pathology_masks:
             if bbox_list_path == USE_INCLUDED_FILE:
                 self.bbox_list_path = os.path.join(datapath, "BBox_List_2017.csv.gz")
@@ -1072,14 +1815,12 @@ class NIH_Dataset(Dataset):
             )
 
         # Get our classes.
-        self.labels = []
+        labels = []
         for pathology in self.pathologies:
-            self.labels.append(
-                self.csv["Finding Labels"].str.contains(pathology).values
-            )
+            mask = self.csv["Finding Labels"].str.contains(pathology)
+            labels.append(torch.FloatTensor(mask.values))
 
-        self.labels = np.asarray(self.labels).T
-        self.labels = self.labels.astype(np.float32)
+        self.labels = torch.stack(labels).T
 
     def string(self):
         return (
@@ -1105,7 +1846,7 @@ class NIH_Dataset(Dataset):
             )
         
         sample["img"] = img
-        sample["lab"] = torch.FloatTensor(self.labels[idx])
+        sample["lab"] = self.labels[idx]
 
         sample = apply_transforms(sample, self.transform)
 
@@ -1157,6 +1898,381 @@ class NIH_Dataset(Dataset):
 
         return collate_fn
 
+class COVIDx_Dataset(Dataset):
+    """COVIDx-CXR4 dataset
+    Chest x-ray images for the detection of COVID-19
+
+    Dataset website:
+    https://www.kaggle.com/datasets/andyczhao/covidx-cxr2
+    """
+
+    def __init__(
+        self,
+        imgpath,
+        transform=None,
+        seed=0,
+        split="train",
+        data_pct=1
+    ):
+        super(COVIDx_Dataset, self).__init__()
+
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+        self.imgpath = os.path.join(imgpath, split)
+
+        self.split = split
+
+        self.txtpath = os.path.join(imgpath, split + ".txt")
+        self.csv = pd.read_csv(self.txtpath, sep=' ')
+
+        column_names = ['patient_id', 'filename', 'class', 'data_source'] 
+        self.csv.columns = column_names
+
+        self.transform = transform
+
+        if data_pct != 1 and self.split == "train":
+            self.csv = self.csv.sample(frac=data_pct, random_state=seed)
+
+        self.csv = self.csv.reset_index()
+
+        # Get our classes.
+        labels = [torch.FloatTensor((self.csv['class'] == 'positive').values)]
+        self.labels = torch.stack(labels).T
+
+    def string(self):
+        return (
+            self.__class__.__name__
+            + " num_samples={} transforms={} split={}".format(
+                len(self), self.transform, self.split
+            )
+        )
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = {}
+
+        imgid = self.csv["filename"].iloc[idx]
+        img_path = os.path.join(self.imgpath, imgid)
+        img = Image.open(img_path).convert("RGB")
+        
+        sample["img"] = img
+        sample["lab"] = torch.FloatTensor([self.labels[idx]])
+
+        sample = apply_transforms(sample, self.transform)
+
+        return sample
+
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            return collated
+
+        return collate_fn
+
+class VinDr_Dataset(Dataset):
+    """VinBrain Dataset
+
+    .. code-block:: python
+
+        d_vin = xrv.datasets.VinDr_Dataset(
+            imgpath=".../train",
+            csvpath=".../train.csv"
+        )
+
+    Nguyen, H. Q., Lam, K., Le, L. T., Pham, H. H., Tran, D. Q., Nguyen,
+    D. B., Le, D. D., Pham, C. M., Tong, H. T. T., Dinh, D. H., Do, C. D.,
+    Doan, L. T., Nguyen, C. N., Nguyen, B. T., Nguyen, Q. V., Hoang, A. D.,
+    Phan, H. N., Nguyen, A. T., Ho, P. H., … Vu, V. (2020). VinDr-CXR: An
+    open dataset of chest X-rays with radiologist’s annotations.
+    http://arxiv.org/abs/2012.15029
+
+    https://www.kaggle.com/c/vinbigdata-chest-xray-abnormalities-detection
+    """
+
+    def __init__(self,
+                 imgpath,
+                 csvpath=USE_INCLUDED_FILE,
+                 views=None,
+                 transform=None,
+                 data_aug=None,
+                 seed=0,
+                 pathology_masks=False,
+                 split="train",
+                 data_pct=1
+                 ):
+        super(VinDr_Dataset, self).__init__()
+
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+        self.imgpath = imgpath
+
+        if csvpath == USE_INCLUDED_FILE:
+            self.csvpath = os.path.join(datapath, "vinbigdata-train.csv.gz")
+        else:
+            self.csvpath = csvpath
+
+        self.transform = transform
+        self.data_aug = data_aug
+        self.pathology_masks = pathology_masks
+        self.views = views
+
+        self.pathologies = ['Aortic enlargement',
+                            'Atelectasis',
+                            'Calcification',
+                            'Cardiomegaly',
+                            'Clavicle fracture',
+                            'Consolidation',
+                            'Edema',
+                            'Emphysema',
+                            'Enlarged PA',
+                            'ILD',
+                            'Infiltration',
+                            'Lung Opacity',
+                            'Lung cavity',
+                            'Lung cyst',
+                            'Mediastinal shift',
+                            'Nodule/Mass',
+                            'Pleural effusion',
+                            'Pleural thickening',
+                            'Pneumothorax',
+                            'Pulmonary fibrosis',
+                            'Rib fracture',
+                            'Other lesion',
+                            'COPD',
+                            'Lung tumor',
+                            'Pneumonia',
+                            'Tuberculosis',
+                            'Other disease',
+                            'No finding'
+                            ]
+
+        self.pathologies = sorted(np.unique(self.pathologies))
+
+        # self.mapping = dict()
+        # self.mapping["Pleural_Thickening"] = ["Pleural thickening"]
+        # self.mapping["Effusion"] = ["Pleural effusion"]
+
+        # Load data
+        self.check_paths_exist()
+        self.rawcsv = pd.read_csv(self.csvpath)
+        self.csv = pd.DataFrame(self.rawcsv.groupby("image_id")["class_name"].apply(lambda x: "|".join(np.unique(x))))
+
+        self.csv["has_masks"] = self.csv.class_name != "No finding"
+
+        labels = []
+        for pathology in self.pathologies:
+            mask = self.csv["class_name"].str.lower().str.contains(pathology.lower())
+            # if pathology in self.mapping:
+            #     for syn in self.mapping[pathology]:
+            #         mask |= self.csv["class_name"].str.lower().str.contains(syn.lower())
+            labels.append(torch.FloatTensor(mask.values))
+        self.labels = torch.stack(labels).T
+
+        self.csv = self.csv.reset_index()
+
+    def string(self):
+        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+
+        imgid = self.csv['image_id'].iloc[idx]
+        img_path = os.path.join(self.imgpath, imgid + ".png")
+
+        img = Image.open(img_path).convert("RGB")
+        sample["img"] = img
+
+        if self.pathology_masks:
+            sample["pathology_masks"] = self.get_mask_dict(imgid, sample["img"].size)
+
+        sample = apply_transforms(sample, self.transform)
+        sample = apply_transforms(sample, self.data_aug)
+
+        return sample
+
+    def get_mask_dict(self, image_name, this_size):
+        h, w = this_size
+
+        path_mask = {}
+        rows = self.rawcsv[self.rawcsv.image_id.str.contains(image_name)]
+
+        for i, pathology in enumerate(self.pathologies):
+            if pathology != 'No finding':
+                for group_name, df_group in rows.groupby("class_name"):
+                    if group_name == pathology:
+                        mask = np.zeros([h, w])
+                        for idx, row in df_group.iterrows():
+                            mask[int(row.y_min):int(row.y_max), int(row.x_min):int(row.x_max)] = 1
+
+                        path_mask[i] = mask[None, :, :]
+
+        return path_mask
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            if self.pathology_masks:
+                for i, s in enumerate(batch):
+                    if i == 0:  # initialize dict of empty lists with same keys
+                        masks = dict.fromkeys(s["pathology_masks"], [])
+                    for k, v in s["pathology_masks"].items():
+                        masks[k].append(v)
+                masks = {k: torch.stack(v) for k, v in masks.items()}
+                collated.update({"pathology_masks": masks})
+            return collated
+
+        return collate_fn
+
+class TBX11K_Dataset(Dataset):
+    """TBX11K Tuberculosis Classification and Detection Challenge
+
+    Citation:
+
+    [TPAMI23] Revisiting Computer-Aided Tuberculosis Diagnosis
+
+    More info: https://github.com/yun-liu/Tuberculosis
+
+    Challenge site:
+    https://codalab.lisn.upsaclay.fr/competitions/7916
+    """
+
+    def __init__(
+        self,
+        imgpath,
+        csvpath=USE_INCLUDED_FILE,
+        transform=None,
+        nrows=None,
+        seed=0,
+        pathology_masks=False,
+        split="train",
+        data_pct=1
+    ):
+        super(TBX11K_Dataset, self).__init__()
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.split = split
+
+        self.imgpath = imgpath
+        self.transform = transform
+        self.pathology_masks = pathology_masks
+
+        self.pathologies = ["healthy", "sick_but_no_tb", "tb"]
+        self.pathologies = sorted(self.pathologies)
+
+        # Load data
+        if csvpath == USE_INCLUDED_FILE:
+            self.csvpath = os.path.join(datapath, "data.csv")
+        else:
+            self.csvpath = csvpath
+
+        df = pd.read_csv(self.csvpath, nrows=nrows)
+        self.csv = df[df["source"] == split]  # Filter for split
+
+        if data_pct != 1 and self.split == "train":
+            self.csv = self.csv.sample(frac=data_pct, random_state=seed)
+
+        self.csv = self.csv.reset_index()
+        # Get our classes.
+        labels = []
+        for pathology in self.pathologies:
+            mask = self.csv["image_type"].str.lower().str.contains(pathology.lower())
+            # if pathology in self.mapping:
+            #     for syn in self.mapping[pathology]:
+            #         mask |= self.csv["class_name"].str.lower().str.contains(syn.lower())
+            labels.append(torch.FloatTensor(mask.values))
+        self.labels = torch.stack(labels).T
+
+        # set if we have masks
+        self.csv["has_masks"] = self.csv.bbox != "none"
+
+    def string(self):
+        return (
+            self.__class__.__name__
+            + " num_samples={} transforms={} split={}".format(
+                len(self), self.transform, self.split
+            )
+        )
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+
+        imgid = self.csv["fname"].iloc[idx]
+        img_path = os.path.join(self.imgpath, imgid)
+
+        img = imread(img_path)
+        img = Image.fromarray(img).convert("RGB")
+
+        sample["img"] = img  # remove normalization step
+        sample["has_mask"] = self.csv["has_masks"][idx]
+
+        if self.pathology_masks:
+            sample["pathology_masks"] = self.get_mask_dict(imgid, sample["has_mask"])
+
+        sample = apply_transforms(sample, self.transform)
+
+        return sample
+
+    def get_mask_dict(self, image_name, has_mask):
+        images_with_masks = self.csv[self.csv["fname"] == image_name]
+        this_size = images_with_masks[['image_height', 'image_width']].values.tolist()[0]
+
+        path_mask = {}
+        # All masks are for both pathologies
+        if has_mask:
+            mask = np.zeros(this_size)
+            for i in range(len(images_with_masks)):
+                row = images_with_masks.iloc[i]
+                xywh = eval(row.bbox)
+                xywh = np.array(list(xywh.values()))
+                # xywh = xywh * scale
+                xywh = xywh.astype(int)
+                mask[xywh[1] : xywh[1] + xywh[3], xywh[0] : xywh[0] + xywh[2]] = 1
+
+            # Resize so image resizing works
+            mask = mask[None, :, :]
+
+            path_mask[images_with_masks.target.values[0]] = mask
+        return path_mask
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            if self.pathology_masks:
+                for i, s in enumerate(batch):
+                    if i == 0:  # initialize dict of empty lists with same keys
+                        masks = dict.fromkeys(s["pathology_masks"], [])
+                    for k, v in s["pathology_masks"].items():
+                        masks[k].append(v)
+                masks = {k: torch.stack(v) for k, v in masks.items()}
+                collated.update({"pathology_masks": masks})
+            return collated
+
+        return collate_fn
 
 class VQA_RAD_Dataset(Dataset):
     """VQA-RAD dataset
@@ -1336,7 +2452,6 @@ class VQA_RAD_Dataset(Dataset):
 
         return collate_fn
 
-
 class MedVQA_2019_Dataset(Dataset):
     """ Med-VQA-2019 Dataset
     
@@ -1512,7 +2627,6 @@ class MedVQA_2019_Dataset(Dataset):
             return collated
 
         return collate_fn
-    
 
 class SLAKE_Dataset(Dataset):
     """ SLAKE Dataset
@@ -1678,7 +2792,6 @@ class SLAKE_Dataset(Dataset):
 
         return collate_fn
 
-
 class IU_Dataset(Dataset):
     """Indiana University Chest X-Ray dataset
 
@@ -1787,3 +2900,57 @@ class IU_Dataset(Dataset):
             return collated
 
         return collate_fn
+
+if __name__ == "__main__":
+    # # OpenI Dataset
+    # datapath = "/raid/zhouyang/DATA/OpenI/"
+    # imgpath = "/raid/zhouyang/DATA/OpenI/images/"
+    # dataset = OpenI_Dataset(imgpath=imgpath)
+
+    # COVID-19 Dataset
+    # datapath = "/raid/zhouyang/DATA/COVID-19/"
+    # imgpath = "/raid/zhouyang/DATA/COVID-19/images/"
+    # csvpath = "/raid/zhouyang/DATA/COVID-19/COVID19_metadata.csv"
+    # dataset = COVID19_Dataset(imgpath=imgpath, csvpath=csvpath)
+
+    # # Object-CXR Dataset
+    # imgpath = "/raid/zhouyang/processed_data/Object-CXR/train"
+    # csvpath = "/raid/zhouyang/processed_data/Object-CXR/train.csv"
+    # dataset = ObjectCXR_Dataset(imgpath=imgpath, csvpath=csvpath) # Return img only, bbox is not used
+    # # dataset.__getitem__(idx=9)
+    # dataset.__getitem__(idx=3298)
+
+    # VinDr-CXR Dataset
+    # imgpath = "/raid/zhouyang/processed_data/Vindr_CXR_512/images"
+    # csvpath = "/raid/zhouyang/processed_data/Vindr_CXR_512/annotations/resized_annotations_train.csv"
+    # dataset = VinDr_Dataset(imgpath=imgpath, csvpath=csvpath) 
+
+    # # TBX11K Dataset
+    # # datapath = "/raid/zhouyang/DATA/tbx11k-simplified/"
+    # imgpath = "/raid/zhouyang/DATA/tbx11k-simplified/images"
+    # csvpath = "/raid/zhouyang/DATA/tbx11k-simplified/data.csv"
+    # dataset = TBX11K_Dataset(imgpath=imgpath, csvpath=csvpath) 
+    # dataset.__getitem__(idx=6900)
+
+    # COVIDx Dataset
+    # imgpath = "/raid/zhouyang/DATA/COVIDx-CXR4/"
+    # dataset = COVIDx_Dataset(imgpath=imgpath) 
+    # dataset.__getitem__(idx=3)
+
+    # PadChest
+    # imgpath = "/raid/zhouyang/DATA/PadChest/images-224"
+    # csvpath = "/raid/zhouyang/DATA/PadChest/PADCHEST_chest_x_ray_images_labels_160K_01.02.19.csv"
+    # dataset = PC_Dataset(imgpath=imgpath, csvpath=csvpath) 
+
+    # # RSNA
+    # imgpath = "/raid/zhouyang/DATA/rsna_pneumonia/stage_2_train_images"
+    # # csvpath = "/raid/zhouyang/DATA/rsna_pneumonia/stage_2_train_labels.csv"
+    # # dicomcsvpath = "/raid/zhouyang/DATA/rsna_pneumonia/stage_2_detailed_class_info.csv"
+    # dataset = RSNA_Pneumonia_Dataset(imgpath=imgpath)
+    # dataset.__getitem__(idx=3)
+
+    # ChestXDet Dataset
+    imgpath = "/raid/zhouyang/processed_data/ChestX-Det10/train"
+    csvpath = "/raid/zhouyang/processed_data/ChestX-Det10/train.csv"
+    dataset = ChestXDet_Dataset(imgpath=imgpath, csvpath=csvpath) 
+    dataset.__getitem__(idx=6)

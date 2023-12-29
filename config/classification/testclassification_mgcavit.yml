@@ -1,5 +1,5 @@
 includes:
-  - config/finetune/models/mgca_vit.yml
+  - config/classification/models/mgca_vit.yml
 
 name: classification_nih
 ckpt_dir: ckpt

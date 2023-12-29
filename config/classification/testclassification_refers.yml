@@ -1,5 +1,5 @@
 includes:
-  - config/finetune/models/refers.yml
+  - config/classification/models/refers.yml
 
 name: classification_nih
 ckpt_dir: ckpt

@@ -4,6 +4,9 @@ import requests
 import numpy as np
 import skimage
 import torch
+import pydicom
+from pydicom.pixel_data_handlers.util import apply_voi_lut
+from PIL import Image
 
 from os import PathLike
 from numpy import ndarray
@@ -20,6 +23,27 @@ def in_notebook():
     except AttributeError:
         return False
     return True
+
+
+def convert_dcm_to_filetype(file_path):
+    """Reads a dcm file and returns the file as jpg/png"""
+
+    # read the dcm file
+    dc_image = pydicom.dcmread(file_path, force=True)
+    image_array = dc_image.pixel_array.astype(float)
+
+    # image_array = dc_image.pixel_array.astype(float)
+    image_array = apply_voi_lut(image_array, dc_image)
+    # depending on this value, X-ray may look inverted - fix that:
+    if dc_image.PhotometricInterpretation == "MONOCHROME1":
+        image_array = np.amax(image_array) - image_array
+
+    # rescale image
+    rescaled_image = (np.maximum(im, 0) / im.max()) * 255
+    final_image = np.uint8(rescaled_image)
+    im = Image.fromarray(final_image)
+
+    return im
 
 
 contractions = {
