@@ -52,5 +52,5 @@ trainer:
 
 validator:
   batch_size: 512
-  metrics: [accuracy, multiclass_auroc]
+  metrics: [multiclass_accuracy, multiclass_auroc]
   splits: [valid]

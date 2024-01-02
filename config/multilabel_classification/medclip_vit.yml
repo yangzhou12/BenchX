@@ -48,5 +48,5 @@ trainer:
 
 validator:
   batch_size: 512
-  metrics: [multilabel_auroc]
+  metrics: [multilabel_accuracy, multilabel_auroc]
   splits: [valid]

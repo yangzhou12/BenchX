@@ -4,7 +4,7 @@ import json
 import torch.nn.functional as F
 import torch
 import logging
-from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.metrics import roc_auc_score, precision_recall_curve, accuracy_score
 
 from unifier.blocks.scorers.pycocoevalcap.bleu.bleu import Bleu
 from unifier.blocks.scorers.pycocoevalcap.meteor import Meteor
@@ -45,9 +45,32 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
             f.close()
 
     for metric in metrics:
-        # Iterating over metrics
-        if metric == "accuracy":
-            scores["accuracy"] = round(np.mean(np.argmax(refs, axis=-1) == np.argmax(hyps, axis=-1)) * 100, 2)
+
+        # Multi-class classification metrics
+        if metric == "multiclass_accuracy":
+            scores["multiclass_accuracy"] = round(np.mean(np.argmax(refs, axis=-1) == np.argmax(hyps, axis=-1)) * 100, 2)
+        elif metric == "multiclass_auroc":
+            scores["multiclass_auroc"] = roc_auc_score(refs, F.softmax(torch.from_numpy(hyps), dim=-1).numpy(), multi_class="ovr")
+
+        # Multi-label classification metrics
+        elif metric == "multilabel_accuracy":
+            gt_np = refs[:, 0].cpu().numpy()
+            pred_np = F.sigmoid(hyps)[:, 0].cpu().numpy()            
+            precision, recall, thresholds = precision_recall_curve(gt_np, pred_np)
+            numerator = 2 * recall * precision
+            denom = recall + precision
+            f1_scores = np.divide(numerator, denom, out=np.zeros_like(denom), where=(denom!=0))
+            max_f1_thresh = thresholds[np.argmax(f1_scores)]
+            scores["multilabel_accuracy"] = accuracy_score(gt_np, pred_np > max_f1_thresh)
+        elif metric == "multilabel_auroc":
+            AUROCs = []
+            n_classes = refs.shape[1]
+            for i in range(n_classes):
+                AUROCs.append(roc_auc_score(refs[:, i], F.sigmoid(hyps[:, i])))
+            scores["class_auroc"] = AUROCs
+            scores["multilabel_auroc"] = sum(AUROCs) / n_classes
+        
+        # VQA metrics
         elif metric == "vqa_score":
             hyps_tensor = torch.from_numpy(hyps)
             refs_tensor = torch.from_numpy(refs)
@@ -56,17 +79,8 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
             one_hots.scatter_(1, logits.view(-1, 1), 1)
             score = one_hots * refs_tensor
             scores["vqa_score"] = (score.sum() / len(score)).item()
-        elif metric == "f1-score":
-            scores["f1-score"] = classification_report(refs, np.argmax(hyps, axis=-1))
-        elif metric == "multiclass_auroc":
-            scores["multiclass_auroc"] = roc_auc_score(refs, F.softmax(torch.from_numpy(hyps), dim=-1).numpy(), multi_class="ovr")
-        elif metric == "multilabel_auroc":
-            AUROCs = []
-            n_classes = refs.shape[1]
-            for i in range(n_classes):
-                AUROCs.append(roc_auc_score(refs[:, i], F.sigmoid(hyps[:, i])))
-            scores["class_auroc"] = AUROCs
-            scores["multilabel_auroc"] = sum(AUROCs) / n_classes
+        
+        # Report Generation metrics
         elif metric == "BLEU":
             score, _ = Bleu(4).compute_score(refs, hyps, verbose=0)
             scores["BLEU1"] = score[0]
@@ -79,6 +93,8 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
         elif metric in "ROUGEL":
             score, _ = Rouge().compute_score(refs, hyps)
             scores["ROUGEL"] = score
+
+        # Segmentation metrics
         elif metric == "medDice":
             dice = 0
             for result, gt in zip(hyps, refs):
@@ -99,6 +115,8 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
                     dice += dice_instance
             dice /= len(refs)
             score["medDice"] = dice
+
+        # Catch error: unknown metric
         else:
             logger.warning("Metric not implemented: {}".format(metric))
 
