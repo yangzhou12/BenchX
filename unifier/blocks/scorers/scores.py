@@ -59,16 +59,12 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
         elif metric == "f1-score":
             scores["f1-score"] = classification_report(refs, np.argmax(hyps, axis=-1))
         elif metric == "multiclass_auroc":
-            scores["multiclass_auroc"] = roc_auc_score(
-                refs,
-                F.softmax(torch.from_numpy(hyps), dim=-1).numpy(),
-                multi_class="ovr",
-            )
+            scores["multiclass_auroc"] = roc_auc_score(refs, F.softmax(torch.from_numpy(hyps), dim=-1).numpy(), multi_class="ovr")
         elif metric == "multilabel_auroc":
             AUROCs = []
             n_classes = refs.shape[1]
             for i in range(n_classes):
-                AUROCs.append(roc_auc_score(refs[:, i], hyps[:, i]))
+                AUROCs.append(roc_auc_score(refs[:, i], F.sigmoid(hyps[:, i])))
             scores["class_auroc"] = AUROCs
             scores["multilabel_auroc"] = sum(AUROCs) / n_classes
         elif metric == "BLEU":

@@ -1,5 +1,5 @@
 includes:
-  - config/classification/models/medklip.yml
+  - config/multilabel_classification/models/medclip_vit.yml
 
 name: classification_nih
 ckpt_dir: ckpt
@@ -43,6 +43,7 @@ trainer:
   epochs: 50
   early_stop: 10
   eval_start: 10
+  eval_interval: 5
   early_stop_metric: multilabel_auroc
 
 validator:

@@ -47,7 +47,7 @@ class ImageClassifier(nn.Module):
         if from_training:
             loss = self.loss_func(out, labels.cuda().float(), **kwargs)
 
-        return {"loss": loss, "output": out, "pred": torch.sigmoid(out)}
+        return {"loss": loss, "output": out}
 
     def __repr__(self):
         s = super().__repr__() + "\n"

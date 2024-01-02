@@ -1,5 +1,5 @@
 includes:
-  - config/classification/models/biovil_resnet50.yml
+  - config/multilabel_classification/models/medclip_vit.yml
 
 name: classification_nih
 ckpt_dir: ckpt
@@ -26,7 +26,7 @@ model:
     dropout: 0.
 
   loss:
-    proto: BCEWithLogitsLoss
+    proto: CrossEntropyLoss
 
 trainer:
   optimizer: Adam
@@ -44,9 +44,9 @@ trainer:
   early_stop: 10
   eval_start: 10
   eval_interval: 5
-  early_stop_metric: multilabel_auroc
+  early_stop_metric: multiclass_auroc
 
 validator:
   batch_size: 512
-  metrics: [multilabel_auroc]
+  metrics: [accuracy, multiclass_auroc]
   splits: [valid]

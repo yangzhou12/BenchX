@@ -1,5 +1,5 @@
 includes:
-  - config/classification/models/mgca_resnet50.yml
+  - config/multilabel_classification/models/medclip_resnet50.yml
 
 name: classification_nih
 ckpt_dir: ckpt
@@ -21,12 +21,12 @@ model:
 
   classifier:
     proto: Classifier
-    # input_size: 768 # overwritten
+    # input_size: 768 # overwritten here
     num_classes: 14
     dropout: 0.
 
   loss:
-    proto: BCEWithLogitsLoss
+    proto: CrossEntropyLoss
 
 trainer:
   optimizer: Adam
@@ -43,10 +43,10 @@ trainer:
   epochs: 50
   early_stop: 10
   eval_start: 10
-  eval_interval: 5
-  early_stop_metric: multilabel_auroc
+  eval_interval: 1
+  early_stop_metric: multiclass_auroc
 
 validator:
   batch_size: 512
-  metrics: [multilabel_auroc]
+  metrics: [accuracy, multiclass_auroc]
   splits: [valid]

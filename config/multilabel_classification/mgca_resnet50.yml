@@ -1,14 +1,14 @@
 includes:
-  - config/classification/models/mrm.yml
+  - config/multilabel_classification/models/mgca_resnet50.yml
 
 name: classification_nih
 ckpt_dir: ckpt
 
 dataset:
   proto: NIH_Dataset
-  imgpath: /raid/zhouyang/DATA/NIH_ChestX-ray/all_classes
+  imgpath: /home/ubuntu/MRM-pytorch/Datasets/NIH_ChestX-ray/all_classes
   views: ["PA", "AP"]
-  data_pct: 0.01
+  data_pct: 0.1
 
 transforms:
   type: NIHTransforms
@@ -17,34 +17,33 @@ model:
   proto: ImageClassifier
 
   cnn:
-    num_classes: 14  # enable classifier layer
     output_layer: avgpool
-    global_pool: avg
 
   classifier:
-    proto: Identity
+    proto: Classifier
     # input_size: 768 # overwritten
-    # num_classes: 14 # use ViT classifier layer
+    num_classes: 14
+    dropout: 0.
 
   loss:
     proto: BCEWithLogitsLoss
 
 trainer:
-  optimizer: SGD
+  optimizer: Adam
   optim_params:
-    lr: 3e-2
-    momentum: 0.9
-    weight_decay: 0 
+    lr: 0.0001
+    eps: 1e-08
+    weight_decay: 1e-5
   batch_size: 96
   clip_grad_norm: 1.0
   lr_decay: WarmupCosineScheduler
   lr_decay_params:
     warmup_steps: 50
     t_total: 3000
-  epochs: 300
+  epochs: 50
   early_stop: 10
-  eval_start: 60
-  eval_interval: 1
+  eval_start: 10
+  eval_interval: 5
   early_stop_metric: multilabel_auroc
 
 validator:
