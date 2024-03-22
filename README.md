@@ -12,7 +12,7 @@ conda activate BenchX
 
 Clone the repository and install the package:
 ```bash
-git clone [https://github.com/XXXXX/BenchX](https://anonymous.4open.science/r/BenchX-46C5/)
+git clone https://github.com/XXXXX/BenchX
 cd BenchX
 pip install -r requirements.txt
 ```
