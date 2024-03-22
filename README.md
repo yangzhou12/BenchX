@@ -82,7 +82,7 @@ No preprocessing is required for the NIH Chest X-ray dataset.
 
 ### 3. Zero-shot Evaluation & Fine-tuning
 
-We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`configs/`](configs/). Additional command-line arguments can also be specified to override the configuration setting.
+We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
 
 To view all available models for evaluation, you may run the following script:
 ```python
