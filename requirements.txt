@@ -1,0 +1,16 @@
+torch
+torchvision
+transformers
+timm
+opencv-python
+scipy
+scikit-learn
+scikit-image
+pytorch-lightning
+albumentations
+torch-optimizer
+tqdm
+pandas
+omegaconf
+einops
+ml-collections
