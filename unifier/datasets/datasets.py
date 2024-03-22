@@ -16,9 +16,6 @@ import torch
 import cv2
 from ast import literal_eval
 
-import sys
-sys.path.append("/raid/zhouyang/unified-framework")
-
 import unifier
 from collections import Counter
 from transformers import AutoTokenizer
