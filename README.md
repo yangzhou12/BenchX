@@ -1,5 +1,7 @@
 # BenchX: A Unified Evaluation Framework for Medical Vision-Language Models on Chest X-Rays
 
+Code for ICML24 Submission (PaperID 9315) "BenchX: Benchmarking Medical Vision-Language Pretraining on Chest X-Rays"
+
 ## Downstream Evaluation
 
 ### 0. Download Datasets
