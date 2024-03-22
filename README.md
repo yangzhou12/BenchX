@@ -1,4 +1,4 @@
-# Unified Framework for Medical Vision-Language Models
+# BenchX: A Unified Evaluation Framework for Medical Vision-Language Models on Chest X-Rays
 
 ## Downstream Evaluation
 
