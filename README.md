@@ -15,10 +15,6 @@ Code for ICML24 Submission (PaperID 9315): "BenchX: Benchmarking Medical Vision-
 - SIIM: We downloaded the stage 1 data of the [SIIM-ACR Pneumothorax Segmentation](https://www.kaggle.com/c/siim-acr-pneumothorax-segmentation) dataset from Kaggle.
 
 - NIH Chest X-rays: We downloaded Version 3 of the [NIH Chest X-rays](https://www.kaggle.com/datasets/nih-chest-xrays/data) dataset from Kaggle. All images from `img_0XX` folders are moved to a combined sub-folder `all_images/`.
-  
-- Rad-Restruct: We downloaded the [Rad-ReStruct](https://github.com/ChantalMP/Rad-ReStruct/tree/master) medical VQA benchmark dataset through the official download link in the repo.
-
-- VQA-RAD: We downloaded the [VQA-RAD](https://osf.io/89kps/) dataset through its official channel.
 
 Change dataset paths in [`utils/constants.py`](utils/constants.py) accordingly.
 
