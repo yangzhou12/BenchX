@@ -4,6 +4,19 @@ This repository includes the code for ICML24 Submission (Paper ID 9315):
 
 "BenchX: Benchmarking Medical Vision-Language Pretraining on Chest X-Rays"
 
+## Installation
+```bash
+conda create -n BenchX python=3.11
+conda activate BenchX
+```
+
+Clone the repository and install the package:
+```bash
+git clone https://github.com/XXXXX/BenchX
+cd BenchX
+pip install -r requirements.txt
+```
+
 ## Downstream Evaluation
 
 ### 0. Download Datasets
