@@ -17,7 +17,7 @@ cd BenchX
 pip install -r requirements.txt
 ```
 
-## Benchmarking Medical VLMs
+## Evaluation
 
 ### 0. Download Datasets
 
