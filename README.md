@@ -17,7 +17,7 @@ cd BenchX
 pip install -r requirements.txt
 ```
 
-## Downstream Evaluation
+## Benchmarking Medical VLMs
 
 ### 0. Download Datasets
 
