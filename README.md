@@ -31,7 +31,7 @@ pip install -r requirements.txt
 
 - NIH Chest X-rays: We downloaded Version 3 of the [NIH Chest X-rays](https://www.kaggle.com/datasets/nih-chest-xrays/data) dataset from Kaggle. All images from `img_0XX` folders are moved to a combined sub-folder `all_images/`.
 
-Change dataset paths in [`utils/constants.py`](utils/constants.py) accordingly.
+Change dataset paths in [`config/templates/finetune/`](config/templates/finetune/) accordingly.
 
 
 ### 1. Dataset Preparation
