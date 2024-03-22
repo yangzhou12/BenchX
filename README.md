@@ -54,9 +54,6 @@ root:[data]
 | +--train-rle.csv
 ```
 
-Note that we conduct our VQA experiments using the [Rad-ReStruct](https://github.com/ChantalMP/Rad-ReStruct/tree/master) benchmark repo. We follow their data preparation steps instead for the Rad-Restruct and VQA-RAD datasets.
-
-
 ### 2. Pre-processing
 
 Run the following commands to pre-process the dataset(s) specified below:
@@ -89,9 +86,6 @@ Supported Tasks:
     * Cross-modal Retrieval on CheXpert-5x200/MIMIC-5x200 (Zero-shot)
     * Cross-modal Classification on CheXpert-5x200 (Zero-shot)
     * Cross-modal Classification on RSNA Pneumonia (Zero-shot)
-* Multi-modal Tasks
-    * Visual Question Answering on Rad-Restruct
-    * Visual Question Answering on VQA-RAD
 
 #### Zero-shot Classification
 ```
@@ -109,8 +103,5 @@ python -m evaluation.retrieval.zeroshot_retrieval --config configs/zeroshot_retr
 ```
 python -m evaluation.segmentation.finetuned_segmentation --config configs/finetuned_segmentation_config.yaml
 ```
-#### VQA
-We conduct all experiments for medical VQA using the Rad-Restruct benchmark repo and provide the necessary files for reproducing the experiments [here](evaluation/vqa/).
-
 
 
