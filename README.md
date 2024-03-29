@@ -94,7 +94,7 @@ Supported Tasks:
     * Report Generation on IU X-Ray (Fine-tuned)
     * Image-report Retrieval on MIMIC-5x200 (Zero-shot)
 
-#### Finetuned Multi-Label Classification
+#### Finetuned Multi-Class Classification
 ```
 python bin/train.py config/multiclass_classification/$dataset/$method.yml
 ```
