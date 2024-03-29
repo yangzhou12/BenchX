@@ -75,7 +75,7 @@ python -m preprocessing.siim_pneumothorax
 
 No preprocessing is required for the NIH Chest X-ray dataset.
 
-### 3. Evaluation & Fine-tuning
+### 3. Fine-tuning & Evaluation
 
 We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
 
