@@ -40,11 +40,6 @@ Please organize the datasets as the following structure:
 
 ```
 root:[data]
-+--CheXpert-v1.0-small
-| +--train
-| +--valid
-| +--train.csv
-| +--valid.csv
 +--mimic_512
 | +--files
 | +--mimic-cxr-2.0.0-chexpert.csv
@@ -92,29 +87,24 @@ available_models()
 
 Supported Tasks:
 * Uni-modal Tasks
-    * Multi-label Classification on CheXpert (Fine-tuned)
+    * Multi-label Classification on NIH (Fine-tuned)
     * Binary Classification on RSNA Pneumonia (Fine-tuned)
-    * Semantic Segmentation on SIIM-ACR Pneumothorax (Fine-tuned)
+    * Image Segmentation on SIIM-ACR Pneumothorax (Fine-tuned)
 * Cross-modal Tasks
-    * Cross-modal Retrieval on CheXpert-5x200/MIMIC-5x200 (Zero-shot)
-    * Cross-modal Classification on CheXpert-5x200 (Zero-shot)
-    * Cross-modal Classification on RSNA Pneumonia (Zero-shot)
+    * Cross-modal Retrieval on MIMIC-5x200 (Zero-shot)
 
-#### Zero-shot Classification
-```
-python -m evaluation.classification.zeroshot_classifier --config configs/zeroshot_retrieval_config.yaml
-```
 #### Finetuned Classification
 ```
 python -m evaluation.classification.finetuned_classifier --config configs/finetuned_classification_config.yaml
-```
-#### Zero-shot Retrieval
-```
-python -m evaluation.retrieval.zeroshot_retrieval --config configs/zeroshot_retrieval_config.yaml
 ```
 #### Finetuned Segmentation
 ```
 python -m evaluation.segmentation.finetuned_segmentation --config configs/finetuned_segmentation_config.yaml
 ```
+#### Zero-shot Retrieval
+```
+python -m evaluation.retrieval.zeroshot_retrieval --config configs/zeroshot_retrieval_config.yaml
+```
+
 
 
