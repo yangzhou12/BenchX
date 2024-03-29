@@ -75,7 +75,7 @@ python -m preprocessing.siim_pneumothorax
 
 No preprocessing is required for the NIH Chest X-ray dataset.
 
-### 3. Zero-shot Evaluation & Fine-tuning
+### 3. Evaluation & Fine-tuning
 
 We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
 
@@ -90,20 +90,25 @@ Supported Tasks:
     * Multi-label Classification on NIH (Fine-tuned)
     * Binary Classification on RSNA Pneumonia (Fine-tuned)
     * Image Segmentation on SIIM-ACR Pneumothorax (Fine-tuned)
-* Cross-modal Tasks
-    * Cross-modal Retrieval on MIMIC-5x200 (Zero-shot)
+* Multi-modal Tasks
+    * Report Generation on IU X-Ray (Fine-tuned)
+    * Image-report Retrieval on MIMIC-5x200 (Zero-shot)
 
-#### Finetuned Classification
+#### Finetuned Multi-Label Classification
 ```
-python -m evaluation.classification.finetuned_classifier --config configs/finetuned_classification_config.yaml
+python bin/train.py config/multiclass_classification/$dataset/$method.yml
+```
+#### Finetuned Multi-Label Classification
+```
+python bin/train.py config/multilabel_classification/$dataset/$method.yml
 ```
 #### Finetuned Segmentation
 ```
-python -m evaluation.segmentation.finetuned_segmentation --config configs/finetuned_segmentation_config.yaml
+python bin/train.py config/segmentation/$dataset/$method.yml
 ```
 #### Zero-shot Retrieval
 ```
-python -m evaluation.retrieval.zeroshot_retrieval --config configs/zeroshot_retrieval_config.yaml
+python bin/test_zeroshot.py config/retrieval/$dataset/$method.yml
 ```
 
 
