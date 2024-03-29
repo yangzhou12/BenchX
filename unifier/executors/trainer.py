@@ -46,7 +46,7 @@ class TrainerConfig(object):
         )
 
         # Dataloader
-        self.dl = create_data_loader(self.config, split="train", logger=self.logger)
+        self.dl = create_data_loader(self.config, split=self.config.dataset.get("split", "train"), logger=self.logger)
 
         # Model
         self.model = create_model(
@@ -195,6 +195,7 @@ class Trainer(TrainerConfig):
 
             if ret["done_training"]:
                 self.logger.info("Early stopped reached")
+                self.logger.info("Best {}: {}".format(self.config.early_stop_metric, self.training_scheduler.current_best_metric))
                 sys.exit()
             if ret["save_state"]:
                 self.saver.save(
