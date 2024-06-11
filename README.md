@@ -39,7 +39,7 @@ root:[data]
 | +--val.txt
 +--IU_Xray
 | +--images
-| +--annotation.json
+| +--iu_xray_annotations.csv
 +--NIH_Chest_Xray
 | +--images
 | +--nih_labels.csv
