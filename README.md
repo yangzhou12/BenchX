@@ -4,29 +4,30 @@
 
 ### 0. Download Datasets
 
-- MIMIC-CXR: We downloaded the [MIMIC-CXR-JPG](https://physionet.org/content/mimic-cxr-jpg/2.0.0/) dataset for pre-training using paired medical reports and images.
+- COVIDx: We used Version 9 of the [COVIDx CXR-4](https://www.kaggle.com/datasets/andyczhao/covidx-cxr2) dataset from Kaggle.
 
-- CheXpert: We downloaded the [CheXpert-v1.0-small](https://stanfordmlgroup.github.io/competitions/chexpert/#:~:text=What%20is%20CheXpert%3F,labeled%20reference%20standard%20evaluation%20sets) dataset from Kaggle.
+- NIH Chest X-rays: We used Version 3 of the [NIH Chest X-rays](https://www.kaggle.com/datasets/nih-chest-xrays/data) dataset from Kaggle. All images from `img_0XX` folders are moved to a combined sub-folder `images/`.
 
-- RSNA Pneumonia: We used the stage 2 data of the [RSNA Pneumonia](https://www.kaggle.com/c/rsna-pneumonia-detection-challenge) dataset from Kaggle.
+- Object-CXR: We used the [object-CXR](https://www.kaggle.com/datasets/raddar/foreign-objects-in-chest-xrays) dataset from Kaggle.
 
-- SIIM: We downloaded the stage 1 data of the [SIIM-ACR Pneumothorax Segmentation](https://www.kaggle.com/c/siim-acr-pneumothorax-segmentation) dataset from Kaggle.
+- RSNA: We used the stage 2 data of the [RSNA Pneumonia](https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) dataset from Kaggle.
 
-- NIH Chest X-rays: We downloaded Version 3 of the [NIH Chest X-rays](https://www.kaggle.com/datasets/nih-chest-xrays/data) dataset from Kaggle. All images from `img_0XX` folders are moved to a combined sub-folder `all_images/`.
-  
-- Rad-Restruct: We downloaded the [Rad-ReStruct](https://github.com/ChantalMP/Rad-ReStruct/tree/master) medical VQA benchmark dataset through the official download link in the repo.
+- SIIM: We used the stage 1 data of the [SIIM-ACR Pneumothorax Segmentation](https://www.kaggle.com/datasets/vbookshelf/pneumothorax-chest-xray-images-and-masks) dataset from Kaggle.
 
-- VQA-RAD: We downloaded the [VQA-RAD](https://osf.io/89kps/) dataset through its official channel.
+- TBX11K: We used the [TBX11K Simplified](https://www.kaggle.com/datasets/vbookshelf/tbx11k-simplified) dataset from Kaggle.
 
-Change dataset paths in [`utils/constants.py`](utils/constants.py) accordingly.
+- VinDr-CXR: We used the [VinDr-CXR](https://physionet.org/content/vindr-cxr/1.0.0/) dataset from PhysioNet.
 
+- IU Xray: We used the preprocessed [IU Xray](https://drive.google.com/file/d/1c0BXEuDy8Cmm2jfN0YYGkQxFZd2ZIoLg) dataset from [R2Gen](https://github.com/cuhksz-nlp/R2Gen).
+
+Please change dataset paths in [`utils/constants.py`](utils/constants.py) accordingly.
 
 ### 1. Dataset Preparation
 
-Please organize the datasets as the following structure:
+Please run the scripts in [`preprocess`](preprocess) to preprocess each dataset and organize the processed datasets as the following structure:
 
 ```
-root:[data]
+root:[datasets]
 +--COVIDx-CXR4
 | +--test
 | +--train
@@ -84,7 +85,7 @@ root:[data]
 | +--train_10.txt
 | +--train.txt
 | +--val.txt
-+--Vindr_CXR
++--VinDr_CXR
 | +--images
 | +--masks
 | +--test.txt
@@ -94,9 +95,6 @@ root:[data]
 | +--val.txt
 | +--vindr_labels.csv
 ```
-
-Note that we conduct our VQA experiments using the [Rad-ReStruct](https://github.com/ChantalMP/Rad-ReStruct/tree/master) benchmark repo. We follow their data preparation steps instead for the Rad-Restruct and VQA-RAD datasets.
-
 
 ### 2. Pre-processing
 
