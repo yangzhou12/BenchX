@@ -37,6 +37,9 @@ root:[data]
 | +--train_10.txt
 | +--train.txt
 | +--val.txt
++--IU_Xray
+| +--images
+| +--annotation.json
 +--NIH_Chest_Xray
 | +--images
 | +--nih_labels.csv
@@ -81,6 +84,15 @@ root:[data]
 | +--train_10.txt
 | +--train.txt
 | +--val.txt
++--Vindr_CXR
+| +--images
+| +--masks
+| +--test.txt
+| +--train_1.txt
+| +--train_10.txt
+| +--train.txt
+| +--val.txt
+| +--vindr_labels.csv
 ```
 
 Note that we conduct our VQA experiments using the [Rad-ReStruct](https://github.com/ChantalMP/Rad-ReStruct/tree/master) benchmark repo. We follow their data preparation steps instead for the Rad-Restruct and VQA-RAD datasets.
