@@ -20,7 +20,7 @@
 
 - IU Xray: We used the preprocessed [IU Xray](https://drive.google.com/file/d/1c0BXEuDy8Cmm2jfN0YYGkQxFZd2ZIoLg) dataset from [R2Gen](https://github.com/cuhksz-nlp/R2Gen).
 
-Please change dataset paths in [`utils/constants.py`](utils/constants.py) accordingly.
+Please change dataset paths in the config files from [`config`](config) accordingly.
 
 ### 1. Dataset Preparation
 
