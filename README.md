@@ -24,7 +24,7 @@ Please change dataset paths in the config files from [`config`](config) accordin
 
 ### 1. Dataset Preparation
 
-Please run the scripts in [`preprocess`](preprocess) to preprocess each dataset and organize the processed datasets as the following structure:
+Please run the scripts in [`preprocess`](preprocess) to pre-process each dataset and organize the processed datasets as the following structure:
 
 ```
 root:[datasets]
@@ -95,19 +95,6 @@ root:[datasets]
 | +--val.txt
 | +--vindr_labels.csv
 ```
-
-### 2. Pre-processing
-
-Run the following commands to pre-process the dataset(s) specified below:
-
-```
-python -m preprocessing.chexpert
-python -m preprocessing.mimic_cxr #mimic_cxr_from_csv if preprocessing CSV file containing reports
-python -m preprocessing.rsna_pneumonia
-python -m preprocessing.siim_pneumothorax
-```
-
-No preprocessing is required for the NIH Chest X-ray dataset.
 
 ### 3. Zero-shot Evaluation & Fine-tuning
 
