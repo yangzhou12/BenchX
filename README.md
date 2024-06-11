@@ -96,7 +96,9 @@ root:[datasets]
 | +--vindr_labels.csv
 ```
 
-### 3. Zero-shot Evaluation & Fine-tuning
+### 2. Classification
+
+### 3. Segmentation
 
 We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`configs/`](configs/). Additional command-line arguments can also be specified to override the configuration setting.
 
@@ -123,20 +125,17 @@ Supported Tasks:
 ```
 python -m evaluation.classification.zeroshot_classifier --config configs/zeroshot_retrieval_config.yaml
 ```
-#### Finetuned Classification
-```
-python -m evaluation.classification.finetuned_classifier --config configs/finetuned_classification_config.yaml
-```
 #### Zero-shot Retrieval
 ```
 python -m evaluation.retrieval.zeroshot_retrieval --config configs/zeroshot_retrieval_config.yaml
+```
+#### Finetuned Classification
+```
+python -m evaluation.classification.finetuned_classifier --config configs/finetuned_classification_config.yaml
 ```
 #### Finetuned Segmentation
 ```
 python -m evaluation.segmentation.finetuned_segmentation --config configs/finetuned_segmentation_config.yaml
 ```
-#### VQA
-We conduct all experiments for medical VQA using the Rad-Restruct benchmark repo and provide the necessary files for reproducing the experiments [here](evaluation/vqa/).
-
 
 
