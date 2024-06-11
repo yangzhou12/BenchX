@@ -27,31 +27,60 @@ Please organize the datasets as the following structure:
 
 ```
 root:[data]
-+--CheXpert-v1.0-small
++--COVIDx-CXR4
+| +--test
 | +--train
-| +--valid
-| +--train.csv
-| +--valid.csv
-+--mimic_512
-| +--files
-| +--mimic-cxr-2.0.0-chexpert.csv
-| +--mimic-cxr-2.0.0-metadata.csv
-| +--mimic-cxr-2.0.0-negbio.csv
-| +--mimic-cxr-2.0.0-split.csv
-+--nih_chest_xray
-| +--all_images
-| +--test_list.txt
-| +--train_val_list.txt
-+--rsna_pneumonia
-| +--stage_2_test_images
-| +--stage_2_train_images
-| +--stage_2_detailed_class_info.csv
-| +--stage_2_sample_submission.csv
-| +--stage_2_train_labels.csv
-+--siim-acr-pneumothorax
-| +--dicom-images-test
-| +--dicom-images-train
-| +--train-rle.csv
+| +--val
+| +--covidx_labels.csv
+| +--test.txt
+| +--train_1.txt
+| +--train_10.txt
+| +--train.txt
+| +--val.txt
++--NIH_Chest_Xray
+| +--images
+| +--nih_labels.csv
+| +--test.txt
+| +--train_1.txt
+| +--train_10.txt
+| +--train.txt
+| +--val.txt
++--Object-CXR
+| +--images
+| +--masks
+| +--object_cxr_labels.csv
+| +--test.txt
+| +--train_1.txt
+| +--train_10.txt
+| +--train.txt
+| +--val.txt
++--RSNA
+| +--images
+| +--masks
+| +--rsna_labels.csv
+| +--test.txt
+| +--train_1.txt
+| +--train_10.txt
+| +--train.txt
+| +--val.txt
++--SIIM
+| +--images
+| +--masks
+| +--siim_labels.csv
+| +--test.txt
+| +--train_1.txt
+| +--train_10.txt
+| +--train.txt
+| +--val.txt
++--TBX11K
+| +--images
+| +--masks
+| +--tbx11k_labels.csv
+| +--test.txt
+| +--train_1.txt
+| +--train_10.txt
+| +--train.txt
+| +--val.txt
 ```
 
 Note that we conduct our VQA experiments using the [Rad-ReStruct](https://github.com/ChantalMP/Rad-ReStruct/tree/master) benchmark repo. We follow their data preparation steps instead for the Rad-Restruct and VQA-RAD datasets.
