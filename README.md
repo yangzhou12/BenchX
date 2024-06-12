@@ -31,7 +31,7 @@ available_models()
 ```
 
 Supported MedVLP Methods:
-<details open>
+<details close>
 <summary><b>Supported MedVLP Methods</b> (click to expand)</summary>
   
 * [ConVIRT](https://github.com/edreisMD/ConVIRT-pytorch/tree/master)
