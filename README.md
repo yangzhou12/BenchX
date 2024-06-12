@@ -14,6 +14,20 @@ pip install -r requirements.txt
 
 ## Dataset Preparation
 
+<details close>
+<summary><b>Supported Datasets and Tasks</b> (click to expand)</summary>
+
+* [COVIDx CXR-4](https://www.kaggle.com/datasets/andyczhao/covidx-cxr2) (Binary Classification)
+* NIH Chest X-rays: We used the [NIH Chest X-rays](https://huggingface.co/datasets/alkzar90/NIH-Chest-X-ray-dataset) dataset from Huggingface. 
+* Object-CXR: We used the [object-CXR](https://www.kaggle.com/datasets/raddar/foreign-objects-in-chest-xrays) dataset from Kaggle.
+* RSNA: We used the stage 2 data of the [RSNA Pneumonia](https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) dataset from Kaggle.
+* SIIM: We used the stage 1 data of the [SIIM-ACR Pneumothorax Segmentation](https://www.kaggle.com/datasets/vbookshelf/pneumothorax-chest-xray-images-and-masks) dataset from Kaggle.
+* TBX11K: We used the [TBX11K Simplified](https://www.kaggle.com/datasets/vbookshelf/tbx11k-simplified) dataset from Kaggle.
+* VinDr-CXR: We used the [VinDr-CXR](https://physionet.org/content/vindr-cxr/1.0.0/) dataset from PhysioNet.
+* IU Xray: We used the preprocessed [IU Xray](https://drive.google.com/file/d/1c0BXEuDy8Cmm2jfN0YYGkQxFZd2ZIoLg) dataset from [R2Gen](https://github.com/cuhksz-nlp/R2Gen).
+
+</details>
+
 Please refer to [`datasets/README.md`](datasets/README.md) for training configs and results.
 
 ## Downstream Evaluation
@@ -30,7 +44,6 @@ from evaluation import available_models
 available_models()
 ```
 
-Supported MedVLP Methods:
 <details close>
 <summary><b>Supported MedVLP Methods</b> (click to expand)</summary>
   
