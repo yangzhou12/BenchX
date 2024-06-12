@@ -60,4 +60,10 @@ python -m evaluation.classification.finetuned_classifier --config configs/finetu
 python -m evaluation.segmentation.finetuned_segmentation --config configs/finetuned_segmentation_config.yaml
 ```
 
+## Acknowledgments
 
+We thanks the following projects for reference of creating BenchX:
+
+- [ViLMedic](https://github.com/jbdel/vilmedic)
+- [TorchXRayVision](https://github.com/mlmed/torchxrayvision)
+- [MRM](https://github.com/RL4M/MRM-pytorch/tree/main)
