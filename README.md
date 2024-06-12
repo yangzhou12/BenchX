@@ -74,18 +74,19 @@ pip install -v -e .
 
 Our codebase accesses the datasets from `./datasets/` and pre-trained models from `./checkpoints/` by default.
 ```
-├── ...
-├── datasets
-│   ├── benchmark_imglist
-│   ├── images_classic
-│   └── images_largescale
-├── unifier
+├── bin
+├── config
 ├── checkpoints
 │   ├── official
 │   └── pretrained
+├── datasets
+│   ├── COVIDx
+│   ├── ...
+│   └── IU_Xray
+├── unifier
 ├── scripts
-├── main.py
-├── ...
+├── mmsegmentation
+├── unifier
 ```
 
 ## Fine-Tuning & Evaluation
