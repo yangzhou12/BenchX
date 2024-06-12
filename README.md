@@ -32,34 +32,6 @@ Please refer to [`datasets/README.md`](datasets/README.md) for training configs 
 
 ## Downstream Evaluation
 
-### 2. Classification
-
-### 3. Segmentation
-
-We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`configs/`](configs/). Additional command-line arguments can also be specified to override the configuration setting.
-
-To view all available models for evaluation, you may run the following script:
-```python
-from evaluation import available_models
-available_models()
-```
-
-<details close>
-<summary><b>Supported MedVLP Methods</b> (click to expand)</summary>
-  
-* [ConVIRT](https://github.com/edreisMD/ConVIRT-pytorch/tree/master)
-* [GLoRIA](https://github.com/marshuang80/gloria/tree/main)
-* [MedCLIP](https://github.com/RyanWangZf/MedCLIP)
-* [MedKLIP](https://github.com/MediaBrain-SJTU/MedKLIP)
-* [M-FLAG](https://github.com/cheliu-computation/M-FLAG-MICCAI2023)
-* [MGCA](https://github.com/HKU-MedAI/MGCA/tree/main/mgca)
-* [MRM](https://github.com/RL4M/MRM-pytorch/tree/main)
-* [PTUnifier](https://github.com/zhjohnchan/PTUnifier)
-* [REFERS](https://github.com/funnyzhou/REFERS)
-
-</details>
-
-
 Supported Tasks:
 * Uni-modal Tasks
     * Multi-label Classification on CheXpert (Fine-tuned)
@@ -72,6 +44,24 @@ Supported Tasks:
 * Multi-modal Tasks
     * Visual Question Answering on Rad-Restruct
     * Visual Question Answering on VQA-RAD
+
+### 1. Classification
+
+### 2. Segmentation
+
+We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`configs/`](configs/). Additional command-line arguments can also be specified to override the configuration setting.
+
+To view all available models for evaluation, you may run the following script:
+```python
+from evaluation import available_models
+available_models()
+```
+
+### 2.1 Necessary files for segmentation
+We conduct all experiments  of segmentation by [MMSegmentaiton](https://github.com/open-mmlab/mmsegmentation) (version  0.25.0) and it is necessary to set the environment and comprehend the code structures of MMSegmentaiton in advance.
+
+Here we provide the necessary configuration files for reproducing the experiments in the directory [Siim_Segmentation](Siim_Segmentation). After modifying MMSegmentaiton framework with provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
+
 
 #### Zero-shot Classification
 ```
