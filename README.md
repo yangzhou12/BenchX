@@ -33,6 +33,7 @@ available_models()
 Supported MedVLP Methods:
 <details open>
 <summary>(click to collapse)</summary>
+  
 * [ConVIRT](https://github.com/edreisMD/ConVIRT-pytorch/tree/master)
 * [GLoRIA](https://github.com/marshuang80/gloria/tree/main)
 * [MedCLIP](https://github.com/RyanWangZf/MedCLIP)
@@ -42,6 +43,7 @@ Supported MedVLP Methods:
 * [MRM](https://github.com/RL4M/MRM-pytorch/tree/main)
 * [PTUnifier](https://github.com/zhjohnchan/PTUnifier) (segmentation only)
 * [REFERS](https://github.com/funnyzhou/REFERS)
+
 </details>
 
 <details>
