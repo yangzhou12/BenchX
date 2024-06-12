@@ -66,55 +66,7 @@ Please refer to [`datasets/README.md`](datasets/README.md) for more detail.
 
 </details>
 
-## Downstream Evaluation
-
-Supported Tasks:
-* Uni-modal Tasks
-    * Multi-label Classification on CheXpert (Fine-tuned)
-    * Binary Classification on RSNA Pneumonia (Fine-tuned)
-    * Semantic Segmentation on SIIM-ACR Pneumothorax (Fine-tuned)
-* Cross-modal Tasks
-    * Cross-modal Retrieval on CheXpert-5x200/MIMIC-5x200 (Zero-shot)
-    * Cross-modal Classification on CheXpert-5x200 (Zero-shot)
-    * Cross-modal Classification on RSNA Pneumonia (Zero-shot)
-* Multi-modal Tasks
-    * Visual Question Answering on Rad-Restruct
-    * Visual Question Answering on VQA-RAD
-
-### 1. Classification
-
-### 2. Segmentation
-
-Build the unified segementation pipeline by adapting MMSegmentation:
-
-We provide the necessary files for adapting MMSegmentation in the directory [unifed_segmentation](unifed_segmentation). After modifying MMSegmentaiton framework with the provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
-
-We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`configs/`](configs/). Additional command-line arguments can also be specified to override the configuration setting.
-
-To view all available models for evaluation, you may run the following script:
-```python
-from evaluation import available_models
-available_models()
-```
-
-#### Zero-shot Classification
-```
-python -m evaluation.classification.zeroshot_classifier --config configs/zeroshot_retrieval_config.yaml
-```
-#### Zero-shot Retrieval
-```
-python -m evaluation.retrieval.zeroshot_retrieval --config configs/zeroshot_retrieval_config.yaml
-```
-#### Finetuned Classification
-```
-python -m evaluation.classification.finetuned_classifier --config configs/finetuned_classification_config.yaml
-```
-#### Finetuned Segmentation
-```
-python -m evaluation.segmentation.finetuned_segmentation --config configs/finetuned_segmentation_config.yaml
-```
-
-### 3. Fine-tuning & Evaluation
+## Fine-tuning & Evaluation
 
 We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
 
@@ -132,6 +84,22 @@ Supported Tasks:
 * Multi-modal Tasks
     * Report Generation on IU X-Ray (Fine-tuned)
     * Image-report Retrieval on MIMIC-5x200 (Zero-shot)
+
+### 1. Classification
+
+### 2. Segmentation
+
+Build the unified segementation pipeline by adapting MMSegmentation:
+
+We provide the necessary files for adapting MMSegmentation in the directory [unifed_segmentation](unifed_segmentation). After modifying MMSegmentaiton framework with the provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
+
+We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`configs/`](configs/). Additional command-line arguments can also be specified to override the configuration setting.
+
+To view all available models for evaluation, you may run the following script:
+```python
+from evaluation import available_models
+available_models()
+```
 
 #### Finetuned Multi-Class Classification
 ```
