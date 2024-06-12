@@ -31,6 +31,10 @@ cd mmsegmentation
 pip install -v -e .
 ```
 
+Build the unified segementation pipeline by adapting MMSegmentation:
+
+We provide the necessary files for adapting MMSegmentation in the directory [BenchX_Segmentation](BenchX_Segmentation). After modifying MMSegmentaiton framework with the provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
+
 ## Requirements
 
 To install requirements:
@@ -99,12 +103,6 @@ To view all available models for evaluation, you may run the following script:
 from evaluation import available_models
 available_models()
 ```
-
-### 2.1 Necessary files for segmentation
-We conduct all experiments  of segmentation by [MMSegmentaiton](https://github.com/open-mmlab/mmsegmentation) (version  0.25.0) and it is necessary to set the environment and comprehend the code structures of MMSegmentaiton in advance.
-
-Here we provide the necessary configuration files for reproducing the experiments in the directory [Siim_Segmentation](Siim_Segmentation). After modifying MMSegmentaiton framework with provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
-
 
 #### Zero-shot Classification
 ```
