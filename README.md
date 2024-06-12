@@ -33,6 +33,10 @@ pip install -v -e .
 
 ## Dataset Preparation
 
+We provide code to process existing datasets. In particular, we do not distribute datasets in this repository, and we do not own copyrights on any of the datasets.
+
+The use of any of the datasets included in BenchX requires accepting its corresponding license on the original website. We refer to each dataset's README for more details.
+
 <details close>
 <summary><b>Supported Datasets and Tasks</b> (click to expand)</summary>
 
