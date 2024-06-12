@@ -62,15 +62,15 @@ Please refer to [`datasets/README.md`](datasets/README.md) for training configs 
 <details close>
 <summary><b>Supported MedVLP methods </b> (click to expand)</summary>
 
-* [ConVIRT](https://www.kaggle.com/datasets/andyczhao/covidx-cxr2) (Binary Classification)
-* [GLoRIA](https://huggingface.co/datasets/alkzar90/NIH-Chest-X-ray-dataset) (Multi-Label Classification)
-* [MedCLIP](https://www.kaggle.com/datasets/raddar/foreign-objects-in-chest-xrays) (Binary Classification, Segmentation)
-* [MedKLIP](https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) (Binary Classification, Segmentation)
-* [M-FLAG](https://www.kaggle.com/datasets/vbookshelf/pneumothorax-chest-xray-images-and-masks) (Binary Classification, Segmentation)
-* [MGCA](https://www.kaggle.com/datasets/vbookshelf/tbx11k-simplified) (Segmentation)
-* [PTUnifier](https://physionet.org/content/vindr-cxr/1.0.0/) (Multi-Label Classification, Segmentation)
-* [MRM](https://drive.google.com/file/d/1c0BXEuDy8Cmm2jfN0YYGkQxFZd2ZIoLg) (Report Generation)
-* [REFERS](https://github.com/funnyzhou/REFERS): "Generalized radiograph representation learning via cross-supervision between images and free-text radiology reports"
+* [ConVIRT](https://github.com/edreisMD/ConVIRT-pytorch/tree/master): "Contrastive Learning of Medical Visual Representations from Paired Images and Text"
+* [GLoRIA](https://github.com/marshuang80/gloria/tree/main): "GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition"
+* [MedCLIP](https://github.com/RyanWangZf/MedCLIP): "MedCLIP: Contrastive Learning from Unpaired Medical Images and Texts"
+* [MedKLIP](https://github.com/MediaBrain-SJTU/MedKLIP): "MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training in Radiology"
+* [M-FLAG](https://github.com/cheliu-computation/M-FLAG-MICCAI2023): "M-FLAG: Medical Vision-Language Pre-training with Frozen Language Models and Latent Space Geometry Optimization"
+* [MGCA](https://github.com/HKU-MedAI/MGCA/tree/main): "Multi-Granularity Cross-modal Alignment for Generalized Medical Visual Representation Learning"
+* [PTUnifier](https://github.com/zhjohnchan/PTUnifier): "Towards Unifying Medical Vision-and-Language Pre-training via Soft Prompts"
+* [MRM](https://github.com/RL4M/MRM-pytorch/tree/main): "Advancing Radiograph Representation Learning with Masked Record Modeling"
+* [REFERS](https://github.com/funnyzhou/REFERS): "Generalized Radiograph Representation Learning via Cross-Supervision Between Images and Free-Text Radiology Reports"
 
 </details>
 
