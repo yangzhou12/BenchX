@@ -70,15 +70,13 @@ pip install -v -e .
 
 > We pre-train 8 MedVLP models on the same training set from [MIMIC-CXR](https://www.physionet.org/content/mimic-cxr-jpg/2.1.0/), and will release our pre-trained checkpoints. Since the labels for training [MedCLIP](https://github.com/RyanWangZf/MedCLIP) are not public avaliable, we use its offitial checkpoints for evaluation.
 
-> For segmentation, please run the scripts in ['preprocess/model_converters'](preprocess/model_converters) to convert keys in MedVLP models to MMSegmentation style.
+> For segmentation, please run the scripts in ['preprocess/model_converters'](preprocess/model_converters) to convert keys in MedVLP models to the MMSegmentation format before training.
 
 Our codebase accesses the datasets from `./datasets/` and pre-trained models from `./checkpoints/` by default.
 ```
 ├── bin
 ├── config
 ├── checkpoints
-│   ├── official
-│   └── pretrained
 ├── datasets
 │   ├── COVIDx
 │   ├── ...
