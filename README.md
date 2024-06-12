@@ -117,17 +117,17 @@ python bin/train.py config/report_generation/$dataset/$method.yml
 ```
 
 ### 4. Evaluation
+To evaluate fine-tuned MedVLP model, run:
 
 ```
 # For classification and report generation
-python bin/train.py config/$task/$dataset/$method.yml
+python bin/test.py config/$task/$dataset/$method.yml validator.splits=[test] ckpt_dir=<path_to_checkpoint>
 
 # For segmentation
-python mmsegmentation/tools/train.py config/report_generation/$dataset/$method.yml path/to/checkpoint --work-dir experiments/$dataset/$method/
+python mmsegmentation/tools/train.py config/report_generation/$dataset/$method.yml <path_to_checkpoint> --work-dir <path_to_experiment_output>
 ```
 
 ## Running a Benchmark Experiment / Reproduce benchmark
-
 
 
 ## Acknowledgments
