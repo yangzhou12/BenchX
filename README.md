@@ -1,6 +1,6 @@
 # BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays
 
-This repository includes the [preview code](https://anonymous.4open.science/r/BenchX-46C5/) for NeurIPS Datasets and Benchmarks track submission (Paper ID 279): 
+This repository includes the code for NeurIPS Datasets and Benchmarks track submission (Paper ID 279): 
 
 "BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays"
 
