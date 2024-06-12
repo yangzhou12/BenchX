@@ -30,6 +30,8 @@ pip install -r requirements.txt
 
 Please refer to [`datasets/README.md`](datasets/README.md) for training configs and results.
 
+## Pre-Trained Checkpoints
+
 ## Downstream Evaluation
 
 Supported Tasks:
