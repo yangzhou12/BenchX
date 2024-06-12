@@ -53,8 +53,6 @@ The use of any of the datasets included in BenchX requires accepting its corresp
 
 ## Pre-Trained Checkpoints
 
-We pre-train 8 MedVLP models on the same training set from [MIMIC-CXR](https://www.physionet.org/content/mimic-cxr-jpg/2.1.0/), and will release our pre-trained checkpoints. Since the labels for training [MedCLIP](https://github.com/RyanWangZf/MedCLIP) are not public avaliable, we use its offitial checkpoints for evaluation.
-
 <details close>
 <summary><b>Supported MedVLP methods </b> (click to expand)</summary>
 
@@ -69,6 +67,10 @@ We pre-train 8 MedVLP models on the same training set from [MIMIC-CXR](https://w
 * [REFERS](https://github.com/funnyzhou/REFERS): "Generalized Radiograph Representation Learning via Cross-Supervision Between Images and Free-Text Radiology Reports" [[Official]](checkpoints/official) [[Ours]](checkpoints/pretrained)
 
 </details>
+
+We pre-train 8 MedVLP models on the same training set from [MIMIC-CXR](https://www.physionet.org/content/mimic-cxr-jpg/2.1.0/), and will release our pre-trained checkpoints. Since the labels for training [MedCLIP](https://github.com/RyanWangZf/MedCLIP) are not public avaliable, we use its offitial checkpoints for evaluation.
+
+For segmentation, please run the scripts in ['preprocess/model_converters'](preprocess/model_converters) to convert keys in MedVLP models to MMSegmentation style.
 
 ## Fine-Tuning & Evaluation
 
