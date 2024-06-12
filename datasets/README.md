@@ -97,8 +97,4 @@ root:[datasets]
 ### 3. Data Splits
 In the directory [`preprocess`](preprocess/), we provide data splits for each dataset for reproducibility.
 
-We give the train/valid/test splits of [CheXpert](DatasetsSplits/CheXpert), [NIH ChestX-ray](DatasetsSplits/NIH_ChestX-ray), and [RSNA Pneumonia](DatasetsSplits/RSNA_Pneumonia).
-
-For [COVID-19 Image Data Collection](DatasetsSplits/COVID-19_Image_Data_Collection), we randomly split the train/valid/test set 5 times and we provide the images in the [images](DatasetsSplits/COVID-19_Image_Data_Collection/images) directory.
-
-For [SIIM-ACR_Pneumothorax](DatasetsSplits/SIIM-ACR_Pneumothorax), please organize the directories of images and annotations as section 5.1 mentioned according to the given splits.
+We provide the train/validation/test splits for all the datasets, where the split for the NIH_Chest_Xray dataset is taken from [MRM](https://github.com/RL4M/MRM-pytorch/tree/main/DatasetsSplits/NIH_ChestX-ray) for fair comparision.
