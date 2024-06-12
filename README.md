@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 Install MMSegmentation following the [offitial instruction](https://mmsegmentation.readthedocs.io/en/latest/get_started.html):
 ```bash
-# Install the dependent packages for MMSegmentation
+# Install the dependency for MMSegmentation
 pip install -U openmim
 mim install mmengine
 mim install "mmcv>=2.0.0"
