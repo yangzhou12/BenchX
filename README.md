@@ -8,7 +8,7 @@ To install requirements:
 pip install -r requirements.txt
 ```
 
-## Data
+## Dataset Preparation
 
 Please refer to [`datasets/README.md`](datasets/README.md) for training configs and results.
 
