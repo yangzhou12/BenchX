@@ -87,7 +87,7 @@ Supported Tasks:
 
 Build the unified segementation pipeline by adapting MMSegmentation:
 
-We provide the necessary files for adapting MMSegmentation in the directory [BenchX_Segmentation](BenchX_Segmentation). After modifying MMSegmentaiton framework with the provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
+We provide the necessary files for adapting MMSegmentation in the directory [unifed_segmentation](unifed_segmentation). After modifying MMSegmentaiton framework with the provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
 
 We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`configs/`](configs/). Additional command-line arguments can also be specified to override the configuration setting.
 
