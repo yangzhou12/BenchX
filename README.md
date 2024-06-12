@@ -5,6 +5,7 @@ This repository includes the code for NeurIPS24 Datasets and Benchmarks Submissi
 "BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays"
 
 ## Installation
+Create a conda environment and activate it:
 ```bash
 conda create -n BenchX python=3.11
 conda activate BenchX
@@ -17,11 +18,17 @@ cd BenchX
 pip install -r requirements.txt
 ```
 
-Clone the repository of  and install requirements:
+Install MMSegmentation following the [offitial instruction](https://mmsegmentation.readthedocs.io/en/latest/get_started.html):
 ```bash
-git clone https://github.com/XXXXX/BenchX
-cd BenchX
-pip install -r requirements.txt
+# Install the dependent packages for MMSegmentation
+pip install -U openmim
+mim install mmengine
+mim install "mmcv>=2.0.0"
+
+# Install MMSegmentation
+git clone -b main https://github.com/open-mmlab/mmsegmentation.git
+cd mmsegmentation
+pip install -v -e .
 ```
 
 ## Requirements
