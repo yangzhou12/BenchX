@@ -105,6 +105,10 @@ We evaluate our pre-trained models by specifying the `--pretrain_path` argument 
 python bin/train.py config/report_generation/$dataset/$method.yml
 ```
 
+## Running a Benchmark Experiment
+
+
+
 ## Acknowledgments
 
 We thanks the following projects for reference of creating BenchX:
