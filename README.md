@@ -104,22 +104,28 @@ python bin/train.py config/classification/$dataset/$method.yml
 ```
 
 ### 2. Segmentation
+To fine-tune the MedVLP model for segmentation, run this command:
 
 ```
-cd mmsegmentation
-python bin/train.py config/segmentation/$dataset/$method.yml
+python mmsegmentation/tools/train.py config/benchmark/$dataset/$method.yml
 ```
 
-Build the unified segementation pipeline by adapting MMSegmentation:
-
-We provide the necessary files for adapting MMSegmentation in the directory [unifed_segmentation](unifed_segmentation). After modifying MMSegmentaiton framework with the provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
-
-We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`configs/`](configs/). Additional command-line arguments can also be specified to override the configuration setting.
+> **Adapting MMSegmentation**: We provide the necessary files for adapting MMSegmentation in the directory [unifed_segmentation](unifed_segmentation). After modifying MMSegmentaiton framework with the provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
 
 ### 3. Report Generation
-
+To fine-tune the MedVLP model for report generation, run this command:
 ```
 python bin/train.py config/report_generation/$dataset/$method.yml
+```
+
+### 4. Evaluation
+
+```
+# For classification and report generation
+python bin/train.py config/$task/$dataset/$method.yml
+
+# For segmentation
+python mmsegmentation/tools/train.py config/report_generation/$dataset/$method.yml path/to/checkpoint --work-dir experiments/$dataset/$method/
 ```
 
 ## Running a Benchmark Experiment / Reproduce benchmark
