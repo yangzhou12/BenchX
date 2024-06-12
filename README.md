@@ -72,17 +72,17 @@ pip install -v -e .
 
 > For segmentation, please run the scripts in ['preprocess/model_converters'](preprocess/model_converters) to convert keys in MedVLP models to MMSegmentation style.
 
-Our codebase accesses the datasets from `./data/` and pretrained models from `./results/checkpoints/` by default.
+Our codebase accesses the datasets from `./datasets/` and pre-trained models from `./checkpoints/` by default.
 ```
 ├── ...
-├── data
+├── datasets
 │   ├── benchmark_imglist
 │   ├── images_classic
 │   └── images_largescale
-├── openood
-├── results
-│   ├── checkpoints
-│   └── ...
+├── unifier
+├── checkpoints
+│   ├── official
+│   └── pretrained
 ├── scripts
 ├── main.py
 ├── ...
