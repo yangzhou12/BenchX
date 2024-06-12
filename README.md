@@ -76,28 +76,22 @@ We pre-train 8 MedVLP models on the same training set from [MIMIC-CXR](https://w
 
 Again, these checkpoints can be downloaded with the downloading script [here](https://github.com/Jingkang50/OpenOOD/tree/main/scripts/download).
 
-## Fine-tuning & Evaluation
+## Fine-Tuning & Evaluation
 
-We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
-
-To view all available models for evaluation, you may run the following script:
-```python
-from evaluation import available_models
-available_models()
-```
-
-Supported Tasks:
-* Uni-modal Tasks
-    * Multi-label Classification on NIH (Fine-tuned)
-    * Binary Classification on RSNA Pneumonia (Fine-tuned)
-    * Image Segmentation on SIIM-ACR Pneumothorax (Fine-tuned)
-* Multi-modal Tasks
-    * Report Generation on IU X-Ray (Fine-tuned)
-    * Image-report Retrieval on MIMIC-5x200 (Zero-shot)
+We evaluate our pre-trained MedVLP models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
 
 ### 1. Classification
 
+```
+python bin/train.py config/classification/$dataset/$method.yml
+```
+
 ### 2. Segmentation
+
+```
+cd mmsegmentation
+python bin/train.py config/segmentation/$dataset/$method.yml
+```
 
 Build the unified segementation pipeline by adapting MMSegmentation:
 
@@ -105,27 +99,10 @@ We provide the necessary files for adapting MMSegmentation in the directory [uni
 
 We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`configs/`](configs/). Additional command-line arguments can also be specified to override the configuration setting.
 
-To view all available models for evaluation, you may run the following script:
-```python
-from evaluation import available_models
-available_models()
-```
+### 3. Report Generation
 
-#### Finetuned Multi-Class Classification
 ```
-python bin/train.py config/multiclass_classification/$dataset/$method.yml
-```
-#### Finetuned Multi-Label Classification
-```
-python bin/train.py config/multilabel_classification/$dataset/$method.yml
-```
-#### Finetuned Segmentation
-```
-python bin/train.py config/segmentation/$dataset/$method.yml
-```
-#### Zero-shot Retrieval
-```
-python bin/test_zeroshot.py config/retrieval/$dataset/$method.yml
+python bin/train.py config/report_generation/$dataset/$method.yml
 ```
 
 ## Acknowledgments
