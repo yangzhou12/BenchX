@@ -32,7 +32,7 @@ available_models()
 
 Supported MedVLP Methods:
 <details open>
-<summary>(click to collapse)</summary>
+<summary><b>Supported MedVLP Methods</b> (click to expand)</summary>
   
 * [ConVIRT](https://github.com/edreisMD/ConVIRT-pytorch/tree/master)
 * [GLoRIA](https://github.com/marshuang80/gloria/tree/main)
@@ -41,33 +41,11 @@ Supported MedVLP Methods:
 * [M-FLAG](https://github.com/cheliu-computation/M-FLAG-MICCAI2023)
 * [MGCA](https://github.com/HKU-MedAI/MGCA/tree/main/mgca)
 * [MRM](https://github.com/RL4M/MRM-pytorch/tree/main)
-* [PTUnifier](https://github.com/zhjohnchan/PTUnifier) (segmentation only)
+* [PTUnifier](https://github.com/zhjohnchan/PTUnifier)
 * [REFERS](https://github.com/funnyzhou/REFERS)
 
 </details>
 
-<details>
-  <summary><b>Supported MedVLP Methods</b> (click to expand)</summary>
-  &nbsp;
-  <ul>
-    <li><a href="docs/data_access.md#Datasets">Overview of the Supported Echocardiography Datasets</a></li>
-    &nbsp;
-    <li><a href="docs/data_access.md#Instructions-for-dataset-access">Instructions for Dataset Access</a></li> 
-    &nbsp;
-    <li><a href="docs/data_access.md#data-loaders-and-processing-tools-demo-notebook">Data Loaders and Processing Tools</a></li> 
-    &nbsp;
-    <li><a href="https://github.com/ahmedmalaa/ETAB/blob/main/notebooks/Demo%201%20-%20ETAB%20Data%20Loading%20and%20Processing%20Tools.ipynb">Demo Notebook</a></li>
-  </ul>
-</details>
-
-<details open>
-<summary>Shopping list</summary>
-
-* Vegetables
-* Fruits
-* Fish
-
-</details>
 
 Supported Tasks:
 * Uni-modal Tasks
