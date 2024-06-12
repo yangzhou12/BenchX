@@ -10,7 +10,14 @@ conda create -n BenchX python=3.11
 conda activate BenchX
 ```
 
-Clone the repository and install the package:
+Clone the repository of BenchX and install requirements:
+```bash
+git clone https://github.com/XXXXX/BenchX
+cd BenchX
+pip install -r requirements.txt
+```
+
+Clone the repository of  and install requirements:
 ```bash
 git clone https://github.com/XXXXX/BenchX
 cd BenchX
@@ -107,6 +114,42 @@ python -m evaluation.classification.finetuned_classifier --config configs/finetu
 #### Finetuned Segmentation
 ```
 python -m evaluation.segmentation.finetuned_segmentation --config configs/finetuned_segmentation_config.yaml
+```
+
+### 3. Fine-tuning & Evaluation
+
+We evaluate our pre-trained models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
+
+To view all available models for evaluation, you may run the following script:
+```python
+from evaluation import available_models
+available_models()
+```
+
+Supported Tasks:
+* Uni-modal Tasks
+    * Multi-label Classification on NIH (Fine-tuned)
+    * Binary Classification on RSNA Pneumonia (Fine-tuned)
+    * Image Segmentation on SIIM-ACR Pneumothorax (Fine-tuned)
+* Multi-modal Tasks
+    * Report Generation on IU X-Ray (Fine-tuned)
+    * Image-report Retrieval on MIMIC-5x200 (Zero-shot)
+
+#### Finetuned Multi-Class Classification
+```
+python bin/train.py config/multiclass_classification/$dataset/$method.yml
+```
+#### Finetuned Multi-Label Classification
+```
+python bin/train.py config/multilabel_classification/$dataset/$method.yml
+```
+#### Finetuned Segmentation
+```
+python bin/train.py config/segmentation/$dataset/$method.yml
+```
+#### Zero-shot Retrieval
+```
+python bin/test_zeroshot.py config/retrieval/$dataset/$method.yml
 ```
 
 ## Acknowledgments
