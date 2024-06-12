@@ -62,14 +62,15 @@ Please refer to [`datasets/README.md`](datasets/README.md) for training configs 
 <details close>
 <summary><b>Supported MedVLP methods </b> (click to expand)</summary>
 
-* [COVIDx CXR-4](https://www.kaggle.com/datasets/andyczhao/covidx-cxr2) (Binary Classification)
-* [NIH Chest X-rays](https://huggingface.co/datasets/alkzar90/NIH-Chest-X-ray-dataset) (Multi-Label Classification)
-* [Object-CXR](https://www.kaggle.com/datasets/raddar/foreign-objects-in-chest-xrays) (Binary Classification, Segmentation)
-* [RSNA Pneumonia](https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) (Binary Classification, Segmentation)
-* [SIIM-ACR Pneumothorax Segmentation](https://www.kaggle.com/datasets/vbookshelf/pneumothorax-chest-xray-images-and-masks) (Binary Classification, Segmentation)
-* [TBX11K](https://www.kaggle.com/datasets/vbookshelf/tbx11k-simplified) (Segmentation)
-* [VinDr-CXR](https://physionet.org/content/vindr-cxr/1.0.0/) (Multi-Label Classification, Segmentation)
-* [IU X-ray](https://drive.google.com/file/d/1c0BXEuDy8Cmm2jfN0YYGkQxFZd2ZIoLg) (Report Generation)
+* [ConVIRT](https://www.kaggle.com/datasets/andyczhao/covidx-cxr2) (Binary Classification)
+* [GLoRIA](https://huggingface.co/datasets/alkzar90/NIH-Chest-X-ray-dataset) (Multi-Label Classification)
+* [MedCLIP](https://www.kaggle.com/datasets/raddar/foreign-objects-in-chest-xrays) (Binary Classification, Segmentation)
+* [MedKLIP](https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) (Binary Classification, Segmentation)
+* [M-FLAG](https://www.kaggle.com/datasets/vbookshelf/pneumothorax-chest-xray-images-and-masks) (Binary Classification, Segmentation)
+* [MGCA](https://www.kaggle.com/datasets/vbookshelf/tbx11k-simplified) (Segmentation)
+* [PTUnifier](https://physionet.org/content/vindr-cxr/1.0.0/) (Multi-Label Classification, Segmentation)
+* [MRM](https://drive.google.com/file/d/1c0BXEuDy8Cmm2jfN0YYGkQxFZd2ZIoLg) (Report Generation)
+* [REFERS](https://github.com/funnyzhou/REFERS): "Generalized radiograph representation learning via cross-supervision between images and free-text radiology reports"
 
 </details>
 
