@@ -30,6 +30,17 @@ from evaluation import available_models
 available_models()
 ```
 
+Supported MedVLP Methods:
+* [ConVIRT](https://github.com/edreisMD/ConVIRT-pytorch/tree/master)
+* [GLoRIA](https://github.com/marshuang80/gloria/tree/main)
+* [MedCLIP](https://github.com/RyanWangZf/MedCLIP)
+* [MedKLIP](https://github.com/MediaBrain-SJTU/MedKLIP)
+* [M-FLAG](https://github.com/cheliu-computation/M-FLAG-MICCAI2023)
+* [MGCA](https://github.com/HKU-MedAI/MGCA/tree/main/mgca)
+* [MRM](https://github.com/RL4M/MRM-pytorch/tree/main)
+* [PTUnifier](https://github.com/zhjohnchan/PTUnifier) (segmentation only)
+* [REFERS](https://github.com/funnyzhou/REFERS)
+
 Supported Tasks:
 * Uni-modal Tasks
     * Multi-label Classification on CheXpert (Fine-tuned)
