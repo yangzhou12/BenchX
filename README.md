@@ -1,5 +1,17 @@
 # BenchX: A Unified Benchmark Framework for Medical Vision-Language Models on Chest X-Rays
 
+## Requirements
+
+To install requirements:
+
+```setup
+pip install -r requirements.txt
+```
+
+## Data
+
+Please refer to [`datasets.md`](datasets/datasets.md) for training configs and results.
+
 ## Downstream Evaluation
 
 ### 0. Download Datasets
