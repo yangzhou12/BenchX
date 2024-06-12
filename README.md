@@ -10,7 +10,7 @@ pip install -r requirements.txt
 
 ## Data
 
-Please refer to [`datasets.md`](datasets/datasets.md) for training configs and results.
+Please refer to [`datasets/README.md`](datasets/README.md) for training configs and results.
 
 ## Downstream Evaluation
 
