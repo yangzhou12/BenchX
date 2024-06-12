@@ -31,14 +31,6 @@ cd mmsegmentation
 pip install -v -e .
 ```
 
-## Requirements
-
-To install requirements:
-
-```setup
-pip install -r requirements.txt
-```
-
 ## Dataset Preparation
 
 <details close>
