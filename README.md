@@ -44,6 +44,29 @@ Supported MedVLP Methods:
 * [REFERS](https://github.com/funnyzhou/REFERS)
 </details>
 
+<details>
+  <summary><b>Supported MedVLP Methods</b> (click to expand)</summary>
+  &nbsp;
+  <ul>
+    <li><a href="docs/data_access.md#Datasets">Overview of the Supported Echocardiography Datasets</a></li>
+    &nbsp;
+    <li><a href="docs/data_access.md#Instructions-for-dataset-access">Instructions for Dataset Access</a></li> 
+    &nbsp;
+    <li><a href="docs/data_access.md#data-loaders-and-processing-tools-demo-notebook">Data Loaders and Processing Tools</a></li> 
+    &nbsp;
+    <li><a href="https://github.com/ahmedmalaa/ETAB/blob/main/notebooks/Demo%201%20-%20ETAB%20Data%20Loading%20and%20Processing%20Tools.ipynb">Demo Notebook</a></li>
+  </ul>
+</details>
+
+<details open>
+<summary>Shopping list</summary>
+
+* Vegetables
+* Fruits
+* Fish
+
+</details>
+
 Supported Tasks:
 * Uni-modal Tasks
     * Multi-label Classification on CheXpert (Fine-tuned)
