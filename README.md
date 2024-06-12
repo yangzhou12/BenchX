@@ -72,11 +72,31 @@ pip install -v -e .
 
 > For segmentation, please run the scripts in ['preprocess/model_converters'](preprocess/model_converters) to convert keys in MedVLP models to MMSegmentation style.
 
+Our codebase accesses the datasets from `./data/` and pretrained models from `./results/checkpoints/` by default.
+```
+├── ...
+├── data
+│   ├── benchmark_imglist
+│   ├── images_classic
+│   └── images_largescale
+├── openood
+├── results
+│   ├── checkpoints
+│   └── ...
+├── scripts
+├── main.py
+├── ...
+```
+
 ## Fine-Tuning & Evaluation
 
 We evaluate our pre-trained MedVLP models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
 
 ### 1. Classification
+
+To fine-tune the MedVLP model for classification, run this command:
+
+Here is an example to train FixMatch on CIFAR-100 with 200 labels. Training other supported algorithms (on other datasets with different label settings) can be specified by a config file:
 
 ```
 python bin/train.py config/classification/$dataset/$method.yml
@@ -101,7 +121,7 @@ We evaluate our pre-trained models by specifying the `--pretrain_path` argument 
 python bin/train.py config/report_generation/$dataset/$method.yml
 ```
 
-## Running a Benchmark Experiment
+## Running a Benchmark Experiment / Reproduce benchmark
 
 
 
