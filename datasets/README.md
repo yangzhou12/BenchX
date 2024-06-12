@@ -22,7 +22,7 @@ Please change dataset paths in the config files from [`config`](config) accordin
 
 ### 2. Dataset Preparation
 
-Please run the scripts in [`datasets/preprocess`](datasets/preprocess/) to pre-process each dataset and organize the processed datasets as the following structure:
+Please run the scripts in [`preprocess`](preprocess/) to pre-process each dataset and organize the processed datasets as the following structure:
 
 ```
 root:[datasets]
