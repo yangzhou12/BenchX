@@ -47,7 +47,7 @@ pip install -v -e .
 
 </details>
 
-Please refer to [`datasets/README.md`](datasets/README.md) for training configs and results.
+Please refer to [`datasets/README.md`](datasets/README.md) for more detail.
 
 ## Pre-Trained Checkpoints
 
