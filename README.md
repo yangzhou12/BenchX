@@ -108,7 +108,7 @@ To fine-tune the MedVLP model for segmentation, run this command:
 python mmsegmentation/tools/train.py config/benchmark/$dataset/$method.yml
 ```
 
-> **Adapting MMSegmentation**: We provide the necessary files for adapting MMSegmentation in the directory [unifed_segmentation](unifed_segmentation). After modifying MMSegmentaiton framework with the provided files, start fine-tuning and evaluation with [ft.sh](Siim_Segmentation/ft.sh) and [test.sh](Siim_Segmentation/test.sh), respectively.
+> **Adapting MMSegmentation**: We provide the necessary files for adapting MMSegmentation in [unifed_segmentation/](unifed_segmentation/). Please modify the installed MMSegmentaiton framework in [mmsegmentation/](mmsegmentation/) by adding the provided files before training and evaluation.
 
 ### 3. Report Generation
 To fine-tune the MedVLP model for report generation, run this command:
@@ -124,7 +124,7 @@ To evaluate fine-tuned MedVLP model, run:
 python bin/test.py config/$task/$dataset/$method.yml validator.splits=[test] ckpt_dir=<path_to_checkpoint>
 
 # For segmentation
-python mmsegmentation/tools/train.py config/report_generation/$dataset/$method.yml <path_to_checkpoint> --work-dir <path_to_experiment_output>
+python mmsegmentation/tools/train.py config/report_generation/$dataset/$method.yml <path_to_checkpoint>
 ```
 
 ## Running a Benchmark Experiment / Reproduce benchmark
