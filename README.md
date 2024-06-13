@@ -93,7 +93,7 @@ We evaluate our pre-trained MedVLP models by specifying the `--pretrain_path` ar
 
 ### 1. Classification
 
-To fine-tune the MedVLP model for classification, run this command:
+To fine-tune a MedVLP model for classification, run this command:
 
 Here is an example to train FixMatch on CIFAR-100 with 200 labels. Training other supported algorithms (on other datasets with different label settings) can be specified by a config file:
 
@@ -102,7 +102,7 @@ python bin/train.py config/classification/$dataset/$method.yml
 ```
 
 ### 2. Segmentation
-To fine-tune the MedVLP model for segmentation, run this command:
+To fine-tune a MedVLP model for segmentation, run this command:
 
 ```
 python mmsegmentation/tools/train.py config/benchmark/$dataset/$method.yml
@@ -111,13 +111,13 @@ python mmsegmentation/tools/train.py config/benchmark/$dataset/$method.yml
 > **Adapting MMSegmentation**: We provide the necessary files for adapting MMSegmentation in [unifed_segmentation/](unifed_segmentation/). Please modify the installed MMSegmentaiton framework in [mmsegmentation/](mmsegmentation/) by adding the provided files before training and evaluation.
 
 ### 3. Report Generation
-To fine-tune the MedVLP model for report generation, run this command:
+To fine-tune a MedVLP model for report generation, run this command:
 ```
 python bin/train.py config/report_generation/$dataset/$method.yml
 ```
 
 ### 4. Evaluation
-To evaluate fine-tuned MedVLP model, run:
+To evaluate fine-tuned MedVLP models, run:
 
 ```
 # For classification and report generation
