@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from tqdm import tqdm
-from segmentation_models_pytorch import Unet
+# from segmentation_models_pytorch import Unet
 
 from unifier.blocks.custom.setr import SETRModel
 from unifier.blocks.losses import MixedLoss

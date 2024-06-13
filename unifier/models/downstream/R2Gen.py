@@ -19,6 +19,7 @@ from unifier.blocks.pytorch import PositionalEncoding
 from unifier.blocks.losses import R2GenLMLoss
 from unifier.models.utils import get_n_params
 from unifier.blocks.losses import *
+from unifier.blocks.custom.refers.transformer import REFERSViT
 
 
 
@@ -61,8 +62,12 @@ class R2Gen(nn.Module):
 
         # Build visual extractor
         cnn_func = cnn.pop("proto")
+        self.vit_pool = cnn.pop("vit_pool", "")
         self.cnn = eval(cnn_func)(**cnn)
-        self.avg_fnt = torch.nn.AvgPool2d(kernel_size=7, stride=1, padding=0)
+        if 'output_layer' in cnn and cnn.output_layer == "layer3": # Hard code
+            self.avg_fnt = torch.nn.AvgPool2d(kernel_size=14, stride=1, padding=0)
+        else:
+            self.avg_fnt = torch.nn.AvgPool2d(kernel_size=7, stride=1, padding=0)
 
         # Build transformer
         self.encoder_decoder = EncoderDecoder(transformer)
@@ -83,7 +88,12 @@ class R2Gen(nn.Module):
         patch_feats = self.cnn(images) # [B, hidden_size, H, W]
 
         if patch_feats.dim() == 3: # ViT
-            avg_feats = patch_feats[:, 0] # class token (Timm implementation)
+            if self.vit_pool == "token":
+                avg_feats = patch_feats[:, 0] # class token (Timm implementation)
+            elif self.vit_pool == "avg":
+                avg_feats = patch_feats[:, 1:, :].mean(1)
+            else:
+                raise RuntimeError("Invilid Pooling Type")
         elif patch_feats.dim() == 4: #  CNN
             avg_feats = self.avg_fnt(patch_feats).squeeze().reshape(-1, patch_feats.size(1)) # [B, hidden_size]
             batch_size, feat_size, _, _ = patch_feats.shape

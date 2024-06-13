@@ -6,6 +6,7 @@ import numpy as np
 from unifier.blocks.vision import *
 from unifier.blocks.classifier import *
 from unifier.blocks.classifier.evaluation import evaluation
+# from unifier.blocks.classifier.evaluation import evaluation_new as evaluation
 from unifier.blocks.losses import *
 from unifier.models.utils import get_n_params
 
@@ -23,6 +24,8 @@ class ImageClassifier(nn.Module):
 
         self.cnn = eval(cnn_func)(**cnn)
 
+        self.global_pool = cnn.get("global_pool", "avg")
+
         self.classifier = eval(classifier_func)(**classifier)
 
         self.loss_func = eval(loss_func)(**loss).cuda()
@@ -35,11 +38,18 @@ class ImageClassifier(nn.Module):
     def forward(self, images, labels=None, from_training=True, iteration=None, epoch=None, **kwargs):
         out = self.cnn(images.cuda()) # Pooled outputs - dim 2
 
-        if isinstance(self.cnn, VisualEncoder) and out.dim() == 3: # Unpooled - dim 3
-            if hasattr(self.cnn.model, "num_prefix_tokens"):
-                out = out[:, self.cnn.model.num_prefix_tokens:].mean(dim=1) # avg global pooling
-            else:
+        if isinstance(self.cnn, (VisualEncoder, REFERSViT)) and out.dim() == 3: # Unpooled - dim 3
+            if self.global_pool == "avg":
+                out = out[:, 1:, :].mean(dim=1) # avg global pooling
+            elif self.global_pool == "token":
                 out = out[:, 0] # class token (Timm implementation)
+            else:
+                out = out.mean(dim=1)
+            # if hasattr(self.cnn.model, "num_prefix_tokens"):
+            #     out = out[:, self.cnn.model.num_prefix_tokens:].mean(dim=1) # avg global pooling
+            #     # x[:, self.num_prefix_tokens:].mean(dim=1)
+            # else:
+            #     out = out[:, 0] # class token (Timm implementation)
 
         out = self.classifier(out)
 
@@ -47,7 +57,7 @@ class ImageClassifier(nn.Module):
         if from_training:
             loss = self.loss_func(out, labels.cuda().float(), **kwargs)
 
-        return {"loss": loss, "output": out}
+        return {"loss": loss, "output": out, "pred": torch.sigmoid(out)}
 
     def __repr__(self):
         s = super().__repr__() + "\n"
