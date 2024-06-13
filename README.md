@@ -49,8 +49,6 @@ pip install -v -e .
 
 >  We provide scripts to process existing datasets. Please refer to [`datasets/README.md`](datasets/README.md) for more detail. In particular, we do not distribute datasets in this repository, and we do not own copyrights on any of the datasets.
 
-> The use of any of the datasets included in BenchX requires accepting its corresponding license on the original website. We refer to each dataset's README for more details.
-
 ## Pre-Trained Checkpoints
 
 <details close>
