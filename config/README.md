@@ -1,5 +1,5 @@
-## Finetuning VLM Models on Downstream Tasks
+## Fine-Tuning MedVLP Models on Downstream Tasks
 
-To test the VLM model on a certain downstream task, list the path to its model config under `includes:` in the downstream task config YML file.
+To test the MedVLP model on a certain downstream task, list the path to its model config under `includes:` in the downstream task config YML file.
 
-VLM config files are stored at  [`config/<task_name>/<dataset_name>/<model_name>/`](config/finetune/models/).
+MedVLP config files are stored at  [`config/<task_name>/<dataset_name>/<model_name>/`](config/finetune/models/).
