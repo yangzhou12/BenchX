@@ -216,15 +216,16 @@ def create_data_loader(
     dataset_name = dataset_config.proto
     del dataset_config["proto"]
 
-    num_workers = dataset_config.pop("num_workers", 4)
+    num_workers = dataset_config.pop("num_workers", 0)
+    dataset_config.split = split
 
     # Its important the dataset receive info if call from ensembler (test time):
     # split can be train with validation transformation
     dataset = eval("datasets." + dataset_name)(
         transform=eval("transforms." + config.transforms.type)(
-            is_train=(split == "train"), **config.transforms.get("options", {})
+            is_train=(split.startswith("train")), **config.transforms.get("options", {})
         ),
-        split=split,
+        # split=split,
         **OmegaConf.to_container(dataset_config)
     )
 
@@ -234,7 +235,7 @@ def create_data_loader(
         collate_fn = default_collate
 
     # RandomSampler for train split, during training only
-    if split == "train" and not called_by_validator:
+    if split.startswith("train") and not called_by_validator:
         sampler = BatchSampler(
             RandomSampler(dataset),
             batch_size=config.batch_size,

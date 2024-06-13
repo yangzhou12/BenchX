@@ -15,12 +15,21 @@ from .utils import (
     create_scaler,
 )
 
+# torch.backends.cudnn.benchmark = False # For reproducibility
+# torch.use_deterministic_algorithms(True)
+# torch.backends.cudnn.deterministic = True
 
 class TrainerConfig(object):
     def __init__(self, config, seed):
         # Misc
         self.config = config
         self.seed = seed
+
+        # torch.manual_seed(seed)
+        # np.random.seed(seed)
+        # import random
+        # random.seed(0)
+
         self.state = None
         self.ckpt_dir = self.config.ckpt_dir
         self.ckpt = self.config.get("ckpt")
@@ -46,7 +55,7 @@ class TrainerConfig(object):
         )
 
         # Dataloader
-        self.dl = create_data_loader(self.config, split="train", logger=self.logger)
+        self.dl = create_data_loader(self.config, split=self.config.dataset.get("split", "train"), logger=self.logger)
 
         # Model
         self.model = create_model(
@@ -195,6 +204,7 @@ class Trainer(TrainerConfig):
 
             if ret["done_training"]:
                 self.logger.info("Early stopped reached")
+                self.logger.info("Best {}: {}".format(self.config.early_stop_metric, self.training_scheduler.current_best_metric))
                 sys.exit()
             if ret["save_state"]:
                 self.saver.save(
