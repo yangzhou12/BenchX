@@ -74,8 +74,6 @@ pip install -v -e .
 
 You can run any benchmark task supported by BenchX using the following commands. The MedVLP model, dataset, and training parameters can be specified by a config file in [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
 
-Training other supported algorithms (on other datasets with different label settings) can be specified by a config file:
-
 ### 1. Classification
 
 To fine-tune a MedVLP model for classification, run this command:
