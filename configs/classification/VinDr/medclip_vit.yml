@@ -1,0 +1,66 @@
+includes:
+  - configs/_base_/models/medclip_vit.yml
+
+name: MedCLIP_ViT
+ckpt_dir: experiments/classification/vindr/
+use_amp: True
+seed: 42
+
+dataset:
+  proto: VinDr_Dataset
+  data_path: datasets/VinDr_CXR/
+  csvpath: datasets/VinDr_CXR/vindr_labels.csv
+  split: "train_1"
+  num_workers: 4
+
+transforms:
+  type: NIHTransforms
+
+model:
+  proto: ImageClassifier
+
+  cnn:
+    encoder:
+      proto: microsoft/swin-tiny-patch4-window7-224
+      pretrained: checkpoints/MedCLIP-vit.bin
+      prefix: vision_model.model.
+    output_layer: avgpool
+    # pretrained: ${pretrained_path.${pretrained_source}}
+    global_pool: mean
+    permute: no_permute
+    freeze: False
+
+  classifier:
+    # proto: Identity
+    proto: Classifier
+    use_fc_norm: False
+    # use_fc_norm: True
+    # trunc_init: True
+    num_classes: 14
+
+  loss:
+    proto: BCEWithLogitsLoss
+
+trainer:
+  optimizer: Adam
+  optim_params:
+    lr: 1e-4
+    eps: 1e-08
+    # weight_decay: 1e-5
+  batch_size: 128
+  clip_grad_norm: 1.0
+  lr_decay: WarmupCosineScheduler
+  lr_decay_params:
+    warmup_steps: 50
+    t_total: 3000
+  epochs: 200
+  early_stop: 10
+  eval_start: 10
+  eval_interval: 5
+  early_stop_metric: multilabel_auroc
+
+validator:
+  batch_size: 512
+  metrics: [multilabel_accuracy, multilabel_auroc]
+  splits: [val]
+  # splits: [valid]

@@ -1,0 +1,89 @@
+name: MedKLIP
+ckpt_dir: experiments/report_generation/iuxray/
+seed: 42
+
+dataset:
+  proto: IU_Dataset
+  imgpath: datasets/IU_Xray/images
+  csvpath: datasets/IU_Xray/iu_xray_annotations.csv
+  max_words: 60
+  num_workers: 10
+
+transforms:
+  type: DataTransforms
+
+model:
+  proto: R2Gen
+
+  cnn:
+    proto: VisualEncoder
+    backbone: resnet50
+    prefix: module.res_features.
+    output_layer: layer3 # do not return fc layer
+    named_children: False
+    dropout_out: 0.0
+    permute: no_permute # output: [B, hidden_size, H, W]
+    pretrained: checkpoints/MedKLIP.pth
+    freeze: True
+    task: rrg
+
+  transformer:
+    # Model settings (for Transformer)
+    d_model: 512
+    d_ff: 512
+    d_vf: 1024 # overwritten
+    num_heads: 8
+    num_layers: 3
+    dropout: 0.1
+    vocab_size: 760 # Change with tokenizer
+    bos_idx: 0
+    eos_idx: 0
+    pad_idx: 0
+    use_bn: 0
+    drop_prob_lm: 0.5
+    max_seq_length: 60 # same as max_words in dataset
+    # for Relational Memory
+    rm_num_slots: 3
+    rm_num_heads: 8
+    rm_d_model: 512
+    # Sample related
+    sample_method: beam_search
+    beam_size: 3
+    temperature: 1.0
+    sample_n: 1
+    group_size: 1
+    output_logsoftmax: 1
+    decoding_constraint: 0
+    block_trigrams: 1
+
+  loss:
+    proto: R2GenLMLoss
+
+trainer:
+  batch_size: 16
+  optimizer: Adam
+  optim_params:
+    optim_groups: ve_only
+    lr: 1e-3
+    lr_multiplier_ve: 0.5
+    weight_decay: 5e-5
+    amsgrad: True
+  lr_decay: ReduceLROnPlateau
+  lr_decay_params:
+    factor: 0.8
+    patience: 1
+    min_lr: 0.000001
+    threshold_mode: abs
+  epochs: 100
+  early_stop: 10
+  eval_start: 0
+  early_stop_metric: BLEU4
+  clip_grad_norm: 1.0
+
+validator:
+  batch_size: 16
+  metrics:
+    - ROUGEL
+    - BLEU
+    - METEOR
+  splits: [valid]
