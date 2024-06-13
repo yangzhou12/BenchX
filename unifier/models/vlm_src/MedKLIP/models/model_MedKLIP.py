@@ -135,8 +135,8 @@ class MedKLIP(nn.Module):
         return x  #batch_size, num_classes, dim
     
     def zeroshot_forward(self, imgs=None, texts=None):
-        if self.mode != "classification":
-            raise NotImplementedError(f"Zero-shot task {self.mode} not supported for MedKLIP")
+        # if self.mode != "classification":
+        #     raise NotImplementedError(f"Zero-shot task {self.mode} not supported for MedKLIP")
 
         imgs = imgs.cuda()
 

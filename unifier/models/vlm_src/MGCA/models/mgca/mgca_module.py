@@ -12,7 +12,7 @@ from pytorch_lightning import LightningModule, Trainer, seed_everything
 from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
                                          ModelCheckpoint)
 from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.plugins import DDP2Plugin, DDPPlugin
+# from pytorch_lightning.plugins import DDP2Plugin, DDPPlugin
 from ..backbones.encoder import BertEncoder, ImageEncoder
 from torch import distributed as dist
 

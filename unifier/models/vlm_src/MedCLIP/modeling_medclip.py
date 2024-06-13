@@ -186,7 +186,7 @@ class MedCLIPModel(nn.Module):
         else: # if checkpoint exists
             state_dict = torch.load(ckpt)
 
-        self.load_state_dict(state_dict)
+        self.load_state_dict(state_dict, strict=False)
         print('load model weight from:', input_dir)
 
     def encode_text(self, input_ids=None, attention_mask=None, token_type_ids=None):

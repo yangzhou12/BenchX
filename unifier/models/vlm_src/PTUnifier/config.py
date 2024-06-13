@@ -26,7 +26,8 @@ def config():
     exp_name = "ptunifier"
     seed = 0
     datasets = ["medicat", "roco"]
-    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    # loss_names = _loss_names({"itm": 1, "mlm": 1})
+    loss_names = _loss_names({"itm": 1, "mlm": 1, "irtr": 1}) # add IRTR here for zero-shot retrieval
     batch_size = 4096
 
     # Image setting

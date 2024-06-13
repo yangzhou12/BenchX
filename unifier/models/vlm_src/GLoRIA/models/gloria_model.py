@@ -10,7 +10,7 @@ from .. import builder
 from .. import loss
 from .. import utils
 from transformers import AutoTokenizer
-from nltk.tokenize import RegexpTokenizer
+# from nltk.tokenize import RegexpTokenizer
 
 
 class GLoRIA(nn.Module):

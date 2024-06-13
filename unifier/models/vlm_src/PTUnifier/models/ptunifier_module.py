@@ -395,33 +395,53 @@ class PTUnifierTransformerSS(pl.LightningModule):
 
         return ret
 
+    # def forward_embeddings(self, imgs=None, texts=None):
+    #     input_ids = texts["input_ids"]
+    #     attention_mask = texts["attention_mask"]
+    #     N = input_ids.shape[0]
+        
+    #     img_emb_g = []
+    #     text_emb_g = []
+
+    #     for i, img in enumerate(imgs):
+    #         batch = {
+    #             "image": [img.repeat(N, 1, 1, 1)],
+    #             "text_ids": input_ids,
+    #             "text_masks": attention_mask,
+    #             "text_labels": None # set text_labels to None
+    #         }
+    #         infer = self.infer(batch,
+    #                         pseudo_vision=self.hparams.config["language_only"],
+    #                         pseudo_language=self.hparams.config["vision_only"])
+    #         img_embs = infer["multi_modal_image_cls_feats"]
+    #         img_emb_g.append(img_embs)
+    #         text_embs = infer["multi_modal_text_cls_feats"]
+    #         text_emb_g.append(text_embs)
+        
+    #     img_emb_g = torch.mean(torch.stack(img_emb_g), dim=1)
+    #     text_emb_g = torch.mean(torch.stack(text_emb_g), dim=0)
+
+    #     return {"img_emb_g": img_emb_g, "text_emb_g": text_emb_g}
+
     def forward_embeddings(self, imgs=None, texts=None):
-        input_ids = texts["input_ids"]
-        attention_mask = texts["attention_mask"]
-        N = input_ids.shape[0]
-        
-        img_emb_g = []
-        text_emb_g = []
+        # Zero-shot retrieval only
+        img_batch_score = list()
+        for im in imgs:
+            fblen = len(texts["input_ids"])
+            image = im.repeat(fblen, 1, 1, 1)
+            batch_infer = {
+                        "text_ids": texts["input_ids"],
+                        "text_masks": texts["attention_mask"],
+                        "text_labels": None,
+                    }
+            
+            score = self.irtr_head(self.infer(batch_infer, img=image)["multi_modal_cls_feats"])[:, 0]
+            img_batch_score.append(score)
 
-        for i, img in enumerate(imgs):
-            batch = {
-                "image": [img.repeat(N, 1, 1, 1)],
-                "text_ids": input_ids,
-                "text_masks": attention_mask,
-                "text_labels": None # set text_labels to None
-            }
-            infer = self.infer(batch,
-                            pseudo_vision=self.hparams.config["language_only"],
-                            pseudo_language=self.hparams.config["vision_only"])
-            img_embs = infer["multi_modal_image_cls_feats"]
-            img_emb_g.append(img_embs)
-            text_embs = infer["multi_modal_text_cls_feats"]
-            text_emb_g.append(text_embs)
-        
-        img_emb_g = torch.mean(torch.stack(img_emb_g), dim=1)
-        text_emb_g = torch.mean(torch.stack(text_emb_g), dim=0)
+        img_batch_score = torch.cat(img_batch_score) # _bs * _bs
+        scores = img_batch_score.view(len(imgs), -1)
 
-        return {"img_emb_g": img_emb_g, "text_emb_g": text_emb_g}
+        return {"global_similarities": scores}
 
     def training_step(self, batch, batch_idx):
         ptunifier_utils.set_task(self)
