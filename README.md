@@ -124,7 +124,9 @@ python bin/test.py config/$task/$dataset/$method.yml validator.splits=[test] ckp
 python mmsegmentation/tools/train.py config/report_generation/$dataset/$method.yml <path_to_checkpoint>
 ```
 
-## Running a Benchmark Experiment / Reproduce benchmark
+## Reproduce Benchmark Results
+
+To reproduce the benchmark results in the paper, run the following scripts:
 
 ```
 # For binary classification on COVIDx
