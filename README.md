@@ -126,6 +126,37 @@ python mmsegmentation/tools/train.py config/report_generation/$dataset/$method.y
 
 ## Running a Benchmark Experiment / Reproduce benchmark
 
+```
+# For binary classification on COVIDx
+sh scripts/run_BenchX_COVIDx.sh
+
+# For binary classification on RSNA
+sh scripts/run_BenchX_RSNA.sh
+
+# For binary classification on SIIM
+sh scripts/run_BenchX_SIIM.sh
+
+# For multi-lable classification on NIH Chest X-Ray
+sh scripts/run_BenchX_NIH_Chest_XRay.sh
+
+# For multi-lable classification on VinDr-CXR
+sh scripts/run_BenchX_VinDr.sh
+
+# For segmentation on Object-CXR
+sh mmsegmentation/scripts/run_BenchX_Object_CXR.sh
+
+# For segmentation on RSNA
+sh mmsegmentation/scripts/run_BenchX_RSNA.sh
+
+# For segmentation on SIIM
+sh mmsegmentation/scripts/run_BenchX_SIIM.sh
+
+# For segmentation on TBX11K
+sh mmsegmentation/scripts/run_BenchX_TBX11K.sh
+
+# For report generation on IU X-Ray
+sh scripts/run_BenchX_IU_XRay.sh
+```
 
 ## Acknowledgments
 
