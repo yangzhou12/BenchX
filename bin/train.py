@@ -7,11 +7,15 @@ from unifier.executors import Trainer, Validator
 from utils import get_args, get, print_args, get_seed, extract_seed_from_ckpt
 from logger import set_logger
 
+# os.environ["CUBLAS_WORKSPACE_CONFIG"]=":4096:8"
 
 def main():
     # Get args and create seed
     config, override = get_args()
-    seed = get_seed()
+    if "seed" in config:
+        seed = get_seed(config.seed)
+    else:
+        seed = get_seed()
 
     # Create checkpoint dir
     config.ckpt_dir = os.path.join(config.ckpt_dir, config.name)

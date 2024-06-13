@@ -1,13 +1,7 @@
 import os
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
-import pandas as pd
 import numpy as np
-import argparse
-import random
-from PIL import Image
-import cv2
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -15,10 +9,9 @@ from unifier.models.vlm_src import *
 from unifier.blocks.zeroshot import *
 from utils import get_seed
 
-from sklearn import metrics
 from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
-
+from utils import get_args
 
 def get_tokenizer(tokenizer):
     if os.path.exists(tokenizer): # File path
@@ -125,24 +118,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    config, override = get_args()
 
-    # Customizable model training settings
-    parser.add_argument("--dataset", default="CheXpert_5x200", choices=["CheXpert_5x200", "MIMIC_5x200"])
-    parser.add_argument("--transforms", type=str, default="DataTransforms")
-    parser.add_argument("--img_path", type=str)
-    parser.add_argument("--model_name", type=str)
-    parser.add_argument("--tokenizer", type=str, help="file path or huggingface model")
-    parser.add_argument("--similarity_type", type=str, choices=["global", "local", "both"])
-    parser.add_argument("--mode", type=str, default="retrieval", choices=["retrieval", "classification"])
-    parser.add_argument("--batch_size", type=int, default=1000)
-
-    # To be configured based on hardware/directory
-    parser.add_argument("--ckpt_path", type=str)
-    parser.add_argument("--device", default="cuda")
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--num_workers", type=int, default=4)
-
-    args = parser.parse_args()
-
-    main(args)
+    main(config)

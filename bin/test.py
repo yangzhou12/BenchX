@@ -1,13 +1,12 @@
 import os
 import sys
-import copy
-import glob
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from unifier.executors import Trainer, Validator
 from utils import get_args, get, print_args, get_seed, extract_seed_from_ckpt
 from logger import set_logger
 
+import glob
 
 def find_best_checkpoint(folder_path, seed):
     pattern = "*_*_{}.pth".format(seed)
@@ -24,6 +23,7 @@ def find_best_checkpoint(folder_path, seed):
 
     return best_checkpoint_path
 
+
 def main():
     # Get args and create seed
     config, override = get_args()
@@ -31,10 +31,6 @@ def main():
         seed = get_seed(config.seed)
     else:
         seed = get_seed()
-
-    # # Create checkpoint dir
-    # config.ckpt_dir = os.path.join(config.ckpt_dir, config.name)
-    # os.makedirs(config.ckpt_dir, exist_ok=True)
 
     # Create checkpoint dir
     config.ckpt_dir = os.path.join(config.ckpt_dir, config.name)
@@ -72,6 +68,7 @@ def main():
 
     # Boom
     trainer.evaluator.start()
+
 
 if __name__ == "__main__":
     main()
