@@ -1,5 +1,5 @@
 import numpy as np
-from prettytable import PrettyTable
+# from prettytable import PrettyTable
 
 
 def readable_size(n):
