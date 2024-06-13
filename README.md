@@ -70,20 +70,6 @@ pip install -v -e .
 
 > For segmentation, please run the scripts in ['preprocess/model_converters'](preprocess/model_converters) to convert keys in MedVLP models to the MMSegmentation format before training.
 
-Our codebase accesses the datasets from `./datasets/` and pre-trained models from `./checkpoints/` by default.
-```
-├── bin
-├── config
-├── checkpoints
-├── datasets
-│   ├── COVIDx
-│   ├── ...
-│   └── IU_Xray
-├── mmsegmentation
-├── scripts
-├── unifier
-```
-
 ## Fine-Tuning & Evaluation
 
 We evaluate our pre-trained MedVLP models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
