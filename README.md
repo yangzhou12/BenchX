@@ -123,7 +123,7 @@ sh scripts/classification/run_BenchX_RSNA.sh
 sh scripts/classification/run_BenchX_SIIM.sh
 
 # For multi-lable classification on NIH Chest X-Ray
-sh scripts/classification/run_BenchX_NIH_Chest_XRay.sh
+sh scripts/classification/run_BenchX_NIH.sh
 
 # For multi-lable classification on VinDr-CXR
 sh scripts/classification/run_BenchX_VinDr.sh
