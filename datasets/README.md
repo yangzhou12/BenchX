@@ -41,7 +41,7 @@ root:[datasets]
 | +--iu_xray_annotations.csv
 +--NIH_Chest_Xray
 | +--images
-| +--nih_labels.csv
+| +--Data_Entry_2017_v2020.csv
 | +--test.txt
 | +--train_1.txt
 | +--train_10.txt
