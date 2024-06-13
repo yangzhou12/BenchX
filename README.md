@@ -89,7 +89,7 @@ To fine-tune a MedVLP model for segmentation, run this command:
 python mmsegmentation/tools/train.py config/benchmark/<dataset_name>/<model_name>.yml
 ```
 
-> **Adapting MMSegmentation**: We provide the necessary files for adapting MMSegmentation in [unifed_segmentation/](unifed_segmentation/). Please modify the installed MMSegmentaiton framework in [mmsegmentation/](mmsegmentation/) by adding the provided files before training and evaluation.
+> **Adapting MMSegmentation**: We provide the necessary files for adapting MMSegmentation in [unifed_segmentation/](unifed_segmentation/). Please modify the installed MMSegmentaiton framework in [preprocess/mmsegmentation/](preprocess/mmsegmentation/) by adding the provided files before training and evaluation.
 
 ### 3. Report Generation
 To fine-tune a MedVLP model for report generation, run this command:
