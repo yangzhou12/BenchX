@@ -79,9 +79,8 @@ Our codebase accesses the datasets from `./datasets/` and pre-trained models fro
 │   ├── COVIDx
 │   ├── ...
 │   └── IU_Xray
-├── unifier
-├── scripts
 ├── mmsegmentation
+├── scripts
 ├── unifier
 ```
 
