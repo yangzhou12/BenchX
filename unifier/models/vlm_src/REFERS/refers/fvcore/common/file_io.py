@@ -11,7 +11,7 @@ from collections import OrderedDict
 from typing import IO, Any, Callable, Dict, List, MutableMapping, Optional, Union
 from urllib.parse import urlparse
 
-import portalocker  # type: ignore
+# import portalocker  # type: ignore
 from .download import download
 
 

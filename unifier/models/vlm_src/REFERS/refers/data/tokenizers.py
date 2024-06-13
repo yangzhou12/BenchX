@@ -1,7 +1,7 @@
 import csv
 from typing import Any, Dict, List
 
-import sentencepiece as sp
+# import sentencepiece as sp
 
 
 class SentencePieceBPETokenizer(object):
