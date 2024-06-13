@@ -35,6 +35,8 @@ class HFAutoModel(nn.Module):
 
             msg = self.encoder.load_state_dict(state_dict, strict=False)
             print(f"(Vision) Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
+        else:
+            print("No pretrained ckpt loaded.")
 
     def forward(self, pixel_values, **kwargs):
         '''args:

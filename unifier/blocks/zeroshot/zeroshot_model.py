@@ -3,6 +3,7 @@ import torch.nn as nn
 from sklearn import metrics
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_recall_curve
+import torch.nn.functional as F
 
 
 class ZeroshotModel(nn.Module):
@@ -43,15 +44,18 @@ class ZeroshotModel(nn.Module):
     def get_global_similarities(self, img_emb, text_emb): # Taken from GLoRIA
         img_emb = img_emb.detach().cpu().numpy()
         text_emb = text_emb.detach().cpu().numpy()
-        global_similarities = metrics.pairwise.cosine_similarity(img_emb, text_emb)
+        global_similarities = metrics.pairwise.cosine_similarity(img_emb, text_emb) # cosine similarity
         global_similarities = torch.Tensor(global_similarities)
-        return global_similarities # [num_images, num_prompts]
+        return global_similarities # [num_images, num_texts] sim  matrix
 
     def get_similarities(self, imgs, texts): 
         with torch.no_grad():
-            outputs = self.forward_embeddings(imgs, texts) # imgs - [1000, ...]; texts - [5, ...]
-            img_emb_g, text_emb_g = outputs["img_emb_g"], outputs["text_emb_g"]
-            global_similarities = self.get_global_similarities(img_emb_g, text_emb_g)
+            outputs = self.forward_embeddings(imgs, texts) # imgs - [n_images, ...]; texts - [n_texts, ...]
+            if "global_similarities" in outputs.keys(): # custom global similarity score
+                global_similarities = outputs["global_similarities"]
+            else: # by default, calculate cosine similarity as global similarity
+                img_emb_g, text_emb_g = outputs["img_emb_g"], outputs["text_emb_g"]
+                global_similarities = self.get_global_similarities(img_emb_g, text_emb_g)
 
             if hasattr(self, "get_local_similarities"):
                 img_emb_l, text_emb_l = outputs["img_emb_l"], outputs["text_emb_l"]
@@ -107,7 +111,7 @@ class ZeroshotModel(nn.Module):
             accs = []
 
             for i in range(len(target_classes)):
-                gt_np = targets[:, i]
+                gt_np = targets[:, i].detach().cpu().numpy()
                 pred_np = logits[:, i]
                 precision, recall, thresholds = precision_recall_curve(gt_np, pred_np)
                 numerator = 2 * recall * precision
@@ -118,9 +122,15 @@ class ZeroshotModel(nn.Module):
                 max_f1s.append(max_f1)
                 accs.append(accuracy_score(gt_np, pred_np > max_f1_thresh))
 
+            acc = round(
+                np.mean(np.argmax(logits, axis=-1) == np.argmax(targets.detach().cpu().numpy(), axis=-1)) * 100,
+                2
+            )
+
             return {
                 "F1-score": np.array(max_f1s).mean(),
-                "ACC": np.array(accs).mean()
+                "threshold_acc": np.array(accs).mean(),
+                "base_acc": acc
             }
 
         elif self.mode == "retrieval":

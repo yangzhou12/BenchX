@@ -257,7 +257,8 @@ class Transformer(nn.Module):
 
 
 class REFERSViT(nn.Module):
-    def __init__(self, config_name, prelogits=False, pretrained=None, img_size=224, num_classes=21843, zero_head=False, vis=False, **kwargs):
+    def __init__(self, config_name, prelogits=False, pretrained=None, img_size=224, 
+                 num_classes=21843, zero_head=False, vis=False, **kwargs):
         super(REFERSViT, self).__init__()
 
         config = CONFIGS[config_name]
@@ -275,7 +276,11 @@ class REFERSViT(nn.Module):
         self.prelogits = prelogits
 
         if self.pretrained and os.path.exists(self.pretrained):
-            self.load_weights(self.pretrained)
+            # self.load_weights(self.pretrained)
+            if "prefix" in kwargs:
+                self.load_pretrained(self.pretrained, kwargs['prefix'])
+            else: 
+                self.load_pretrained(self.pretrained) # No prefix
 
     def forward(self, x, labels=None):
         x, attn_weights = self.transformer(x)
@@ -301,6 +306,27 @@ class REFERSViT(nn.Module):
 
         model_weights.update(load_weights)
         msg = self.load_state_dict(model_weights)
+        print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
+
+    def load_pretrained(self, pretrain_path, prefix=""):
+        checkpoint = torch.load(pretrain_path, map_location="cpu")
+
+        for key in ["state_dict", "model"]:  # resolve differences in saved checkpoints
+            if key in checkpoint:
+                checkpoint = checkpoint[key]
+                break
+        
+        if prefix:
+            state_dict = {k.replace(prefix, ""): v for k, v in checkpoint.items() if prefix in k}
+        else:
+            state_dict = checkpoint
+            print("Checkpoint prefix not set; Full state dictionary returned")
+
+        for layer_k in ["head.weight", "head.bias", "fc.weight", "fc.bias"]:
+            if layer_k in state_dict:
+                del state_dict[layer_k]
+        
+        msg = self.load_state_dict(state_dict, strict=False)
         print(f"Missing keys: {msg.missing_keys}\nUnexpected keys: {msg.unexpected_keys}")
 
 

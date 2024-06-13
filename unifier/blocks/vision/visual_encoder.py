@@ -102,6 +102,7 @@ def get_network(backbone, output_layer, pretrained, prefix=None, **kwargs):
     # PyTorch models
     else: 
         is_named = kwargs.pop("named_children", True) # Named layers by default
+        task = kwargs.pop("task", "cls") # Named layers by default
         weights = get_model_weights(backbone) if (pretrained == "DEFAULT") else None
         network = eval(backbone)(weights=weights, **kwargs)
 
@@ -113,6 +114,8 @@ def get_network(backbone, output_layer, pretrained, prefix=None, **kwargs):
             for n, c in network.named_children():
                 sub_network.append((n, c))
                 if n == output_layer:
+                    if output_layer != "avgpool" and task != "rrg":
+                        sub_network.append(("avgpool", network.avgpool))
                     break
 
             if is_named:
@@ -163,7 +166,12 @@ class VisualEncoder(nn.Module):
                 param.requires_grad = False
 
     def forward(self, images, **kwargs):
-        out = self.model(images)
+        if self.backbone == "timmvit":
+            out = self.model.forward_features(images)
+        else:
+            out = self.model(images)
+
+        # out = self.model(images)
 
         if isinstance(self.model, ViTModel) or isinstance(self.model, DeiTModel):
             assert isinstance(out, BaseModelOutputWithPooling)
