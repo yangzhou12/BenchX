@@ -72,13 +72,13 @@ pip install -v -e .
 
 ## Fine-Tuning & Evaluation
 
-We evaluate our pre-trained MedVLP models by specifying the `--pretrain_path` argument before running each downstream task. Arguments can be modified through [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
+You can run any benchmark task supported by BenchX using the following commands. The MedVLP model, dataset, and training parameters can be specified by a config file in [`config/`](config/). Additional command-line arguments can also be specified to override the configuration setting.
+
+Training other supported algorithms (on other datasets with different label settings) can be specified by a config file:
 
 ### 1. Classification
 
 To fine-tune a MedVLP model for classification, run this command:
-
-Here is an example to train FixMatch on CIFAR-100 with 200 labels. Training other supported algorithms (on other datasets with different label settings) can be specified by a config file:
 
 ```
 python bin/train.py config/classification/$dataset/$method.yml
