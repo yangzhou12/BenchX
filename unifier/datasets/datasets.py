@@ -13,18 +13,15 @@ from PIL import Image
 import skimage.transform
 from skimage.io import imread
 import torch
-import cv2
+# import cv2
 from ast import literal_eval
-
-import sys
-sys.path.append("/raid/zhouyang/unified-framework")
 
 import unifier
 from collections import Counter
 from transformers import AutoTokenizer
-from unifier.datasets.utils import split_into_sents, convert_dcm_to_filetype
+from unifier.datasets.utils import split_into_sents
 from unifier.blocks.custom.r2gen import Tokenizer
-import tarfile
+# import tarfile
 
 default_pathologies = [
     "Atelectasis",
@@ -110,7 +107,7 @@ class Dataset:
     Although it is called pathologies, the contents do not have to be 
     pathologies and may simply be attributes of the patient. """
 
-    labels: np.ndarray | torch.Tensor
+    labels: torch.Tensor
     """A NumPy array which contains a 1, 0, or NaN for each pathology. Each 
     column is a pathology and each row corresponds to an item in the dataset. 
     A 1 represents that the pathology is present, 0 represents the pathology 
@@ -164,7 +161,7 @@ class Dataset:
         return self.string()
 
     def check_paths_exist(self):
-        if not os.path.isdir(self.imgpath):
+        if not os.path.isdir(self.data_path):
             raise Exception("imgpath must be a directory")
         if not os.path.isfile(self.csvpath):
             raise Exception("csvpath must be a file")
@@ -208,7 +205,7 @@ class MIMIC_Dataset(Dataset):
         csvpath=USE_INCLUDED_FILE,  # reports w/ chexpert file
         views=["PA"],
         transform=None,
-        seed=0,
+        seed=42,
         unique_patients=False,
         split="train",
         data_pct=1,
@@ -283,6 +280,9 @@ class MIMIC_Dataset(Dataset):
         self.csv = pd.read_csv(self.csvpath)
         self.metacsvpath = metacsvpath
         self.metacsv = pd.read_csv(self.metacsvpath)
+
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
 
         self.csv = self.csv[self.csv["split"] == split]  # filter for split
 
@@ -436,15 +436,13 @@ class CheX_Dataset(Dataset):
 
     def __init__(
         self,
-        imgpath,
+        data_path,
         csvpath=USE_INCLUDED_FILE,
         views=["PA", "AP"],
         transform=None,
-        flat_dir=True,
-        seed=0,
-        unique_patients=True,
+        seed=42,
+        unique_patients=False,
         split="train",
-        data_pct=1
     ):
         super(CheX_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
@@ -469,32 +467,42 @@ class CheX_Dataset(Dataset):
 
         self.pathologies = sorted(self.pathologies)
 
-        self.imgpath = imgpath
+        self.data_path = data_path
         self.transform = transform
         if csvpath == USE_INCLUDED_FILE:
-            self.csvpath = os.path.join(datapath, "chexpert_train.csv.gz")
+            self.csvpath = os.path.join(data_path, "chexpert_labels.csv")
         else:
             self.csvpath = csvpath
         self.csv = pd.read_csv(self.csvpath)
-        self.csv = self.csv[self.csv["split"] == split]  # filter for split
+        # self.csv = self.csv[self.csv["split"] == split]  # filter for split
         self.views = views
 
-        if data_pct != 1 and self.split == "train":
-            self.csv = self.csv.sample(frac=data_pct, random_state=seed)
+        # self.csv["view"] = self.csv["Frontal/Lateral"]  # Assign view column
+        # self.csv.loc[(self.csv["view"] == "Frontal"), "view"] = self.csv[
+        #     "AP/PA"
+        # ]  # If Frontal change with the corresponding value in the AP/PA column otherwise remains Lateral
+        # self.csv["view"] = self.csv["view"].replace(
+        #     {"Lateral": "L"}
+        # )  # Rename Lateral with L
 
-        self.csv["view"] = self.csv["Frontal/Lateral"]  # Assign view column
-        self.csv.loc[(self.csv["view"] == "Frontal"), "view"] = self.csv[
-            "AP/PA"
-        ]  # If Frontal change with the corresponding value in the AP/PA column otherwise remains Lateral
-        self.csv["view"] = self.csv["view"].replace(
-            {"Lateral": "L"}
-        )  # Rename Lateral with L
+        # self.limit_to_selected_views(views)
 
-        self.limit_to_selected_views(views)
+        # if unique_patients:
+        #     self.csv["PatientID"] = self.csv["Path"].str.extract(pat=r"(patient\d+)")
+        #     self.csv = self.csv.groupby("PatientID").first().reset_index()
 
-        if unique_patients:
-            self.csv["PatientID"] = self.csv["Path"].str.extract(pat=r"(patient\d+)")
-            self.csv = self.csv.groupby("PatientID").first().reset_index()
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
+
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
+
+        data_split = pd.Series(data_split)
+        self.csv = self.csv[self.csv["Path"].isin(data_split)]
+
+        self.csv = self.csv.reset_index()   
 
         # Get our classes.
         healthy = self.csv["No Finding"] == 1
@@ -519,19 +527,19 @@ class CheX_Dataset(Dataset):
             np.char.replace(self.pathologies, "Pleural Effusion", "Effusion")
         )
 
-        # patientid
-        if self.split == "train" or self.split == "valid":
-            patientid = self.csv.Path.str.split("train/", expand=True)[1]
-        elif self.split == "test":
-            patientid = self.csv.Path.str.split("valid/", expand=True)[1]
-        else:
-            raise NotImplementedError
+        # # patientid
+        # if self.split == "train" or self.split == "valid":
+        #     patientid = self.csv.Path.str.split("train/", expand=True)[1]
+        # elif self.split == "test":
+        #     patientid = self.csv.Path.str.split("valid/", expand=True)[1]
+        # else:
+        #     raise NotImplementedError
 
-        patientid = patientid.str.split("/study", expand=True)[0]
-        patientid = patientid.str.replace("patient", "")
+        # patientid = patientid.str.split("/study", expand=True)[0]
+        # patientid = patientid.str.replace("patient", "")
 
-        # patientid
-        self.csv["patientid"] = patientid
+        # # patientid
+        # self.csv["patientid"] = patientid
 
         # age
         self.csv["age_years"] = self.csv["Age"] * 1.0
@@ -539,7 +547,7 @@ class CheX_Dataset(Dataset):
 
         # sex
         self.csv["sex_male"] = self.csv["Sex"] == "Male"
-        self.csv["sex_female"] = self.csv["Sex"] == "Female"
+        self.csv["sex_female"] = self.csv["Sex"] == "Female"     
 
     def string(self):
         return (
@@ -560,9 +568,150 @@ class CheX_Dataset(Dataset):
         imgid = self.csv["Path"].iloc[idx]
         # clean up path in csv so the user can specify the path
         imgid = imgid.replace("CheXpert-v1.0-small/", "")
-        img_path = os.path.join(self.imgpath, imgid)
-        img = imread(img_path)
-        img = Image.fromarray(img).convert("RGB")
+        img_path = os.path.join(self.data_path, imgid)
+        # img = imread(img_path)
+        # img = Image.fromarray(img).convert("RGB")
+        img = Image.open(img_path).convert("RGB")
+
+        sample["img"] = img
+
+        sample = apply_transforms(sample, self.transform)
+
+        return sample
+
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            imgs = [s["img"] for s in batch]
+            labels = [s["lab"] for s in batch]
+            collated = {
+                "labels": torch.stack(labels),
+                "images": torch.stack(imgs),
+            }
+            return collated
+
+        return collate_fn
+
+class CheX5_Dataset(Dataset):
+    """CheXpert Dataset
+
+    Citation:
+
+    CheXpert: A Large Chest Radiograph Dataset with Uncertainty Labels and
+    Expert Comparison. Jeremy Irvin *, Pranav Rajpurkar *, Michael Ko,
+    Yifan Yu, Silviana Ciurea-Ilcus, Chris Chute, Henrik Marklund, Behzad
+    Haghgoo, Robyn Ball, Katie Shpanskaya, Jayne Seekins, David A. Mong,
+    Safwan S. Halabi, Jesse K. Sandberg, Ricky Jones, David B. Larson,
+    Curtis P. Langlotz, Bhavik N. Patel, Matthew P. Lungren, Andrew Y. Ng.
+    https://arxiv.org/abs/1901.07031
+
+    Dataset website here:
+    https://stanfordmlgroup.github.io/competitions/chexpert/
+
+    A small validation set is provided with the data as well. It is used
+    as a test set.
+    """
+
+    def __init__(
+        self,
+        data_path,
+        csvpath=USE_INCLUDED_FILE,
+        views=["PA", "AP"],
+        transform=None,
+        seed=42,
+        unique_patients=False,
+        split="train",
+    ):
+        super(CheX5_Dataset, self).__init__()
+        np.random.seed(seed)  # Reset the seed so all runs are the same.
+
+        self.split = split
+
+        # MGCA Version
+        self.pathologies = [
+            "Atelectasis",
+            "Cardiomegaly",
+            "Consolidation",
+            "Edema",
+            "Pleural Effusion",
+        ]
+
+        self.pathologies = sorted(self.pathologies)
+
+        self.data_path = data_path
+        self.transform = transform
+        if csvpath == USE_INCLUDED_FILE:
+            self.csvpath = os.path.join(data_path, "chexpert_labels.csv")
+        else:
+            self.csvpath = csvpath
+        self.csv = pd.read_csv(self.csvpath)
+        # self.csv = self.csv[self.csv["split"] == split]  # filter for split
+        self.views = views
+
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
+
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
+
+        data_split = pd.Series(data_split)
+        self.csv = self.csv[self.csv["Path"].isin(data_split)]
+
+        self.csv = self.csv.reset_index()   
+
+        # Get our classes.
+        healthy = self.csv["No Finding"] == 1
+        labels = [] # [13, len(dataset)]
+        for pathology in self.pathologies:
+            if pathology in self.csv.columns:
+                if pathology != "Support Devices":
+                    self.csv.loc[healthy, pathology] = 0
+                mask = self.csv[pathology]
+            labels.append(torch.FloatTensor(mask.values))
+
+        self.labels = torch.stack(labels).T
+
+        # Make all the -1 values into nans to keep things simple
+        self.labels[self.labels == -1] = float('nan')
+
+        # Set labels with nan to 0
+        self.labels[torch.isnan(self.labels)] = 0
+
+        # Rename pathologies
+        self.pathologies = list(
+            np.char.replace(self.pathologies, "Pleural Effusion", "Effusion")
+        )
+
+        # age
+        self.csv["age_years"] = self.csv["Age"] * 1.0
+        self.csv.loc[self.csv["Age"] == 0, "Age"] = None
+
+        # sex
+        self.csv["sex_male"] = self.csv["Sex"] == "Male"
+        self.csv["sex_female"] = self.csv["Sex"] == "Female"     
+
+    def string(self):
+        return (
+            self.__class__.__name__
+            + " num_samples={} views={} transforms={} split={}".format(
+                len(self), self.views, self.transform, self.split
+            )
+        )
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sample = {}
+        sample["idx"] = idx
+        sample["lab"] = self.labels[idx]
+
+        imgid = self.csv["Path"].iloc[idx]
+        # clean up path in csv so the user can specify the path
+        imgid = imgid.replace("CheXpert-v1.0-small/", "")
+        img_path = os.path.join(self.data_path, imgid)
+        img = Image.open(img_path).convert("RGB")
 
         sample["img"] = img
 
@@ -608,16 +757,15 @@ class PC_Dataset(Dataset):
     """
 
     def __init__(self,
-                 imgpath,
+                 data_path,
                  csvpath=USE_INCLUDED_FILE,
                  views=["PA"],
                  transform=None,
                  data_aug=None,
                  flat_dir=True,
-                 seed=0,
+                 seed=42,
                  unique_patients=True,
                  split="train",
-                 data_pct=1
                 ):
 
         super(PC_Dataset, self).__init__()
@@ -635,6 +783,7 @@ class PC_Dataset(Dataset):
                             "Support Devices", "Tube'"]  # the Tube' is intentional
 
         self.pathologies = sorted(self.pathologies)
+        self.views = views
 
         mapping = dict()
 
@@ -654,58 +803,31 @@ class PC_Dataset(Dataset):
                                       "pacemaker"]
         mapping["Tube'"] = ["stent'"]  # the ' is to select findings which end in that word
 
-        self.imgpath = imgpath
+        self.data_path = data_path
         self.transform = transform
         self.data_aug = data_aug
         self.flat_dir = flat_dir
 
         if csvpath == USE_INCLUDED_FILE:
-            self.csvpath = os.path.join(datapath, "PADCHEST_chest_x_ray_images_labels_160K_01.02.19.csv")
+            self.csvpath = os.path.join(datapath, "padchest_labels.csv")
         else:
             self.csvpath = csvpath
 
         self.check_paths_exist()
         self.csv = pd.read_csv(self.csvpath, low_memory=False)
 
-        # Standardize view names
-        self.csv.loc[self.csv["Projection"].isin(["AP_horizontal"]), "Projection"] = "AP Supine"
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
 
-        self.csv["view"] = self.csv['Projection']
-        self.limit_to_selected_views(views)
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
 
-        # Remove null stuff
-        self.csv = self.csv[~self.csv["Labels"].isnull()]
+        data_split = pd.Series(data_split)
+        self.csv = self.csv[self.csv["ImageID"].isin(data_split)]
 
-        # Remove missing files
-        missing = ["216840111366964012819207061112010307142602253_04-014-084.png",
-                   "216840111366964012989926673512011074122523403_00-163-058.png",
-                   "216840111366964012959786098432011033083840143_00-176-115.png",
-                   "216840111366964012558082906712009327122220177_00-102-064.png",
-                   "216840111366964012339356563862009072111404053_00-043-192.png",
-                   "216840111366964013076187734852011291090445391_00-196-188.png",
-                   "216840111366964012373310883942009117084022290_00-064-025.png",
-                   "216840111366964012283393834152009033102258826_00-059-087.png",
-                   "216840111366964012373310883942009170084120009_00-097-074.png",
-                   "216840111366964012819207061112010315104455352_04-024-184.png",
-                   "216840111366964012819207061112010306085429121_04-020-102.png",
-                   "216840111366964012989926673512011083134050913_00-168-009.png",  # broken PNG file (chunk b'\x00\x00\x00\x00')
-                   "216840111366964012373310883942009152114636712_00-102-045.png",  # "OSError: image file is truncated"
-                   "216840111366964012819207061112010281134410801_00-129-131.png",  # "OSError: image file is truncated"
-                   "216840111366964012487858717522009280135853083_00-075-001.png",  # "OSError: image file is truncated"
-                   "216840111366964012989926673512011151082430686_00-157-045.png",  # broken PNG file (chunk b'\x00\x00\x00\x00')
-                   "216840111366964013686042548532013208193054515_02-026-007.png",  # "OSError: image file is truncated"
-                   "216840111366964013590140476722013058110301622_02-056-111.png",  # "OSError: image file is truncated"
-                   "216840111366964013590140476722013043111952381_02-065-198.png",  # "OSError: image file is truncated"
-                   "216840111366964013829543166512013353113303615_02-092-190.png",  # "OSError: image file is truncated"
-                   "216840111366964013962490064942014134093945580_01-178-104.png",  # "OSError: image file is truncated"
-                   ]
-        self.csv = self.csv[~self.csv["ImageID"].isin(missing)]
-
-        if unique_patients:
-            self.csv = self.csv.groupby("PatientID").first().reset_index()
-
-        # Filter out age < 10 (paper published 2019)
-        self.csv = self.csv[(2019 - self.csv.PatientBirth > 10)]
+        self.csv = self.csv.reset_index()    
 
         # Get our classes.
         labels = []
@@ -749,7 +871,7 @@ class PC_Dataset(Dataset):
         sample["lab"] = self.labels[idx]
 
         imgid = self.csv['ImageID'].iloc[idx]
-        img_path = os.path.join(self.imgpath, imgid)
+        img_path = os.path.join(self.data_path, "images", imgid)
         
         img = Image.open(img_path).convert("RGB")
         sample["img"] = img
@@ -788,23 +910,18 @@ class OpenI_Dataset(Dataset):
     https://openi.nlm.nih.gov/faq
     """
 
-    def __init__(self, imgpath,
-                 xmlpath=USE_INCLUDED_FILE,
-                 #  dicomcsv_path=USE_INCLUDED_FILE,
-                 #  tsnepacsv_path=USE_INCLUDED_FILE,
-                 #  use_tsne_derived_view=False,
-                 #  views=["PA"],
+    def __init__(self, data_path,
+                 csvpath=USE_INCLUDED_FILE,
                  transform=None,
                  data_aug=None,
-                 seed=0,
+                 seed=42,
                  unique_patients=True,
                  split="train",
-                 data_pct=1
                 ):
 
         super(OpenI_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
-        self.imgpath = imgpath
+        self.data_path = data_path
         self.transform = transform
         self.data_aug = data_aug
 
@@ -824,89 +941,31 @@ class OpenI_Dataset(Dataset):
 
         # Load data
         
-        if xmlpath == USE_INCLUDED_FILE:
-            self.xmlpath = os.path.join(datapath, "NLMCXR_reports.tgz")
+        if csvpath == USE_INCLUDED_FILE:
+            self.csvpath = os.path.join(data_path, "openi_labels.csv")
         else:
-            self.xmlpath = xmlpath
+            self.csvpath = csvpath
 
-        tarf = tarfile.open(self.xmlpath, 'r:gz')
+        self.csv = pd.read_csv(self.csvpath)
 
-        # self.projcsv_path = os.path.join(datapath, "indiana_projections.csv")
-        # projcsv = pd.read_csv(self.projcsv_path)
-        # self.csv = self.csv.join(tsne_pa, on="imageid")
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
 
-        samples = []
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
 
-        import xml
-        for filename in tarf.getnames():
-            if (filename.endswith(".xml")):
-                tree = xml.etree.ElementTree.parse(tarf.extractfile(filename))
-                root = tree.getroot()
-                uid = root.find("uId").attrib["id"]
-                labels_m = [node.text.lower() for node in root.findall(".//MeSH/major")]
-                labels_m = "|".join(np.unique(labels_m))
-                labels_a = [node.text.lower() for node in root.findall(".//MeSH/automatic")]
-                labels_a = "|".join(np.unique(labels_a))
-                image_nodes = root.findall(".//parentImage")
-                for image in image_nodes:
-                    sample = {}
-                    sample["uid"] = uid
-                    sample["imageid"] = image.attrib["id"]
-                    sample["labels_major"] = labels_m
-                    sample["labels_automatic"] = labels_a
-                    samples.append(sample)
+        data_split = pd.Series(data_split)
+        self.csv = self.csv[self.csv["imageid"].isin(data_split)]
 
-        self.csv = pd.DataFrame(samples)
+        self.csv = self.csv.reset_index()   
 
-        # if dicomcsv_path == USE_INCLUDED_FILE:
-        #     self.dicomcsv_path = os.path.join(datapath, "nlmcxr_dicom_metadata.csv.gz")
-        # else:
-        #     self.dicomcsv_path = dicomcsv_path
-
-        # self.dicom_metadata = pd.read_csv(self.dicomcsv_path, index_col="imageid", low_memory=False)
-
-        # # Merge in dicom metadata
-        # self.csv = self.csv.join(self.dicom_metadata, on="imageid")
-
-        # if tsnepacsv_path == USE_INCLUDED_FILE:
-        #     self.tsnepacsv_path = os.path.join(datapath, "nlmcxr_tsne_pa.csv.gz")
-        # else:
-        #     self.tsnepacsv_path = tsnepacsv_path
-
-        # # Attach view computed by tsne
-        # tsne_pa = pd.read_csv(self.tsnepacsv_path, index_col="imageid")
-        # self.csv = self.csv.join(tsne_pa, on="imageid")
-
-        # if use_tsne_derived_view:
-        #     self.csv["view"] = self.csv["tsne-view"]
-        # else:
-        #     self.csv["view"] = self.csv["View Position"]
-
-        # self.limit_to_selected_views(views)
-
-        if unique_patients:
-            self.csv = self.csv.groupby("uid").first().reset_index()
-
-        # Get our classes.
-        labels = []
-        for pathology in self.pathologies:
-            mask = self.csv["labels_automatic"].str.contains(pathology.lower())
-            if pathology in mapping:
-                for syn in mapping[pathology]:
-                    # print("mapping", syn)
-                    mask |= self.csv["labels_automatic"].str.contains(syn.lower())
-            labels.append(torch.FloatTensor(mask.values))
-
-        self.labels = torch.stack(labels).T
+        self.labels = torch.FloatTensor([eval(label) for label in self.csv["labels"].tolist()])
 
         # Rename pathologies
         self.pathologies = list(np.char.replace(self.pathologies, "Opacity", "Lung Opacity"))
         self.pathologies = list(np.char.replace(self.pathologies, "Lesion", "Lung Lesion"))
-
-        # add consistent csv values
-
-        # offset_day_int
-        # self.csv["offset_day_int"] =
 
         # patientid
         self.csv["patientid"] = self.csv["uid"].astype(str)
@@ -923,7 +982,7 @@ class OpenI_Dataset(Dataset):
         sample["lab"] = self.labels[idx]
 
         imageid = self.csv.iloc[idx].imageid
-        img_path = os.path.join(self.imgpath, imageid + ".png")
+        img_path = os.path.join(self.data_path, "images", imageid + ".png")
 
         # img = imread(img_path)
         # sample["img"] = normalize(img, maxval=255, reshape=True)
@@ -982,14 +1041,14 @@ class COVID19_Dataset(Dataset):
     dataset_url = "https://github.com/ieee8023/covid-chestxray-dataset"
 
     def __init__(self,
-                 imgpath: str,
+                 data_path: str,
                  csvpath: str,
                  views=["PA", "AP"],
                  transform=None,
                  data_aug=None,
                  seed: int = 0,
                  split="train",
-                 data_pct=1
+                 extension=".png"
                 ):
         """
         Args:
@@ -999,7 +1058,7 @@ class COVID19_Dataset(Dataset):
 
         super(COVID19_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
-        self.imgpath = imgpath
+        self.data_path = data_path
         self.transform = transform
         self.data_aug = data_aug
         self.views = views
@@ -1021,6 +1080,19 @@ class COVID19_Dataset(Dataset):
         self.pathologies = self.csv.finding.str.split("/", expand=True).values.ravel()
         self.pathologies = self.pathologies[~pd.isnull(self.pathologies)]
         self.pathologies = sorted(np.unique(self.pathologies))
+
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
+
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
+
+        data_split = pd.Series(data_split).apply(lambda x: x + extension)
+        self.csv = self.csv[self.csv["filename"].isin(data_split)]
+
+        self.csv = self.csv.reset_index()   
 
         labels = []
         for pathology in self.pathologies:
@@ -1046,7 +1118,7 @@ class COVID19_Dataset(Dataset):
         sample["lab"] = self.labels[idx]
 
         imgid = self.csv['filename'].iloc[idx]
-        img_path = os.path.join(self.imgpath, imgid)
+        img_path = os.path.join(self.data_path, "images", imgid)
 
         # img = imread(img_path)
         # sample["img"] = normalize(img, maxval=255, reshape=True)
@@ -1095,19 +1167,19 @@ class ObjectCXR_Dataset(Dataset):
     """
 
     def __init__(self,
-                 imgpath,
+                 data_path,
                  csvpath,
                  transform=None,
                  data_aug=None,
-                 seed=0,
+                 seed=42,
                  pathology_masks=False,
+                 extension=".jpg",
                  split="train",
-                 data_pct=1
                 ):
         super(ObjectCXR_Dataset, self).__init__()
 
         np.random.seed(seed)  # Reset the seed so all runs are the same.
-        self.imgpath = imgpath
+        self.data_path = data_path
         self.csvpath = csvpath
         self.transform = transform
         self.data_aug = data_aug
@@ -1122,6 +1194,17 @@ class ObjectCXR_Dataset(Dataset):
         labels.append(torch.FloatTensor(~self.csv["annotation"].isnull()))
 
         self.labels = torch.stack(labels).T
+
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
+
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
+
+        data_split = pd.Series(data_split).apply(lambda x: x + extension)
+        self.csv = self.csv[self.csv["image_name"].isin(data_split)]
 
         self.csv = self.csv.reset_index()
 
@@ -1140,43 +1223,26 @@ class ObjectCXR_Dataset(Dataset):
         sample = {}
         sample["idx"] = idx
         sample["lab"] = self.labels[idx]
-        imgid = self.csv.iloc[idx]["image_name"]
+        image_name = self.csv.iloc[idx]["image_name"]
 
-        img_path = os.path.join(self.imgpath, imgid)
+        img_path = os.path.join(self.data_path, "images", image_name)
         img = Image.open(img_path).convert("RGB")
         sample["img"] = img
 
         if self.pathology_masks:
-            sample["pathology_masks"] = self.get_mask_dict(idx, sample["img"].size)
+            sample["pathology_masks"] = self.get_mask_dict(image_name)
 
         sample = apply_transforms(sample, self.transform)
         sample = apply_transforms(sample, self.data_aug)
 
         return sample
 
-    def get_mask_dict(self, idx, this_size):
-        h, w = this_size
-
+    def get_mask_dict(self, image_name):
         path_mask = {}
-        row = self.csv.iloc[idx]
-        annotation = row.annotation
         for i, pathology in enumerate(self.pathologies):
-            mask = np.zeros([w, h], dtype=np.uint8)
-            if row.has_masks:
-                for anno in annotation.split(";"):
-                    anno = np.fromstring(anno, sep=" ", dtype=int)
-                    anno_type = anno[0]
-                    anno = anno[1:]
-                    if anno_type != 2:
-                        # bbox annotation (xywh)
-                        cv2.rectangle(mask, (anno[0], anno[1]), (anno[2], anno[3]), color=1, thickness=cv2.FILLED)
-                        # mask[anno[1]:anno[3], anno[0]:anno[2]] = 1
-                    else:
-                        # polygon annotation 
-                        poly = anno.reshape((-1,2))
-                        cv2.fillPoly(mask, [poly], color=1)
+            mask_path = os.path.join(self.data_path, "images", image_name)
+            mask = Image.open(mask_path)
             path_mask[i] = mask[None, :, :]
-
         return path_mask
     
     def get_collate_fn(self):
@@ -1215,7 +1281,7 @@ class ChestXDet_Dataset(Dataset):
                  csvpath,
                  transform=None,
                  data_aug=None,
-                 seed=0,
+                 seed=42,
                  pathology_masks=True,
                  split="train",
                  data_pct=1
@@ -1329,24 +1395,20 @@ class RSNA_Pneumonia_Dataset(Dataset):
 
     def __init__(
         self,
-        imgpath,
+        data_path,
         csvpath=USE_INCLUDED_FILE,
-        dicomcsvpath=USE_INCLUDED_FILE,
-        views=["PA", "AP"],
         transform=None,
-        nrows=None,
-        seed=0,
+        seed=42,
         pathology_masks=False,
-        extension=".dcm",
+        extension=".jpg",
         split="train",
-        data_pct=1
     ):
         super(RSNA_Pneumonia_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
 
         self.split = split
 
-        self.imgpath = imgpath
+        self.data_path = data_path
         self.transform = transform
         self.pathology_masks = pathology_masks
 
@@ -1355,59 +1417,51 @@ class RSNA_Pneumonia_Dataset(Dataset):
         self.pathologies = sorted(self.pathologies)
 
         self.extension = extension
-        self.use_pydicom = extension == ".dcm"
 
         # Load data
         if csvpath == USE_INCLUDED_FILE:
-            self.csvpath = os.path.join(datapath, "kaggle_stage_2_train_labels.csv.zip")
+            self.csvpath = os.path.join(data_path, "rsna_labels.csv")
         else:
             self.csvpath = csvpath
 
-        df = pd.read_csv(self.csvpath, nrows=nrows)
-        self.raw_csv = df[df["split"] == split]  # Filter for split
+        self.raw_csv = pd.read_csv(self.csvpath)
+        # self.raw_csv = df[df["split"] == split]  # Filter for split
 
-        if data_pct != 1 and self.split == "train":
-            self.raw_csv = self.raw_csv.sample(frac=data_pct, random_state=seed)
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
+
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
+
+        data_split = pd.Series(data_split)
+        self.raw_csv = self.raw_csv[self.raw_csv["patientId"].isin(data_split)]
 
         # The labels have multiple instances for each mask
         # So we just need one to get the target label
         self.csv = self.raw_csv.groupby("patientId").first()
-
-        if dicomcsvpath == USE_INCLUDED_FILE:
-            self.dicomcsvpath = os.path.join(
-                datapath, "kaggle_stage_2_train_images_dicom_headers.csv.gz"
-            )
-        else:
-            self.dicomcsvpath = dicomcsvpath
-
-        self.dicomcsv = pd.read_csv(
-            self.dicomcsvpath, nrows=nrows, index_col="PatientID"
-        )
-
-        self.csv = self.csv.join(self.dicomcsv, on="patientId")
-
-        # Remove images with view position other than specified
-        self.csv["view"] = self.csv["ViewPosition"]
-        self.limit_to_selected_views(views)
-
         self.csv = self.csv.reset_index()
 
         # Get our classes.
-        labels = [torch.FloatTensor(self.csv["Target"].values)] # remove column for lung opacity
+        # labels = [torch.FloatTensor(self.csv["Target"].values)] # remove column for lung opacity
+        # self.labels = torch.stack(labels).T
+
+        labels = [torch.LongTensor(self.csv["Target"].values)]
+        self.labels = torch.stack(labels).T
+        self.labels = torch.nn.functional.one_hot(self.labels.squeeze(), num_classes=2).float()
 
         # set if we have masks
         self.csv["has_masks"] = ~np.isnan(self.csv["x"])
 
-        self.labels = torch.stack(labels).T
-
         # patientid
-        self.csv["patientid"] = self.csv["patientId"].astype(str)
+        self.csv["patientId"] = self.csv["patientId"].astype(str)
 
     def string(self):
         return (
             self.__class__.__name__
-            + " num_samples={} views={} transforms={} split={}".format(
-                len(self), self.views, self.transform, self.split
+            + " num_samples={} transforms={} split={}".format(
+                len(self), self.transform, self.split
             )
         )
 
@@ -1419,65 +1473,25 @@ class RSNA_Pneumonia_Dataset(Dataset):
         sample["idx"] = idx
         sample["lab"] = self.labels[idx]
 
-        imgid = self.csv["patientId"].iloc[idx]
-        img_path = os.path.join(self.imgpath, imgid + self.extension)
-
-        if self.use_pydicom:
-            img = convert_dcm_to_filetype(img_path).convert("RGB")
-            # try:
-            #     import pydicom
-            #     from pydicom.pixel_data_handlers.util import apply_voi_lut
-            # except ImportError as e:
-            #     raise Exception("Please install pydicom to work with this dataset")
-
-            # # img = pydicom.filereader.dcmread(img_path).pixel_array
-
-            # dc_image = pydicom.dcmread(img_path, force=True)
-            # image_array = dc_image.pixel_array.astype(float)
-            # image_array = apply_voi_lut(image_array, dc_image)
-            # # depending on this value, X-ray may look inverted - fix that:
-            # if dc_image.PhotometricInterpretation == "MONOCHROME1":
-            #     image_array = np.amax(image_array) - image_array
-
-            # img = (np.maximum(image_array, 0) / image_array.max()) * 255.0
-            # img = np.uint8(img)
-
-            # final_image = Image.fromarray(scaled_image)
-            # old_size = final_image.size
-            # desired_size = 512
-            # ratio = float(desired_size)/max(old_size)
-            # new_size = tuple([int(x*ratio) for x in old_size])
-            # final_image = final_image.resize(new_size, Image.ANTIALIAS)
-        else:
-            img = Image.open(img_path).convert("RGB")
+        image_name = self.csv["patientId"].iloc[idx]
+        img_path = os.path.join(self.data_path, "images", image_name + self.extension)
+        img = Image.open(img_path).convert("RGB")
 
         sample["img"] = img  # remove normalization step
 
         if self.pathology_masks:
-            sample["pathology_masks"] = self.get_mask_dict(
-                imgid, max(sample["img"].size)
-            )
+            sample["pathology_masks"] = self.get_mask_dict(image_name)
 
         sample = apply_transforms(sample, self.transform)
 
         return sample
 
-    def get_mask_dict(self, image_name, this_size):
-        images_with_masks = self.raw_csv[self.raw_csv["patientId"] == image_name]
+    def get_mask_dict(self, image_name):
         path_mask = {}
-
         # All masks are for both pathologies
         for patho in ["Pneumonia"]:
-            mask = np.zeros([this_size, this_size])
-
-            # Don't add masks for labels we don't have
-            if patho in self.pathologies:
-                for i in range(len(images_with_masks)):
-                    row = images_with_masks.iloc[i]
-                    xywh = np.asarray([row.x, row.y, row.width, row.height])
-                    xywh = xywh.astype(int)
-                    mask[xywh[1] : xywh[1] + xywh[3], xywh[0] : xywh[0] + xywh[2]] = 1
-
+            mask_path = os.path.join(self.imgpath, "images", image_name + self.extension)
+            mask = Image.open(mask_path)
             # Resize so image resizing works
             mask = mask[None, :, :]
 
@@ -1519,54 +1533,52 @@ class SIIM_Pneumothorax_Dataset(Dataset):
 
     def __init__(
         self,
-        imgpath,
+        data_path,
         csvpath=USE_INCLUDED_FILE,
         transform=None,
-        seed=0,
+        seed=42,
         pathology_masks=False,
         extension=".png",
         split="train",
-        data_pct=1
     ):
         super(SIIM_Pneumothorax_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
 
         self.split = split
 
-        self.imgpath = imgpath
+        self.data_path = data_path
         self.transform = transform
         self.pathology_masks = pathology_masks
 
         # Load data
         if csvpath == USE_INCLUDED_FILE:
-            self.csvpath = os.path.join(datapath, "siim-pneumothorax-train-rle.csv.gz")
+            self.csvpath = os.path.join(data_path, "siim_labels.csv")
         else:
             self.csvpath = csvpath
-
         self.csv = pd.read_csv(self.csvpath)
-        self.csv = self.csv[self.csv["split"] == split]  # Filter for split
 
-        self.pathologies = ["Pneumothorax"]
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
 
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
+
+        data_split = pd.Series(data_split).apply(lambda x: x + extension)
+        self.csv = self.csv[self.csv["new_filename"].isin(data_split)]
+
+        self.pathologies = ["Pneumothorax", "No Pneumothorax"]
         self.extension = extension
-        self.use_pydicom = extension == ".dcm"
 
-        labels = [torch.FloatTensor((self.csv[" EncodedPixels"] != " -1").values)]
+        # labels = [torch.FloatTensor(self.csv["has_pneumo"].values)]
+        # self.labels = torch.stack(labels).T
+
+        labels = [torch.LongTensor(self.csv["has_pneumo"].values)]
         self.labels = torch.stack(labels).T
-
+        self.labels = torch.nn.functional.one_hot(self.labels.squeeze(), num_classes=2).float()
+        
         self.csv = self.csv.reset_index()
-
-        self.csv["has_masks"] = self.csv[" EncodedPixels"] != " -1"
-
-        # To figure out the paths
-        if not ("siim_file_map" in _cache_dict):
-            file_map = {}
-            for root, directories, files in os.walk(self.imgpath, followlinks=False):
-                for filename in files:
-                    filePath = os.path.join(root, filename)
-                    file_map[filename] = filePath
-            _cache_dict["siim_file_map"] = file_map
-        self.file_map = _cache_dict["siim_file_map"]
 
     def string(self):
         return (
@@ -1584,72 +1596,31 @@ class SIIM_Pneumothorax_Dataset(Dataset):
         sample["idx"] = idx
         sample["lab"] = self.labels[idx]
 
-        imgid = self.csv["ImageId"].iloc[idx]
-        img_path = self.file_map[imgid + self.extension]
-        
-        if self.use_pydicom:
-            img = convert_dcm_to_filetype(img_path).convert("RGB")
-        else:
-            img = Image.open(img_path).convert("RGB")
+        img_name = self.csv["new_filename"].iloc[idx]
+        img_path = os.path.join(self.data_path, "images", img_name)
 
+        img = Image.open(img_path).convert("RGB")
         sample["img"] = img
         
         if self.pathology_masks:
             from torchvision import transforms
-            sample["pathology_masks"] = self.get_pathology_mask_dict(
-                imgid, sample["img"].size[1]
-            )
+            sample["pathology_masks"] = self.get_pathology_mask_dict(img_name)
 
         sample = apply_transforms(sample, self.transform)
 
         return sample
 
-    def get_pathology_mask_dict(self, image_name, this_size):
-        # TODO: Double check this, we will preprocess the image to 512x512
-        base_size = 1024
-        images_with_masks = self.csv[
-            np.logical_and(
-                self.csv["ImageId"] == image_name, self.csv[" EncodedPixels"] != " -1"
-            )
-        ]
+    def get_pathology_mask_dict(self, img_name):
         path_mask = {}
+        for patho in ["Pneumothorax"]:
+            # don't add masks for labels we don't have
+            if patho in self.pathologies:
+                mask_path = os.path.join(self.imgpath, "masks", img_name)
+                mask = Image.open(mask_path)
+            # reshape so image resizing works
+            mask = mask[None, :, :]
 
-        # From kaggle code
-        def rle2mask(rle, width, height):
-            mask = np.zeros(width * height)
-            array = np.asarray([int(x) for x in rle.split()])
-            starts = array[0::2]
-            lengths = array[1::2]
-
-            current_position = 0
-            for index, start in enumerate(starts):
-                current_position += start
-                mask[current_position : current_position + lengths[index]] = 1
-                current_position += lengths[index]
-
-            return mask.reshape(width, height)
-
-        if len(images_with_masks) > 0:
-            # Using a for loop so it is consistent with the other code
-            for patho in ["Pneumothorax"]:
-                mask = np.zeros([this_size, this_size])
-
-                # don't add masks for labels we don't have
-                if patho in self.pathologies:
-                    for i in range(len(images_with_masks)):
-                        row = images_with_masks.iloc[i]
-                        mask = rle2mask(row[" EncodedPixels"], base_size, base_size)
-                        mask = mask.T
-                        mask = skimage.transform.resize(
-                            mask, (this_size, this_size), mode="constant", order=0
-                        )
-                        mask = mask.round()  # make 0,1
-
-                # reshape so image resizing works
-                mask = mask[None, :, :]
-
-                path_mask[self.pathologies.index(patho)] = mask
-
+            path_mask[self.pathologies.index(patho)] = mask
         return path_mask
     
     def get_collate_fn(self):
@@ -1685,7 +1656,7 @@ class NIH_Dataset(Dataset):
     extension of the 8 common disease patterns listed in our CVPR2017 paper.
     Note that original radiology reports (associated with these chest x-ray
     studies) are not meant to be publicly shared for many reasons. The
-    text-mined disease labels are expected to have accuracy >90%.Please find
+    text-mined disease labels are expected to have accuracy >90%. Please find
     more details and benchmark performance of trained models based on 14
     disease labels in our arxiv paper: https://arxiv.org/abs/1705.02315
 
@@ -1701,25 +1672,26 @@ class NIH_Dataset(Dataset):
 
     def __init__(
         self,
-        imgpath,
+        data_path,
         csvpath=USE_INCLUDED_FILE,
         bbox_list_path=USE_INCLUDED_FILE,
         views=["PA", "AP"],
         transform=None,
-        seed=0,
+        seed=42,
         pathology_masks=False,
         split="train",
-        data_pct=1
     ):
         super(NIH_Dataset, self).__init__()
 
+        self.seed = seed
         np.random.seed(seed)  # Reset the seed so all runs are the same.
-        self.imgpath = imgpath
+        self.data_path = data_path
 
         self.split = split
+        self.views = views
 
         if csvpath == USE_INCLUDED_FILE:
-            self.csvpath = os.path.join(datapath, "Data_Entry_2017_v2020.csv.gz")
+            self.csvpath = os.path.join(data_path, "Data_Entry_2017_v2020.csv.gz")
         else:
             self.csvpath = csvpath
 
@@ -1748,39 +1720,18 @@ class NIH_Dataset(Dataset):
         # Load data
         self.check_paths_exist()
         self.csv = pd.read_csv(self.csvpath)
-        self.csv = self.csv[self.csv["split"] == split] # Filter for split
+        # self.csv = self.csv[self.csv["split"] == split] # Filter for split
 
-        if data_pct != 1 and self.split == "train":
-            # TODO: Come up with own split instead of using MRM split
-            downloaded_data_label_txt = None
-            if data_pct == 0.01:
-                downloaded_data_label_txt = os.path.join(datapath, "train_1.txt")
-            elif data_pct == 0.1:
-                downloaded_data_label_txt = os.path.join(datapath, "train_10.txt")
-            elif data_pct == 1:
-                downloaded_data_label_txt = os.path.join(datapath, "train_list.txt")
-            else:
-                self.csv = self.csv.sample(frac=data_pct, random_state=seed)
-            
-            if downloaded_data_label_txt:
-                fileDescriptor = open(os.path.join(downloaded_data_label_txt), "r")
-                trainImages = []
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
 
-                line = True
-                while line:
-                    line = fileDescriptor.readline()
-                    if line:
-                        lineItems = line.split()
-                        imageFile = lineItems[0]
-                        trainImages.append(imageFile)
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
 
-                fileDescriptor.close()
-                self.csv = self.csv[self.csv["Image Index"].isin(pd.Series(trainImages))]
-                print("Used MRM split", len(self.csv))
-
-        # Remove images with view position other than specified
-        self.csv["view"] = self.csv["View Position"]
-        self.limit_to_selected_views(views)
+        data_split = pd.Series(data_split)
+        self.csv = self.csv[self.csv["Image Index"].isin(data_split)]
 
         self.csv = self.csv.reset_index()
 
@@ -1814,6 +1765,9 @@ class NIH_Dataset(Dataset):
                 self.pathology_maskscsv["Image Index"]
             )
 
+        # self.csv['labels'] = self.csv['labels'].apply(literal_eval)
+        # self.labels = torch.FloatTensor(self.csv["labels"])
+
         # Get our classes.
         labels = []
         for pathology in self.pathologies:
@@ -1837,13 +1791,15 @@ class NIH_Dataset(Dataset):
         sample = {}
 
         imgid = self.csv["Image Index"].iloc[idx]
-        img_path = os.path.join(self.imgpath, imgid)
+        img_path = os.path.join(self.data_path, "images", imgid) 
         img = Image.open(img_path).convert("RGB")
 
         if self.pathology_masks:
             sample["pathology_masks"] = self.get_mask_dict(
                 imgid, sample["img"].shape[2]
             )
+
+        # if self.transform != None: img = self.transform(img)
         
         sample["img"] = img
         sample["lab"] = self.labels[idx]
@@ -1908,34 +1864,51 @@ class COVIDx_Dataset(Dataset):
 
     def __init__(
         self,
-        imgpath,
+        data_path,
+        csvpath=USE_INCLUDED_FILE,
         transform=None,
-        seed=0,
+        seed=42,
         split="train",
-        data_pct=1
     ):
         super(COVIDx_Dataset, self).__init__()
 
+        self.data_path = data_path
         np.random.seed(seed)  # Reset the seed so all runs are the same.
-        self.imgpath = os.path.join(imgpath, split)
-
         self.split = split
 
-        self.txtpath = os.path.join(imgpath, split + ".txt")
-        self.csv = pd.read_csv(self.txtpath, sep=' ')
-
-        column_names = ['patient_id', 'filename', 'class', 'data_source'] 
-        self.csv.columns = column_names
+        if csvpath == USE_INCLUDED_FILE:
+            self.csvpath = os.path.join(data_path, "covidx_labels.csv")
+        else:
+            self.csvpath = csvpath
+        self.csv = pd.read_csv(self.csvpath)
 
         self.transform = transform
 
-        if data_pct != 1 and self.split == "train":
-            self.csv = self.csv.sample(frac=data_pct, random_state=seed)
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
+
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
+
+        data_split = pd.Series(data_split)
+        self.csv = self.csv[self.csv["filename"].isin(data_split)]
+
+        # if data_pct != 1 and self.split == "train":
+        #     self.csv = self.csv.sample(frac=data_pct, random_state=seed)
 
         self.csv = self.csv.reset_index()
 
+        self.pathologies = ["Negative", "Positive"]
+        # self.pathologies = ["Positive"]
+
         # Get our classes.
-        labels = [torch.FloatTensor((self.csv['class'] == 'positive').values)]
+        labels = []
+        for pathology in self.pathologies:
+            mask = self.csv["class"].str.contains(pathology.lower())
+            labels.append(torch.FloatTensor(mask.values))
+        
         self.labels = torch.stack(labels).T
 
     def string(self):
@@ -1952,12 +1925,12 @@ class COVIDx_Dataset(Dataset):
     def __getitem__(self, idx):
         sample = {}
 
-        imgid = self.csv["filename"].iloc[idx]
-        img_path = os.path.join(self.imgpath, imgid)
+        img_name = self.csv["filename"].iloc[idx]
+        img_path = os.path.join(self.data_path, img_name)
         img = Image.open(img_path).convert("RGB")
         
         sample["img"] = img
-        sample["lab"] = torch.FloatTensor([self.labels[idx]])
+        sample["lab"] = self.labels[idx]
 
         sample = apply_transforms(sample, self.transform)
 
@@ -1996,23 +1969,22 @@ class VinDr_Dataset(Dataset):
     """
 
     def __init__(self,
-                 imgpath,
+                 data_path,
                  csvpath=USE_INCLUDED_FILE,
                  views=None,
                  transform=None,
                  data_aug=None,
-                 seed=0,
+                 seed=42,
                  pathology_masks=False,
-                 split="train",
-                 data_pct=1
+                 split="train_1",
                  ):
         super(VinDr_Dataset, self).__init__()
 
         np.random.seed(seed)  # Reset the seed so all runs are the same.
-        self.imgpath = imgpath
+        self.data_path = data_path
 
         if csvpath == USE_INCLUDED_FILE:
-            self.csvpath = os.path.join(datapath, "vinbigdata-train.csv.gz")
+            self.csvpath = os.path.join(data_path, "vindr_labels.csv")
         else:
             self.csvpath = csvpath
 
@@ -2021,59 +1993,56 @@ class VinDr_Dataset(Dataset):
         self.pathology_masks = pathology_masks
         self.views = views
 
+        # VinBig version
         self.pathologies = ['Aortic enlargement',
                             'Atelectasis',
                             'Calcification',
                             'Cardiomegaly',
-                            'Clavicle fracture',
                             'Consolidation',
-                            'Edema',
-                            'Emphysema',
-                            'Enlarged PA',
                             'ILD',
                             'Infiltration',
                             'Lung Opacity',
-                            'Lung cavity',
-                            'Lung cyst',
-                            'Mediastinal shift',
                             'Nodule/Mass',
-                            'Pleural effusion',
-                            'Pleural thickening',
+                            'Lesion',
+                            'Effusion',
+                            'Pleural_Thickening',
                             'Pneumothorax',
-                            'Pulmonary fibrosis',
-                            'Rib fracture',
-                            'Other lesion',
-                            'COPD',
-                            'Lung tumor',
-                            'Pneumonia',
-                            'Tuberculosis',
-                            'Other disease',
-                            'No finding'
-                            ]
+                            'Pulmonary Fibrosis']
 
         self.pathologies = sorted(np.unique(self.pathologies))
 
-        # self.mapping = dict()
-        # self.mapping["Pleural_Thickening"] = ["Pleural thickening"]
-        # self.mapping["Effusion"] = ["Pleural effusion"]
+        self.mapping = dict()
+        self.mapping["Pleural_Thickening"] = ["Pleural thickening"]
+        self.mapping["Effusion"] = ["Pleural effusion"]
 
         # Load data
         self.check_paths_exist()
-        self.rawcsv = pd.read_csv(self.csvpath)
-        self.csv = pd.DataFrame(self.rawcsv.groupby("image_id")["class_name"].apply(lambda x: "|".join(np.unique(x))))
+        # self.rawcsv = pd.read_csv(self.csvpath)
+        # self.csv = pd.DataFrame(self.rawcsv.groupby("image_id")["class_name"].apply(lambda x: "|".join(np.unique(x))))
+        # self.csv["has_masks"] = self.csv.class_name != "No finding"
+        self.csv = pd.read_csv(self.csvpath)
 
-        self.csv["has_masks"] = self.csv.class_name != "No finding"
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
+
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
+
+        data_split = pd.Series(data_split)
+        self.csv = self.csv[self.csv["image_id"].isin(data_split)]
+
+        self.csv = self.csv.reset_index()
 
         labels = []
         for pathology in self.pathologies:
             mask = self.csv["class_name"].str.lower().str.contains(pathology.lower())
-            # if pathology in self.mapping:
-            #     for syn in self.mapping[pathology]:
-            #         mask |= self.csv["class_name"].str.lower().str.contains(syn.lower())
+            if pathology in self.mapping:
+                for syn in self.mapping[pathology]:
+                    mask |= self.csv["class_name"].str.lower().str.contains(syn.lower())
             labels.append(torch.FloatTensor(mask.values))
         self.labels = torch.stack(labels).T
-
-        self.csv = self.csv.reset_index()
 
     def string(self):
         return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
@@ -2087,7 +2056,7 @@ class VinDr_Dataset(Dataset):
         sample["lab"] = self.labels[idx]
 
         imgid = self.csv['image_id'].iloc[idx]
-        img_path = os.path.join(self.imgpath, imgid + ".png")
+        img_path = os.path.join(self.data_path, "images", imgid + ".png")
 
         img = Image.open(img_path).convert("RGB")
         sample["img"] = img
@@ -2100,7 +2069,8 @@ class VinDr_Dataset(Dataset):
 
         return sample
 
-    def get_mask_dict(self, image_name, this_size):
+    def get_mask_dict(self, image_name, this_size): 
+        # TODO: NA Now Need Update
         h, w = this_size
 
         path_mask = {}
@@ -2153,21 +2123,20 @@ class TBX11K_Dataset(Dataset):
 
     def __init__(
         self,
-        imgpath,
+        data_path,
         csvpath=USE_INCLUDED_FILE,
         transform=None,
-        nrows=None,
-        seed=0,
+        seed=42,
         pathology_masks=False,
+        extension='.png',
         split="train",
-        data_pct=1
     ):
         super(TBX11K_Dataset, self).__init__()
         np.random.seed(seed)  # Reset the seed so all runs are the same.
 
         self.split = split
 
-        self.imgpath = imgpath
+        self.data_path = data_path
         self.transform = transform
         self.pathology_masks = pathology_masks
 
@@ -2176,25 +2145,31 @@ class TBX11K_Dataset(Dataset):
 
         # Load data
         if csvpath == USE_INCLUDED_FILE:
-            self.csvpath = os.path.join(datapath, "data.csv")
+            self.csvpath = os.path.join(datapath, "tbx11k_labels.csv")
         else:
             self.csvpath = csvpath
 
-        df = pd.read_csv(self.csvpath, nrows=nrows)
-        self.csv = df[df["source"] == split]  # Filter for split
+        self.csv = pd.read_csv(self.csvpath)
 
-        if data_pct != 1 and self.split == "train":
-            self.csv = self.csv.sample(frac=data_pct, random_state=seed)
+        support_splits = ["train", "val", "test", "train_1", "train_10"]
+        assert split in support_splits, f"Invalid split: {split}. Supported splits are {support_splits}"
+
+        split_path = os.path.join(data_path, f"{split}.txt")
+        # Read the .txt file using pandas
+        with open(split_path, 'r') as file:
+            data_split = [line.strip() for line in file]
+
+        data_split = pd.Series(data_split).apply(lambda x: x + extension)
+        self.csv = self.csv[self.csv["fname"].isin(data_split)]
 
         self.csv = self.csv.reset_index()
+
         # Get our classes.
         labels = []
         for pathology in self.pathologies:
             mask = self.csv["image_type"].str.lower().str.contains(pathology.lower())
-            # if pathology in self.mapping:
-            #     for syn in self.mapping[pathology]:
-            #         mask |= self.csv["class_name"].str.lower().str.contains(syn.lower())
             labels.append(torch.FloatTensor(mask.values))
+
         self.labels = torch.stack(labels).T
 
         # set if we have masks
@@ -2216,42 +2191,31 @@ class TBX11K_Dataset(Dataset):
         sample["idx"] = idx
         sample["lab"] = self.labels[idx]
 
-        imgid = self.csv["fname"].iloc[idx]
-        img_path = os.path.join(self.imgpath, imgid)
+        image_name = self.csv["fname"].iloc[idx]
+        img_path = os.path.join(self.data_path, "images", image_name)
 
-        img = imread(img_path)
-        img = Image.fromarray(img).convert("RGB")
+        img = Image.open(img_path).convert("RGB")
 
         sample["img"] = img  # remove normalization step
         sample["has_mask"] = self.csv["has_masks"][idx]
 
         if self.pathology_masks:
-            sample["pathology_masks"] = self.get_mask_dict(imgid, sample["has_mask"])
+            sample["pathology_masks"] = self.get_mask_dict(image_name, self.csv["target"].iloc[idx])
 
         sample = apply_transforms(sample, self.transform)
 
         return sample
 
-    def get_mask_dict(self, image_name, has_mask):
-        images_with_masks = self.csv[self.csv["fname"] == image_name]
-        this_size = images_with_masks[['image_height', 'image_width']].values.tolist()[0]
-
+    def get_mask_dict(self, image_name, target):
         path_mask = {}
-        # All masks are for both pathologies
-        if has_mask:
-            mask = np.zeros(this_size)
-            for i in range(len(images_with_masks)):
-                row = images_with_masks.iloc[i]
-                xywh = eval(row.bbox)
-                xywh = np.array(list(xywh.values()))
-                # xywh = xywh * scale
-                xywh = xywh.astype(int)
-                mask[xywh[1] : xywh[1] + xywh[3], xywh[0] : xywh[0] + xywh[2]] = 1
 
-            # Resize so image resizing works
-            mask = mask[None, :, :]
+        mask_path = os.path.join(self.imgpath, "masks", image_name)
+        mask = Image.open(mask_path).convert("RGB")
 
-            path_mask[images_with_masks.target.values[0]] = mask
+        # Resize so image resizing works
+        mask = mask[None, :, :]
+
+        path_mask[target] = mask
         return path_mask
     
     def get_collate_fn(self):
@@ -2298,7 +2262,7 @@ class VQA_RAD_Dataset(Dataset):
         imgpath,
         csvpath=USE_INCLUDED_FILE,
         transform=None,
-        seed=0,
+        seed=42,
         unique_patients=True,
         split="train",
         tokenizer=None,
@@ -2477,7 +2441,7 @@ class MedVQA_2019_Dataset(Dataset):
         csvpath=USE_INCLUDED_FILE,
         labelspath=USE_INCLUDED_FILE,
         transform=None,
-        seed=0,
+        seed=42,
         unique_patients=True,
         split="train",
         tokenizer=None,
@@ -2639,7 +2603,7 @@ class SLAKE_Dataset(Dataset):
         imgpath,
         csvpath=USE_INCLUDED_FILE,
         transform=None,
-        seed=0,
+        seed=42,
         unique_patients=True,
         split="train",
         tokenizer=None,
@@ -2805,7 +2769,7 @@ class IU_Dataset(Dataset):
         imgpath,
         csvpath=USE_INCLUDED_FILE,
         transform=None,
-        seed=0,
+        seed=42,
         split="train",
         max_words=None,
     ):
@@ -2824,7 +2788,7 @@ class IU_Dataset(Dataset):
         self.transform = transform
 
         # Load data
-        self.check_paths_exist()
+        # self.check_paths_exist()
         self.csv = pd.read_csv(self.csvpath)
 
         self.csv = self.csv[self.csv["split"] == split]  # Filter for split
@@ -2900,57 +2864,3 @@ class IU_Dataset(Dataset):
             return collated
 
         return collate_fn
-
-if __name__ == "__main__":
-    # # OpenI Dataset
-    # datapath = "/raid/zhouyang/DATA/OpenI/"
-    # imgpath = "/raid/zhouyang/DATA/OpenI/images/"
-    # dataset = OpenI_Dataset(imgpath=imgpath)
-
-    # COVID-19 Dataset
-    # datapath = "/raid/zhouyang/DATA/COVID-19/"
-    # imgpath = "/raid/zhouyang/DATA/COVID-19/images/"
-    # csvpath = "/raid/zhouyang/DATA/COVID-19/COVID19_metadata.csv"
-    # dataset = COVID19_Dataset(imgpath=imgpath, csvpath=csvpath)
-
-    # # Object-CXR Dataset
-    # imgpath = "/raid/zhouyang/processed_data/Object-CXR/train"
-    # csvpath = "/raid/zhouyang/processed_data/Object-CXR/train.csv"
-    # dataset = ObjectCXR_Dataset(imgpath=imgpath, csvpath=csvpath) # Return img only, bbox is not used
-    # # dataset.__getitem__(idx=9)
-    # dataset.__getitem__(idx=3298)
-
-    # VinDr-CXR Dataset
-    # imgpath = "/raid/zhouyang/processed_data/Vindr_CXR_512/images"
-    # csvpath = "/raid/zhouyang/processed_data/Vindr_CXR_512/annotations/resized_annotations_train.csv"
-    # dataset = VinDr_Dataset(imgpath=imgpath, csvpath=csvpath) 
-
-    # # TBX11K Dataset
-    # # datapath = "/raid/zhouyang/DATA/tbx11k-simplified/"
-    # imgpath = "/raid/zhouyang/DATA/tbx11k-simplified/images"
-    # csvpath = "/raid/zhouyang/DATA/tbx11k-simplified/data.csv"
-    # dataset = TBX11K_Dataset(imgpath=imgpath, csvpath=csvpath) 
-    # dataset.__getitem__(idx=6900)
-
-    # COVIDx Dataset
-    # imgpath = "/raid/zhouyang/DATA/COVIDx-CXR4/"
-    # dataset = COVIDx_Dataset(imgpath=imgpath) 
-    # dataset.__getitem__(idx=3)
-
-    # PadChest
-    # imgpath = "/raid/zhouyang/DATA/PadChest/images-224"
-    # csvpath = "/raid/zhouyang/DATA/PadChest/PADCHEST_chest_x_ray_images_labels_160K_01.02.19.csv"
-    # dataset = PC_Dataset(imgpath=imgpath, csvpath=csvpath) 
-
-    # # RSNA
-    # imgpath = "/raid/zhouyang/DATA/rsna_pneumonia/stage_2_train_images"
-    # # csvpath = "/raid/zhouyang/DATA/rsna_pneumonia/stage_2_train_labels.csv"
-    # # dicomcsvpath = "/raid/zhouyang/DATA/rsna_pneumonia/stage_2_detailed_class_info.csv"
-    # dataset = RSNA_Pneumonia_Dataset(imgpath=imgpath)
-    # dataset.__getitem__(idx=3)
-
-    # ChestXDet Dataset
-    imgpath = "/raid/zhouyang/processed_data/ChestX-Det10/train"
-    csvpath = "/raid/zhouyang/processed_data/ChestX-Det10/train.csv"
-    dataset = ChestXDet_Dataset(imgpath=imgpath, csvpath=csvpath) 
-    dataset.__getitem__(idx=6)
