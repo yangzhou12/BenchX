@@ -1,0 +1,13 @@
+dataset: MIMIC_5x200
+transforms: DataTransforms
+img_path: /mnt/weka/MedFM/processed_data/mimic_512/
+model_name: convirt
+# tokenizer: emilyalsentzer/Bio_ClinicalBERT
+tokenizer: allenai/biomed_roberta_base 
+similarity_type: global
+mode: retrieval
+ckpt_path: /mnt/weka/MedFM/BenchX/ckpt/pretrained/ConVIRT.pth
+batch_size: 1000
+seed: 42
+num_workers: 4
+device: cuda

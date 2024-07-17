@@ -1,0 +1,12 @@
+dataset: MIMIC_5x200
+transforms: DataTransforms
+img_path: /mnt/weka/MedFM/processed_data/mimic_512/
+model_name: ptunifier
+tokenizer: allenai/biomed_roberta_base
+similarity_type: global
+mode: retrieval
+ckpt_path: ckpt/pretrained/PTUnifier.ckpt
+batch_size: 8
+seed: 42
+num_workers: 4
+device: cuda

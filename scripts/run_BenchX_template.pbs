@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -N BenchX
+#PBS -o log
+#PBS -l walltime=12:00:00 
+#PBS -l select=1:ngpus=1
+#PBS -q ai
+#PBS -P 13003832
+
+# Enter the folder where the job script located, if failed, then return the error code.
+cd $PBS_O_WORKDIR || exit $?
+
+# If no log folder, then create one
+[ -d log ] || mkdir log
+
+# Load any necessary modules or set up your environment
+module load miniforge3/23.10 
+
+# Activate your Conda environment
+source activate BenchX
+
+# Run Python code
+bash scripts/grid_search_r50.sh
+bash scripts/grid_search_vit.sh

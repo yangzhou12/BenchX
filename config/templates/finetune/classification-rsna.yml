@@ -1,0 +1,51 @@
+includes:
+  - path/to/model/config.yml
+
+name: classification_rsna
+ckpt_dir: ckpt
+
+dataset:
+  proto: RSNA_Pneumonia_Dataset
+  imgpath: /VLM/rsna_pneumonia/stage_2_train_images
+  data_pct: 0.01
+
+transforms:
+  type: RSNATransforms
+
+model:
+  proto: ImageClassifier
+
+  cnn:
+    output_layer: avgpool # for resnet layers
+
+  classifier:
+    proto: Classifier
+    # input_size: 768 # overwritten
+    num_classes: 1 # Pneumonia or no Pneumonia
+    dropout: 0.
+
+  loss:
+    proto: BCEWithLogitsLoss
+
+trainer:
+  optimizer: Adam
+  optim_params:
+    lr: 0.00005
+    weight_decay: 5e-4
+  batch_size: 32
+  lr_decay: ReduceLROnPlateau
+  lr_decay_params:
+    factor: 0.5
+    patience: 1
+    min_lr: 0.000001
+    threshold: 0.01
+    threshold_mode: abs
+  epochs: 99
+  early_stop: 10
+  eval_start: 0
+  early_stop_metric: validation_loss
+
+validator:
+  batch_size: 32
+  metrics: [multilabel_auroc]
+  splits: [valid]

@@ -1,0 +1,64 @@
+includes:
+  - configs/_base_/models/mgca_vit.yml
+
+name: MGCA_ViT
+ckpt_dir: experiments/classification/vindr/
+use_amp: True
+seed: 42
+
+dataset:
+  proto: VinDr_Dataset
+  data_path: datasets/VinDr_CXR/
+  csvpath: datasets/VinDr_CXR/vindr_labels.csv
+  split: "train_1"
+  num_workers: 10
+
+transforms:
+  type: NIHTransforms
+
+model:
+  proto: ImageClassifier
+
+  cnn:
+    pretrained: checkpoints/MGCA-vit.ckpt
+    prefix: img_encoder_q.model.
+    num_classes: 0  # disable classifier layer
+    global_pool: token
+    permute: no_permute
+    freeze: False
+
+  classifier:
+    # proto: Identity
+    proto: Classifier
+    # use_fc_norm: True
+    num_classes: 14
+    use_fc_norm: True
+    trunc_init: True
+
+  loss:
+    proto: BCEWithLogitsLoss
+
+trainer:
+  optimizer: SGD
+  optim_params:
+    lr: 3e-2
+    momentum: 0.9
+    optim_groups: ve_only
+    lr_multiplier_ve: 0.1
+    # weight_decay: 1e-5
+  batch_size: 64
+  clip_grad_norm: 1.0
+  lr_decay: WarmupCosineScheduler
+  lr_decay_params:
+    warmup_steps: 50
+    t_total: 3000
+  epochs: 200
+  early_stop: 10
+  eval_start: 10
+  eval_interval: 5
+  early_stop_metric: multilabel_auroc
+
+validator:
+  batch_size: 512
+  metrics: [multilabel_accuracy, multilabel_auroc]
+  splits: [val]

@@ -1,0 +1,24 @@
+name: mrm
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: timmvit
+    pretrained: /home/faith/unified-framework/ckpt/official/MRM.pth # no prefix
+    dropout_out: 0.0
+    # drop_path_rate: 0.1
+    freeze: False
+    permute: batch_first
+    num_classes: 0
+    
+  transformer: # for RRG
+    d_vf: 768
+
+  language: # for zero-shot experiments
+    proto: emilyalsentzer/Bio_ClinicalBERT
+    json_file: /home/faith/unified-framework/unifier/blocks/custom/mgca/bert_config.json
+    pretrained: /home/faith/unified-framework/ckpt/official/MGCA-vit.ckpt
+    prefix: text_encoder_q.model.
+    last_n_layers: 4
+
+

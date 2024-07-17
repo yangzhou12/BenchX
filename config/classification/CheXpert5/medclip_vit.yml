@@ -1,0 +1,75 @@
+includes:
+  - config/templates/finetune/models/medclip_vit.yml
+
+name: MedCLIP_ViT
+ckpt_dir: experiments/classification/chexpert5/
+use_amp: True
+seed: 42
+
+dataset:
+  proto: CheX5_Dataset
+  data_path: /home/users/astar/ares/zhouy2/scratch/processed_data/CheXpert
+  csvpath: /home/users/astar/ares/zhouy2/scratch/processed_data/CheXpert/chexpert_labels.csv
+  views: ["PA", "AP"]
+  split: "train_1"
+  num_workers: 4
+
+transforms:
+  type: NIHTransforms
+
+pretrained_source: official
+pretrained_path:
+  official: /home/users/astar/ares/zhouy2/scratch/BenchX/ckpt/official/MedCLIP-vit.bin
+  custom: /home/users/astar/ares/zhouy2/scratch/BenchX/ckpt/pretrained/MedCLIP-vit.bin # Not available
+pretrained_prefix:
+  official: vision_model.model.
+  custom: vision_model.model.
+
+model:
+  proto: ImageClassifier
+
+  cnn:
+    encoder:
+      proto: microsoft/swin-tiny-patch4-window7-224
+      pretrained: ${pretrained_path.${pretrained_source}}
+      prefix: ${pretrained_prefix.${pretrained_source}}
+    output_layer: avgpool
+    # pretrained: ${pretrained_path.${pretrained_source}}
+    global_pool: mean
+    permute: no_permute
+    freeze: False
+
+  classifier:
+    # proto: Identity
+    proto: Classifier
+    use_fc_norm: False
+    # use_fc_norm: True
+    # trunc_init: True
+    num_classes: 5
+
+  loss:
+    proto: BCEWithLogitsLoss
+
+trainer:
+  optimizer: Adam
+  optim_params:
+    lr: 1e-5
+    eps: 1e-08
+    # weight_decay: 1e-5
+  batch_size: 128
+  clip_grad_norm: 1.0
+  lr_decay: WarmupCosineScheduler
+  lr_decay_params:
+    warmup_steps: 50
+    t_total: 3000
+  epochs: 200
+  early_stop: 10
+  eval_start: 10
+  eval_interval: 5
+  early_stop_metric: multilabel_auroc
+
+validator:
+  batch_size: 512
+  metrics: [multilabel_accuracy, multilabel_auroc]
+  splits: [val]
+  # splits: [valid]

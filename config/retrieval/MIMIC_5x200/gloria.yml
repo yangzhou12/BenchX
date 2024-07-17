@@ -1,0 +1,15 @@
+dataset: MIMIC_5x200
+transforms: DataTransforms
+img_path: /mnt/weka/MedFM/processed_data/mimic_512/
+model_name: gloria
+tokenizer: emilyalsentzer/Bio_ClinicalBERT
+similarity_type: global
+# similarity_type: local
+# similarity_type: both
+mode: retrieval
+ckpt_path: /mnt/weka/MedFM/BenchX/ckpt/pretrained/GLoRIA_last.ckpt
+# ckpt_path: /mnt/weka/MedFM/BenchX/ckpt/pretrained/GLoRIA.pth
+batch_size: 8
+seed: 42
+num_workers: 4
+device: cuda

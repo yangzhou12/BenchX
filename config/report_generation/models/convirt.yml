@@ -1,0 +1,31 @@
+name: convirt
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: resnet50
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/ConVIRT.pth
+    prefix: visual.model.
+    output_layer: layer4 # change to avgpool for zero-shot
+    dropout_out: 0.0
+    permute: batch_first
+    freeze: False
+
+    #####  Uncomment below for zero-shot and cls  #####
+    # visual_projection: 
+    #   layer: >
+    #     nn.Sequential(
+    #       nn.Linear(2048, 768),
+    #       nn.ReLU(),
+    #       nn.Linear(768, 768),
+    #     )
+    #   prefix: vis_proj.
+
+  fusion: # for MMVQA
+    input_image_embed_size: 2048
+
+  transformer: # for RRG
+    d_vf: 2048
+
+  classifier: # for CLS
+    input_size: 2048

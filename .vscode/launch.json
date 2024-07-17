@@ -1,0 +1,206 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "classification",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "bin/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                // "config/classification/CheXpert/convirt.yml",
+                // "config/classification/CheXpert5/refers.yml",
+                // "config/classification/VinDr/gloria.yml",
+                // "config/classification/VinDr/medklip.yml",
+                // "config/classification/VinDr/mgca_vit.yml",
+                // "config/classification/VinDr/mrm.yml",
+                // "config/classification/VinDr/mflag.yml",
+                // "config/classification/NIH/convirt.yml",
+                // "config/classification/NIH/mrm.yml",
+                // "config/classification/COVIDx/mrm_test.yml",
+                // "config/classification/SIIM/mrm.yml",
+                // "config/classification/RSNA/mrm.yml",
+                // "config/classification/COVIDx/refers.yml",
+                // "config/classification/COVIDx/mgca_vit.yml",
+                // "config/classification/COVIDx/gloria.yml",
+                // "config/classification/COVIDx/mgca_rn50.yml",
+                "config/classification/COVIDx/medklip.yml",
+                "name=Test", 
+                // "pretrained_source=custom", "seed=0",
+                "seed=42",
+                "dataset.split=train_10",
+                "dataset.num_workers=16",
+                "pretrained_source=custom", 
+                // "model.cnn.freeze=True",
+                // "model.classifier.use_fc_norm=False", 
+                // "model.classifier.trunc_init=False", 
+                // "trainer.optim_params.optim_groups=ve_only",
+                // "trainer.optim_params.lr_multiplier_ve=0.1",
+                // "trainer.optimizer=Adam",
+                "trainer.optim_params.lr=5e-4",
+                // "trainer.batch_size=256",
+                // "trainer.lr_decay_params.warmup_steps=120",
+                // "trainer.lr_decay_params.t_total=2400",
+                // "config/classification/NIH/gloria.yml"
+                // "config/classification/NIH/medclip_rn50.yml"
+                // "config/classification/NIH/medclip_vit.yml"
+                // "config/classification/NIH/medklip.yml"
+                // "config/classification/NIH/mflag.yml"
+                // "config/classification/NIH/mgca_rn50.yml"
+                // "config/classification/NIH/mgca_vit.yml"
+                // "config/classification/NIH/mrm.yml"
+                // "config/classification/NIH/refers.yml",
+                // "seed=41", "name=Our_XXX", "model.cnn.pretrained=/raid/zhouyang/unified-framework/ckpt/pretrained/REFERS.pth"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false"
+            }
+        },
+        {
+            "name": "classification_test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "bin/test.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                // "config/classification/COVIDx/convirt.yml",
+                // "config/classification/COVIDx/gloria.yml",
+                // "config/classification/COVIDx/medclip_rn50.yml"
+                // "config/classification/COVIDx/medclip_vit.yml"
+                "config/classification/COVIDx/medklip.yml",
+                // "config/classification/COVIDx/mflag.yml"
+                // "config/classification/COVIDx/mgca_rn50.yml"
+                // "config/classification/COVIDx/mgca_vit.yml",
+                // "config/classification/COVIDx/mrm.yml",
+                // "config/classification/COVIDx/refers.yml",
+                "seed=0", 
+                "dataset.split=train", 
+                // "pretrained_source=official",
+                // "name=GLoRIA",
+                "pretrained_source=custom",
+                "name=medklip_1",
+                "validator.splits=[test]"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false"
+            }
+        },
+        {
+            "name": "zeroshot_retrieval",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "bin/test_zeroshot.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                // "config/retrieval/MIMIC_5x200/ptunifier.yml",
+                "config/retrieval/MIMIC_5x200/convirt.yml",
+                // "config/retrieval/MIMIC_5x200/gloria.yml",
+                // "config/retrieval/MIMIC_5x200/medclip_rn50.yml",
+                // "config/retrieval/MIMIC_5x200/medclip_vit.yml",
+                // "config/retrieval/MIMIC_5x200/mgca_rn50.yml",
+                // "config/retrieval/MIMIC_5x200/mgca_vit.yml",
+                // "config/retrieval/MIMIC_5x200/refers.yml",
+                // "config/retrieval/MIMIC_5x200/mflag.yml",
+                // "--dataset",
+                // // "chexpert_5x200",
+                // "MIMIC_5x200",
+                // "--img_path",
+                // "/mnt/weka/MedFM/processed_data/mimic_512/",
+                // "--model_name",
+                // "ptunifier", // depends on model
+                // "--tokenizer",
+                // "allenai/biomed_roberta_base", // depends on model
+                // "--similarity_type",
+                // "global",
+                // "--ckpt_path",
+                // "ckpt/pretrained/PTUnifier.ckpt", // depends on model
+                // "--mode",
+                // "retrieval",
+                // "--batch_size",
+                // "8"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "rrg",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "bin/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "config/report_generation/IUXray/convirt.yml",
+                // "release_config/report_generation/IUXray/convirt.yml",
+                // "config/report_generation/IUXray/gloria.yml",
+                // "config/report_generation/IUXray/medclip_resnet50.yml",
+                // "config/report_generation/IUXray/medclip_vit.yml",
+                // "config/report_generation/IUXray/medklip.yml",
+                // "config/report_generation/IUXray/mflag.yml",
+                // "config/report_generation/IUXray/mgca_resnet50.yml",
+                // "config/report_generation/IUXray/mgca_vit.yml",
+                // "config/report_generation/IUXray/mrm.yml",
+                // "config/report_generation/IUXray/ptunifier.yml",
+                // "config/report_generation/IUXray/refers.yml",
+                // "pretrained_sourc=custom",
+                "trainer.optim_params.lr=2e-3",
+                // "trainer.optim_params.lr_multiplier_ve=0.5",
+                // "model.cnn.freeze=True",
+                // "trainer.early_stop=5",
+                "ckpt_dir=experiments/rrg/iuxray/test"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1",
+                "TOKENIZERS_PARALLELISM": "false"
+            }
+        },
+        {
+            "name": "rrg_test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "bin/test_rrg.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "config/report_generation/IUXray/convirt.yml",
+                // "config/report_generation/gloria_test.yml"
+                // "config/report_generation/IUXray/convirt.yml",
+                // "config/report_generation/IUXray/gloria.yml",
+                // "config/report_generation/IUXray/medclip_resnet50.yml",
+                // "config/report_generation/IUXray/medclip_vit.yml",
+                // "config/report_generation/IUXray/medklip.yml",
+                // "config/report_generation/IUXray/mflag.yml",
+                // "config/report_generation/IUXray/mgca_resnet50.yml",
+                // "config/report_generation/IUXray/mgca_vit.yml",
+                // "config/report_generation/IUXray/mrm.yml",
+                // "config/report_generation/IUXray/ptunifier.yml",
+                // "config/report_generation/IUXray/refers.yml",
+                "validator.batch_size=64",
+                "ckpt_dir=experiments/rrg/iuxray/test",
+                // "name=Our_MGCA_ViT", "pretrained_source=custom", "trainer.optim_params.lr=2e-3", "seed=0",
+                "validator.splits=[test]"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false"
+            }
+        },
+    ]
+}

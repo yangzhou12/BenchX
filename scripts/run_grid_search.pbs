@@ -1,0 +1,64 @@
+#!/bin/bash
+#PBS -N Grid_Search_CheXpert5
+#PBS -o log
+#PBS -l walltime=48:00:00 
+#PBS -l select=1:ngpus=1
+#PBS -q normal
+#PBS -P 13003897
+#PBS -j oe
+
+
+# Enter the folder where the job script located, if failed, then return the error code.
+cd $PBS_O_WORKDIR || exit $?
+
+# If no log folder, then create one
+[ -d log ] || mkdir log
+
+# Load any necessary modules or set up your environment
+module load miniforge3/23.10 
+
+# Activate your Conda environment
+source activate BenchX
+
+# Common parameters
+COMMON_PARAMS="CheXpert5" # ["NIH", "VinDr", "CheXpert", "CheXpert5", "COVIDx", "SIIM", "RSNA"]
+# R50_MODELS=("convirt" "gloria" "medclip_rn50" "medclip_vit" "medklip" "mflag" "mgca_rn50" )
+R50_MODELS=("medclip_rn50" "medclip_vit" "medklip" "mflag" "mgca_rn50")
+VIT_MODELS=("mgca_vit" "mrm" "refers")
+
+# Loop over R50 models and run Python code with grid_search_r50.sh
+for model in "${R50_MODELS[@]}"; do
+    bash scripts/grid_search_r50.sh "$COMMON_PARAMS" "$model"
+done
+
+# Loop over VIT models and run Python code with grid_search_vit.sh
+for model in "${VIT_MODELS[@]}"; do
+    bash scripts/grid_search_vit.sh "$COMMON_PARAMS" "$model"
+done
+
+# # Loop over R50 models and run Python code with grid_search_r50.sh
+# for model in "${VIT_MODELS[@]}"; do
+#     bash scripts/grid_search_r50.sh "$COMMON_PARAMS" "$model"
+# done
+
+# # Loop over R50 models and print Python command with grid_search_r50.sh
+# for model in "${R50_MODELS[@]}"; do
+#     echo "bash scripts/grid_search_r50.sh \"$COMMON_PARAMS\" \"$model\""
+# done
+
+# # Loop over VIT models and print Python command with grid_search_vit.sh
+# for model in "${VIT_MODELS[@]}"; do
+#     echo "bash scripts/grid_search_vit.sh \"$COMMON_PARAMS\" \"$model\""
+# done
+
+# # Run Python code
+# bash scripts/grid_search_r50.sh VinDr convirt
+# bash scripts/grid_search_r50.sh VinDr gloria
+# bash scripts/grid_search_r50.sh VinDr medclip_rn50
+# bash scripts/grid_search_r50.sh VinDr medclip_vit
+# bash scripts/grid_search_r50.sh VinDr medklip
+# bash scripts/grid_search_r50.sh VinDr mflag
+# bash scripts/grid_search_r50.sh VinDr mgca_rn50
+# bash scripts/grid_search_vit.sh VinDr mgca_vit
+# bash scripts/grid_search_vit.sh VinDr mrm
+# bash scripts/grid_search_vit.sh VinDr refers

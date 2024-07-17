@@ -1,0 +1,20 @@
+name: mgca_vit
+
+model:
+  cnn:
+    proto: VisualEncoder
+    backbone: timmvit
+    pretrained: /home/faith/unified-framework/ckpt/pretrained/MGCA-vit.ckpt
+    prefix: img_encoder_q.model.
+    dropout_out: 0.0
+    num_classes: 0
+    freeze: False
+
+  fusion: # for MMVQA
+    input_image_embed_size: 768
+
+  transformer: # for RRG
+    d_vf: 768
+
+  classifier: # for CLS
+    input_size: 768

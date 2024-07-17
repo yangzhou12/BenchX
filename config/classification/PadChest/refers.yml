@@ -1,0 +1,73 @@
+includes:
+  - config/templates/finetune/models/refers.yml
+
+name: REFERS
+ckpt_dir: experiments/classification/padchest/
+use_amp: True
+seed: 42
+
+dataset:
+  proto: PC_Dataset
+  data_path: /home/users/astar/ares/zhouy2/scratch/processed_data/PadChest
+  csvpath: /home/users/astar/ares/zhouy2/scratch/processed_data/PadChest/padchest_labels.csv
+  views: ["PA", "AP"]
+  split: "train_1"
+  num_workers: 4
+
+transforms:
+  type: NIHTransforms
+
+pretrained_source: official
+pretrained_path:
+  official: /home/users/astar/ares/zhouy2/scratch/BenchX/ckpt/official/REFERS.pth
+  custom: /home/users/astar/ares/zhouy2/scratch/BenchX/ckpt/pretrained/REFERS.pth
+pretrained_prefix:
+  official: "" 
+  custom: visual.vit.
+
+model:
+  proto: ImageClassifier
+
+  cnn:
+    # output_layer: avgpool
+    num_classes: 28
+    # zero_head: True
+    # prelogits: False
+    global_pool: token
+    prelogits: True
+    pretrained: ${pretrained_path.${pretrained_source}}
+    prefix: ${pretrained_prefix.${pretrained_source}}
+
+  classifier:
+    # proto: Identity
+    proto: Classifier
+    # use_fc_norm: True
+    num_classes: 28
+    use_fc_norm: True
+    trunc_init: True
+
+  loss:
+    proto: BCEWithLogitsLoss
+
+trainer:
+  optimizer: SGD
+  optim_params:
+    lr: 3e-2
+    momentum: 0.9
+    # weight_decay: 1e-5
+  batch_size: 64
+  clip_grad_norm: 1.0
+  lr_decay: WarmupCosineScheduler
+  lr_decay_params:
+    warmup_steps: 50
+    t_total: 3000
+  epochs: 200
+  early_stop: 10
+  eval_start: 10
+  eval_interval: 5
+  early_stop_metric: multilabel_auroc
+
+validator:
+  batch_size: 512
+  metrics: [multilabel_auroc]
+  splits: [val]

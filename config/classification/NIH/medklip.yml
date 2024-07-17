@@ -1,0 +1,72 @@
+includes:
+  - config/templates/finetune/models/medklip.yml
+
+name: MedKLIP
+ckpt_dir: experiments/classification/nih/
+use_amp: True
+seed: 42
+
+dataset:
+  proto: NIH_Dataset
+  data_path: /home/users/astar/ares/zhouy2/scratch/processed_data/NIH_ChestX-ray
+  csvpath: /home/users/astar/ares/zhouy2/scratch/BenchX/unifier/datasets/data/Data_Entry_2017_v2020.csv.gz
+  # csvpath: /home/users/astar/ares/zhouy2/scratch/processed_data/NIH_ChestX-ray/nih_labels.csv
+  views: ["PA", "AP"]
+  split: "train_1"
+  num_workers: 10
+
+transforms:
+  type: NIHTransforms
+
+pretrained_source: official
+pretrained_path:
+  official: /home/users/astar/ares/zhouy2/scratch/BenchX/ckpt/official/MedKLIP.pth
+  custom: /home/users/astar/ares/zhouy2/scratch/BenchX/ckpt/pretrained/MedKLIP.pth
+pretrained_prefix:
+  official: module.res_features.
+  custom: module.res_features.
+
+model:
+  proto: ImageClassifier
+
+  cnn:
+    output_layer: avgpool
+    pretrained: ${pretrained_path.${pretrained_source}}
+    prefix: ${pretrained_prefix.${pretrained_source}}
+    freeze: False
+
+  classifier:
+    proto: Classifier
+    # input_size: 768 # overwritten
+    num_classes: 14
+    dropout: 0.
+    # use_fc_norm: False
+    # trunc_init: False
+
+  loss:
+    proto: BCEWithLogitsLoss
+
+trainer:
+  optimizer: Adam
+  optim_params:
+    lr: 1e-4
+    eps: 1e-08
+    optim_groups: ve_only
+    lr_multiplier_ve: 0.1
+    # weight_decay: 1e-5
+  batch_size: 128
+  clip_grad_norm: 1.0
+  lr_decay: WarmupCosineScheduler
+  lr_decay_params:
+    warmup_steps: 50
+    t_total: 3000
+  epochs: 200
+  early_stop: 10
+  eval_start: 10
+  eval_interval: 5
+  early_stop_metric: multilabel_auroc
+
+validator:
+  batch_size: 512
+  metrics: [multilabel_accuracy, multilabel_auroc]
+  splits: [val]

@@ -1,0 +1,76 @@
+includes:
+  - configs/_base_/models/mrm.yml
+
+name: MRM
+ckpt_dir: experiments/classification/rsna/
+use_amp: True
+seed: 42
+
+dataset:
+  proto: RSNA_Pneumonia_Dataset
+  data_path: datasets/RSNA
+  csvpath: datasets/RSNA/rsna_labels.csv
+  split: "train_1"
+  num_workers: 10
+
+transforms:
+  type: NIHTransforms
+
+model:
+  proto: ImageClassifier
+
+  cnn:
+    num_classes: 0  # disable classifier layer
+    # output_layer: avgpool
+    global_pool: avg
+    pretrained: checkpoints/MRM.pth
+    drop_path_rate: 0.
+    permute: no_permute
+    # permute: batch_first
+    freeze: False
+
+  classifier:
+    # proto: Identity
+    proto: Classifier
+    # use_fc_norm: True
+    num_classes: 2
+    use_fc_norm: True
+    trunc_init: True
+
+  # loss:
+  #   proto: BCEWithLogitsLoss
+
+  loss:
+    proto: CrossEntropyLoss
+
+trainer:
+  optimizer: SGD
+  optim_params:
+    lr: 1e-2
+    momentum: 0.9
+    optim_groups: ve_only
+    lr_multiplier_ve: 0.1
+    # weight_decay: 1e-5
+    # weight_decay: 0
+  # optimizer: Adam
+  # optim_params:
+  #   lr: 1e-4
+  #   optim_groups: ve_only
+  #   lr_multiplier_ve: 0.1
+  batch_size: 32
+  clip_grad_norm: 1.0
+  lr_decay: WarmupCosineScheduler
+  lr_decay_params:
+    warmup_steps: 50
+    t_total: 3000
+  epochs: 200
+  early_stop: 10
+  eval_start: 10
+  eval_interval: 5
+  early_stop_metric: multiclass_f1
+
+validator:
+  batch_size: 512
+  metrics: [multiclass_accuracy, multiclass_precision, multiclass_recall, multiclass_f1, multiclass_auroc]
+  # splits: [valid]
+  splits: [val]

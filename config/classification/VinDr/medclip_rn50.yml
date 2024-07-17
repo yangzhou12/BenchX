@@ -1,0 +1,68 @@
+includes:
+  - config/templates/finetune/models/medclip_resnet50.yml
+
+name: MedCLIP_R50
+ckpt_dir: experiments/classification/vindr/
+use_amp: True
+seed: 42
+
+dataset:
+  proto: VinDr_Dataset
+  data_path: /home/users/astar/ares/zhouy2/scratch/processed_data/Vindr_CXR_512/
+  csvpath: /home/users/astar/ares/zhouy2/scratch/processed_data/Vindr_CXR_512/vindr_labels.csv
+  split: "train_1"
+  num_workers: 4
+
+transforms:
+  type: NIHTransforms
+
+pretrained_source: official
+pretrained_path:
+  official: /home/users/astar/ares/zhouy2/scratch/BenchX/ckpt/official/MedCLIP-resnet50.bin
+  custom: /home/users/astar/ares/zhouy2/scratch/BenchX/ckpt/pretrained/MedCLIP-resnet50.bin # Not Available
+pretrained_prefix:
+  official: vision_model.model.
+  custom: vision_model.model.
+
+model:
+  proto: ImageClassifier
+
+  cnn:
+    output_layer: avgpool
+    pretrained: ${pretrained_path.${pretrained_source}}
+    prefix: ${pretrained_prefix.${pretrained_source}}
+    freeze: False
+
+  classifier:
+    proto: Classifier
+    # input_size: 768 # overwritten here
+    num_classes: 14
+    # use_fc_norm: True
+    # trunc_init: True
+    dropout: 0.
+
+  loss:
+    proto: BCEWithLogitsLoss
+
+trainer:
+  optimizer: Adam
+  optim_params:
+    lr: 1e-4
+    eps: 1e-08
+    # weight_decay: 1e-5
+  batch_size: 128
+  clip_grad_norm: 1.0
+  lr_decay: WarmupCosineScheduler
+  lr_decay_params:
+    warmup_steps: 50
+    t_total: 3000
+  epochs: 200
+  early_stop: 10
+  eval_start: 10
+  eval_interval: 5
+  early_stop_metric: multilabel_auroc
+
+validator:
+  batch_size: 512
+  metrics: [multilabel_accuracy, multilabel_auroc]
+  splits: [val]
