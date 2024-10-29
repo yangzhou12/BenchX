@@ -151,3 +151,16 @@ We thanks the following projects for reference of creating BenchX:
 - [ViLMedic](https://github.com/jbdel/vilmedic)
 - [TorchXRayVision](https://github.com/mlmed/torchxrayvision)
 - [MRM](https://github.com/RL4M/MRM-pytorch/tree/main)
+
+## Citation
+
+If you find BenchX useful for your research and applications, please cite using this BibTeX:
+
+```bibtex
+@inproceedings{{zhou2024benchx,
+  title={BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays},
+  author={Yang Zhou, Tan Li Hui Faith, Yanyu Xu, Sicong Leng, Xinxing Xu, Yong Liu, Rick Siow Mong Goh},
+  booktitle={Proceedings of NeurIPS},
+  year={2024}
+}
+```
