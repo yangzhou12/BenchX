@@ -157,7 +157,7 @@ We thanks the following projects for reference of creating BenchX:
 If you find BenchX useful for your research and applications, please cite using this BibTeX:
 
 ```bibtex
-@inproceedings{{zhou2024benchx,
+@inproceedings{zhou2024benchx,
   title={BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays},
   author={Yang Zhou, Tan Li Hui Faith, Yanyu Xu, Sicong Leng, Xinxing Xu, Yong Liu, Rick Siow Mong Goh},
   booktitle={Proceedings of NeurIPS},
