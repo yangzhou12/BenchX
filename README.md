@@ -1,6 +1,6 @@
 # BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays
 
-This repository includes the code for NeurIPS24 Datasets and Benchmarks Submission (Paper ID 279): 
+This repository includes the code for NeurIPS24 Datasets and Benchmarks Paper: 
 
 "BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays"
 
