@@ -2,7 +2,7 @@
 
 This repository includes the code for NeurIPS24 Datasets and Benchmarks Paper: 
 
-"BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays"
+"[BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays](https://arxiv.org/abs/2410.21969)"
 
 ## Installation
 Create a conda environment and activate it:
