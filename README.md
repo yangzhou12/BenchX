@@ -54,15 +54,15 @@ pip install -v -e .
 <details close>
 <summary><b>Supported MedVLP methods </b> (click to expand)</summary>
 
-* [ConVIRT](https://github.com/edreisMD/ConVIRT-pytorch/tree/master): "Contrastive Learning of Medical Visual Representations from Paired Images and Text" [[Ours]](checkpoints/pretrained)
-* [GLoRIA](https://github.com/marshuang80/gloria/tree/main): "GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition" [[Official]](checkpoints/official) [[Ours]](checkpoints/pretrained)
+* [ConVIRT](https://github.com/edreisMD/ConVIRT-pytorch/tree/master): "Contrastive Learning of Medical Visual Representations from Paired Images and Text" [[Ours]](https://huggingface.co/youngzhou12/ConVIRT)
+* [GLoRIA](https://github.com/marshuang80/gloria/tree/main): "GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition" [[Official]](checkpoints/official) [[Ours]](https://huggingface.co/youngzhou12/GLoRIA)
 * [MedCLIP](https://github.com/RyanWangZf/MedCLIP): "MedCLIP: Contrastive Learning from Unpaired Medical Images and Texts" [[Official]](checkpoints/official)
-* [MedKLIP](https://github.com/MediaBrain-SJTU/MedKLIP): "MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training in Radiology" [[Official]](checkpoints/official) [[Ours]](checkpoints/pretrained)
-* [M-FLAG](https://github.com/cheliu-computation/M-FLAG-MICCAI2023): "M-FLAG: Medical Vision-Language Pre-training with Frozen Language Models and Latent Space Geometry Optimization" [[Ours]](checkpoints/pretrained)
-* [MGCA](https://github.com/HKU-MedAI/MGCA/tree/main): "Multi-Granularity Cross-modal Alignment for Generalized Medical Visual Representation Learning" [[Official]](checkpoints/official) [[Ours]](checkpoints/pretrained)
-* [PTUnifier](https://github.com/zhjohnchan/PTUnifier): "Towards Unifying Medical Vision-and-Language Pre-training via Soft Prompts" [[Ours]](checkpoints/pretrained)
-* [MRM](https://github.com/RL4M/MRM-pytorch/tree/main): "Advancing Radiograph Representation Learning with Masked Record Modeling" [[Official]](checkpoints/official) [[Ours]](checkpoints/pretrained)
-* [REFERS](https://github.com/funnyzhou/REFERS): "Generalized Radiograph Representation Learning via Cross-Supervision Between Images and Free-Text Radiology Reports" [[Official]](checkpoints/official) [[Ours]](checkpoints/pretrained)
+* [MedKLIP](https://github.com/MediaBrain-SJTU/MedKLIP): "MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training in Radiology" [[Official]](checkpoints/official) [[Ours]](https://huggingface.co/youngzhou12/MedKLIP)
+* [M-FLAG](https://github.com/cheliu-computation/M-FLAG-MICCAI2023): "M-FLAG: Medical Vision-Language Pre-training with Frozen Language Models and Latent Space Geometry Optimization" [[Ours]](https://huggingface.co/youngzhou12/M-FLAG)
+* [MGCA](https://github.com/HKU-MedAI/MGCA/tree/main): "Multi-Granularity Cross-modal Alignment for Generalized Medical Visual Representation Learning" [[Official]](checkpoints/official) [[Ours-ResNet50]](https://huggingface.co/youngzhou12/MGCA-resnet50) [[Ours-ViT]](https://huggingface.co/youngzhou12/MGCA-vit)
+* [PTUnifier](https://github.com/zhjohnchan/PTUnifier): "Towards Unifying Medical Vision-and-Language Pre-training via Soft Prompts" [[Ours]](https://huggingface.co/youngzhou12/PTUnifier)
+* [MRM](https://github.com/RL4M/MRM-pytorch/tree/main): "Advancing Radiograph Representation Learning with Masked Record Modeling" [[Official]](checkpoints/official) [[Ours]](https://huggingface.co/youngzhou12/MRM)
+* [REFERS](https://github.com/funnyzhou/REFERS): "Generalized Radiograph Representation Learning via Cross-Supervision Between Images and Free-Text Radiology Reports" [[Official]](checkpoints/official) [[Ours]](https://huggingface.co/youngzhou12/REFERS)
 
 </details>
 
