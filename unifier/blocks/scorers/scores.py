@@ -89,10 +89,10 @@ def compute_scores(metrics, refs, hyps, split, seed, config, epoch, logger, dump
             y_pred = pred_np > max_f1_thresh
             scores["micro_precision"] = round(precision_score(gt_np, y_pred, average='micro', zero_division=1) * 100, 2)
             scores["micro_recall"] = round(recall_score(gt_np, y_pred, average='micro', zero_division=1) * 100, 2)
-            scores["micro_f1"] = round(precision_score(gt_np, y_pred, average='micro', zero_division=1) * 100, 2)
+            scores["micro_f1"] = round(f1_score(gt_np, y_pred, average='micro', zero_division=1) * 100, 2)
             scores["macro_precision"] = round(precision_score(gt_np, y_pred, average='macro', zero_division=1) * 100, 2)
             scores["macro_recall"] = round(recall_score(gt_np, y_pred, average='macro', zero_division=1) * 100, 2)
-            scores["macro_f1"] = round(precision_score(gt_np, y_pred, average='macro', zero_division=1) * 100, 2)
+            scores["macro_f1"] = round(f1_score(gt_np, y_pred, average='macro', zero_division=1) * 100, 2)
         elif metric == "multilabel_auroc":
             AUROCs = []
             n_classes = refs.shape[1]
