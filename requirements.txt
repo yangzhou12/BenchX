@@ -1,6 +1,6 @@
-torch
-torchvision
-transformers
+torch==2.1.2
+torchvision==0.16.2
+transformers==2.1.2
 timm
 opencv-python
 scipy
@@ -14,3 +14,4 @@ pandas
 omegaconf
 einops
 ml-collections
+ftfy
