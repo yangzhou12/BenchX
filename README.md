@@ -79,7 +79,7 @@ You can run any benchmark task supported by BenchX using the following commands.
 To fine-tune a MedVLP model for classification, run this command:
 
 ```
-python bin/train.py config/classification/<dataset_name>/<model_name>.yml
+python bin/train.py configs/classification/<dataset_name>/<model_name>.yml
 ```
 
 ### 2. Segmentation
@@ -94,7 +94,7 @@ python mmsegmentation/tools/train.py mmsegmentation/configs/benchmark/<dataset_n
 ### 3. Report Generation
 To fine-tune a MedVLP model for report generation, run this command:
 ```
-python bin/train.py config/report_generation/<dataset_name>/<model_name>.yml
+python bin/train.py configs/report_generation/<dataset_name>/<model_name>.yml
 ```
 
 ### 4. Evaluation
@@ -102,7 +102,7 @@ To evaluate fine-tuned MedVLP models, run:
 
 ```
 # For classification and report generation
-python bin/test.py config/<task_name>/<dataset_name>/<model_name>.yml validator.splits=[test] ckpt_dir=<path_to_checkpoint>
+python bin/test.py configs/<task_name>/<dataset_name>/<model_name>.yml validator.splits=[test] ckpt_dir=<path_to_checkpoint>
 
 # For segmentation
 python mmsegmentation/tools/my_test.py mmsegmentation/config/<dataset_name>/<model_name>.yml <path_to_checkpoint>
