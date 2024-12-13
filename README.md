@@ -23,7 +23,7 @@ Install MMSegmentation following the [offitial instruction](https://mmsegmentati
 # Install the dependency for MMSegmentation
 pip install -U openmim
 mim install mmengine
-mim install "mmcv>=2.0.0"
+mim install "mmcv==2.1.0"
 
 # Install MMSegmentation
 git clone -b main https://github.com/open-mmlab/mmsegmentation.git
