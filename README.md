@@ -105,7 +105,7 @@ To evaluate fine-tuned MedVLP models, run:
 python bin/test.py configs/<task_name>/<dataset_name>/<model_name>.yml validator.splits=[test] ckpt_dir=<path_to_checkpoint>
 
 # For segmentation
-python mmsegmentation/tools/my_test.py mmsegmentation/config/<dataset_name>/<model_name>.yml <path_to_checkpoint>
+python mmsegmentation/tools/my_test.py mmsegmentation/configs/<dataset_name>/<model_name>.yml <path_to_checkpoint>
 ```
 
 ## Reproduce Benchmark Results
