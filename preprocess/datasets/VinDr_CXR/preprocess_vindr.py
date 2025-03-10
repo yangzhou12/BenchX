@@ -13,21 +13,8 @@ from ensemble_boxes import weighted_boxes_fusion
 
 # Download link: https://physionet.org/content/vindr-cxr/1.0.0/
 
-processed_datapath = "/target/path/to/Vindr_CXR/"
-
-# Combine all the labels
-# train_csv_path = os.path.join(processed_datapath, "annotations", "annotations_train.csv")
-# test_csv_path = os.path.join(processed_datapath, "annotations", "annotations_test.csv")
-# train_csv = pd.read_csv(train_csv_path)
-# test_csv = pd.read_csv(test_csv_path)
-
-# train_csv["split"] = "train"
-# test_csv["split"] = "test"
-
-# csv = pd.concat([train_csv, test_csv])
-# csv.reset_index(drop=True, inplace=True)
-# csv.drop('Unnamed: 0', axis=1, inplace=True)
-# csv.to_csv(os.path.join(processed_datapath, f"vindr_labels.csv"), index=False)
+data_path = "/source/path/to/VinDr_CXR/"
+processed_datapath = "/target/path/to/VinDr_CXR/"
 
 output_image_dir = os.path.join(processed_datapath, "images")
 if not os.path.exists(output_image_dir):
@@ -52,92 +39,72 @@ for i, each_label in enumerate(labels):
     class_name = each_label
     class_name_to_id[class_name] = class_id
 
-def fuse_vindr_label():
-    output_csvpath = os.path.join(processed_datapath, "annotations", "vindr_labels.csv")
-    raw_csv = pd.read_csv(output_csvpath)
-    raw_csv['class_id'] = raw_csv['class_name'].map(lambda x:class_name_to_id[x])
-    csv = raw_csv.groupby("image_id").first()
-    fuse_csv = []
 
-    for patient_id, row in tqdm(csv.iterrows()):
-        boxes_list = []
-        scores_list = []
-        labels_list = []
-        weights = []
-        
-        boxes_single = []
-        labels_single = []
+def combine_labels():
+    print("================= COMBINE LABELS =====================")
+    train_csv_path = os.path.join(data_path, "annotations", "annotations_train.csv")
+    test_csv_path = os.path.join(data_path, "annotations", "annotations_test.csv")
+    train_csv = pd.read_csv(train_csv_path)
+    test_csv = pd.read_csv(test_csv_path)
 
-        annot = raw_csv[raw_csv["image_id"] == patient_id]
-        cls_ids = annot['class_id'].unique().tolist()
-        count_dict = Counter(annot['class_id'].tolist())
+    train_csv["split"] = "train"
+    test_csv["split"] = "test"
 
-        if cls_ids == [-1]:
-            annot_dict = row.to_dict()
-            annot_dict["image_id"] = patient_id
-            fuse_csv.append(annot_dict)
-            continue
-            # pd.DataFrame(fuse_csv)
-        elif -1 in cls_ids:
-            cls_ids.pop(-1)
+    csv = pd.concat([train_csv, test_csv])
+    csv.reset_index(drop=True, inplace=True)
+    csv.to_csv(os.path.join(processed_datapath, f"vindr_labels.csv"), index=False)
 
-        for cid in cls_ids:
-            ## Performing Fusing operation only for multiple bboxes with the same label
-            if count_dict[cid]==1:
-                labels_single.append(cid)
-                bbox = annot[annot["class_id"] == cid][['x_min', 'y_min', 'x_max', 'y_max']].to_numpy().squeeze()
-                boxes_single.append(bbox.tolist())
 
-            else:
-                cls_list = annot[annot["class_id"] == cid]['class_id'].tolist()
-                labels_list.append(cls_list)
-                bbox = annot[annot["class_id"] == cid][['x_min', 'y_min', 'x_max', 'y_max']].to_numpy()
-                
-                ## Normalizing Bbox by Image Width and Height
-                bbox = bbox/desired_size
-                # (scaled_image.shape[1], scaled_image.shape[0], scaled_image.shape[1], scaled_image.shape[0])
-                bbox = np.clip(bbox, 0, 1)
-                boxes_list.append(bbox.tolist())
-                scores_list.append(np.ones(len(cls_list)).tolist())
-                weights.append(1)
-        
-        ## Perform WBF
-        iou_thr = 0.5
-        skip_box_thr = 0.0001
-        boxes, scores, box_labels = weighted_boxes_fusion(boxes_list=boxes_list, scores_list=scores_list,
-                                                    labels_list=labels_list, weights=weights,
-                                                    iou_thr=iou_thr, skip_box_thr=skip_box_thr)
-        
-        boxes = boxes*desired_size
-        boxes = boxes.round(1).tolist()
-        box_labels = box_labels.astype(int).tolist()
-        boxes.extend(boxes_single)
-        box_labels.extend(labels_single)
-        
-        for box, label in zip(boxes, box_labels):
-            x_min, y_min, x_max, y_max = (box[0], box[1], box[2], box[3])
-            area = round((x_max-x_min)*(y_max-y_min),1)
-            bbox =[
-                    round(x_min, 1),
-                    round(y_min, 1),
-                    round((x_max-x_min), 1),
-                    round((y_max-y_min), 1)
-                    ]
+def preprocess_vindr_data():
+    print("================= PREPROCESSING =====================")
+    csv_path = os.path.join(processed_datapath, f"vindr_labels.csv") 
+    csv = pd.read_csv(csv_path)
+
+    for split in ['train', 'test']:
+        print(f"Processing {split} data...")
+        split_csv = csv[csv['split'] == split]
+        image_ids = pd.unique(split_csv['image_id'])
+        base_path = os.path.join(data_path, split)
+
+        for image_id in tqdm(image_ids, total=len(image_ids)):
+            img_path = os.path.join(base_path, image_id + ".dicom")
+
+            dc_image = dicom.dcmread(img_path, force=True)
+
+            image_array = dc_image.pixel_array.astype(float)
+            image_array = apply_voi_lut(image_array, dc_image)
+            # depending on this value, X-ray may look inverted - fix that:
+            if dc_image.PhotometricInterpretation == "MONOCHROME1":
+                image_array = np.amax(image_array) - image_array
+
+            scaled_image = (np.maximum(image_array, 0) / image_array.max()) * 255.0
+            scaled_image = np.uint8(scaled_image)
+
+            final_image = Image.fromarray(scaled_image).convert("RGB")
+            old_size = final_image.size
+            ratio = float(desired_size)/max(old_size)
+            new_size = tuple([int(x*ratio) for x in old_size])
+            final_image = final_image.resize(new_size, Image.Resampling.LANCZOS)
+
+            final_image.save(os.path.join(output_image_dir, image_id + ".png"))
+
 
 def generate_vindr_masks():
-    output_csvpath = os.path.join(processed_datapath, "annotations", "vindr_labels.csv")
+    print("================= GENERATING MASKS =====================")
+    output_csvpath = os.path.join(processed_datapath, "vindr_labels.csv")
     raw_csv = pd.read_csv(output_csvpath)
-    csv = raw_csv.groupby("patientId").first()
-    for patient_id, _ in tqdm(csv.iterrows(), total=len(csv)):
-        rows = raw_csv[raw_csv["patientId"] == patient_id]
+    image_ids = pd.unique(raw_csv['image_id'])
+    for image_id in tqdm(image_ids, total=len(image_ids)):
+        rows = raw_csv[raw_csv["image_id"] == image_id]
         mask = np.zeros([desired_size, desired_size]).astype(np.uint8)
         for index, row in rows.iterrows():
-            if row.Target == 1:
-                xywh = np.asarray([row.x, row.y, row.width, row.height])
+            if row.class_name != 'No finding':
+                xywh = np.asarray([row.x_min, row.y_min, row.x_max, row.y_max])
                 xywh = xywh.astype(int)
                 mask[xywh[1] : xywh[1] + xywh[3], xywh[0] : xywh[0] + xywh[2]] = 1
         final_mask = Image.fromarray(mask)
-        final_mask.save(os.path.join(output_mask_dir, patient_id + ".png"), 'PNG')
+        final_mask.save(os.path.join(output_mask_dir, image_id + ".png"), 'PNG')
+
 
 def save_anno(img_list, file_path, remove_suffix=False):
     if remove_suffix:
@@ -151,8 +118,10 @@ def save_anno(img_list, file_path, remove_suffix=False):
         for x in list(img_list):
             file_.write(x + '\n')
 
+
 def split_dataset(seed):
-    csvpath = os.path.join(processed_datapath, "annotations", "vindr_labels.csv")
+    print("================= SPLITTING DATASET =====================")
+    csvpath = os.path.join(processed_datapath, "vindr_labels.csv")
     rawcsv = pd.read_csv(csvpath)
 
     csv = rawcsv.groupby("image_id", group_keys=True).first().reset_index()
@@ -182,6 +151,7 @@ def split_dataset(seed):
 
 
 if __name__ == "__main__":
-    fuse_vindr_label()
+    combine_labels()
+    preprocess_vindr_data()
     generate_vindr_masks()
     split_dataset(seed=42)
