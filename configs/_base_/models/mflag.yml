@@ -4,7 +4,7 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /home/faith/unified-framework/ckpt/pretrained/M-FLAG_total.pth
+    pretrained: ckpt/M-FLAG_total.pth
     prefix: encoder.
     output_layer: layer4  # change to avgpool for zero-shot
     dropout_out: 0.0

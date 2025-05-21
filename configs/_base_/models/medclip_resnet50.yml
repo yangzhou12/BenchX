@@ -4,7 +4,7 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /content/drive/MyDrive/A*STAR Internship/Checkpoints/MedCLIP-resnet50.bin
+    pretrained: ckpt/MedCLIP-resnet50.bin
     prefix: vision_model.model.
     output_layer: layer4 # change to avgpool for zero-shot
     dropout_out: 0.0

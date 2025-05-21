@@ -4,7 +4,7 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /raid/zhouyang/unified-framework/ckpt/pretrained/ConVIRT.pth
+    pretrained: ckpt/ConVIRT.pth
     prefix: visual.model.
     output_layer: layer4 # change to avgpool for zero-shot
     dropout_out: 0.0

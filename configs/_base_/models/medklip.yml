@@ -4,7 +4,7 @@ model:
   cnn:
     proto: VisualEncoder
     backbone: resnet50
-    pretrained: /home/faith/unified-framework/ckpt/official/MedKLIP.pth
+    pretrained: ckpt/MedKLIP.pth
     prefix: module.res_features.
     output_layer: layer4 # do not return fc layer
     dropout_out: 0.0
