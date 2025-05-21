@@ -16,3 +16,6 @@ einops
 ml-collections
 ftfy
 numpy==1.26.4
+yacs
+sacred
+wget
