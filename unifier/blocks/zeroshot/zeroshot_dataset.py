@@ -10,8 +10,8 @@ import unifier.datasets.transforms as transforms
 
 
 _CSVPATH = {
-    "mimic_5x200": "unifier/datasets/data/mimic_5x200.csv.zip",
-    "chexpert_5x200": "unifier/datasets/data/chexpert_5x200.csv.zip"
+    "mimic_5x200": "datasets/mimic_5x200.csv",
+    "chexpert_5x200": "datasets/chexpert_5x200.csv"
 }
 
 
