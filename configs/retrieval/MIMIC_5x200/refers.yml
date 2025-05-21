@@ -5,7 +5,7 @@ model_name: refers
 tokenizer: emilyalsentzer/Bio_ClinicalBERT
 similarity_type: global
 mode: retrieval
-ckpt_path: checkpoints/REFERS.pth
+ckpt_dir: checkpoints/REFERS.pth
 batch_size: 1000
 seed: 42
 num_workers: 4

@@ -5,7 +5,7 @@ model_name: mgca
 tokenizer: emilyalsentzer/Bio_ClinicalBERT
 similarity_type: global
 mode: retrieval
-ckpt_path: checkpoints/MGCA-vit.pth
+ckpt_dir: checkpoints/MGCA-vit.pth
 batch_size: 1000
 seed: 42
 num_workers: 4

@@ -5,7 +5,7 @@ model_name: medclip_vit
 tokenizer: emilyalsentzer/Bio_ClinicalBERT
 similarity_type: global
 mode: retrieval
-ckpt_path: checkpoints/MedCLIP-vit.pth
+ckpt_dir: checkpoints/MedCLIP-vit.pth
 batch_size: 1000
 seed: 42
 num_workers: 4
