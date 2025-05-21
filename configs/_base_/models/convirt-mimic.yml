@@ -3,8 +3,8 @@ ckpt_dir: ckpt
 
 dataset:
   proto: MIMIC_Dataset
-  imgpath: /home/faith/MVLM/mimic_512/files
-  metacsvpath: /home/faith/MVLM/mimic_512/mimic-cxr-2.0.0-metadata.csv
+  imgpath: datasets/mimic_512/files
+  metacsvpath: datasets/mimic_512/mimic-cxr-2.0.0-metadata.csv
   csvpath: USE_INCLUDED_FILE
   views: ["PA", "AP"]
   section: both
