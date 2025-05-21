@@ -10,10 +10,9 @@ import unifier.datasets.transforms as transforms
 
 
 _CSVPATH = {
-    "mimic_5x200": "datasets/mimic_5x200.csv",
-    "chexpert_5x200": "datasets/chexpert_5x200.csv"
+    "mimic_5x200": "datasets/MIMIC_5x200/mimic_5x200.csv",
+    "chexpert_5x200": "datasets/MIMIC_5x200/chexpert_5x200.csv"
 }
-
 
 CHEXPERT_COMPETITION_TASKS = [
     "Atelectasis",
