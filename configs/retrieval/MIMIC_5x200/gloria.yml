@@ -1,0 +1,12 @@
+dataset: MIMIC_5x200
+transforms: DataTransforms
+img_path: datasets/mimic_512
+model_name: gloria
+tokenizer: emilyalsentzer/Bio_ClinicalBERT
+similarity_type: global
+mode: retrieval
+ckpt_path: checkpoints/GLoRIA.pth
+batch_size: 1000
+seed: 42
+num_workers: 4
+device: cuda

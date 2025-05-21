@@ -1,0 +1,12 @@
+dataset: MIMIC_5x200
+transforms: DataTransforms
+img_path: datasets/mimic_512
+model_name: medclip_resnet50
+tokenizer: emilyalsentzer/Bio_ClinicalBERT
+similarity_type: global
+mode: retrieval
+ckpt_path: checkpoints/MedCLIP-resnet50.pth
+batch_size: 1000
+seed: 42
+num_workers: 4
+device: cuda
