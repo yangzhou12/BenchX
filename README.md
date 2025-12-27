@@ -161,9 +161,11 @@ If you find BenchX useful for your research and applications, please cite using 
 
 ```bibtex
 @inproceedings{zhou2024benchx,
-  title={BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays},
-  author={Yang Zhou, Tan Li Hui Faith, Yanyu Xu, Sicong Leng, Xinxing Xu, Yong Liu, Rick Siow Mong Goh},
-  booktitle={Proceedings of NeurIPS},
-  year={2024}
+ author = {Zhou, Yang and Faith, Tan Li Hui and Xu, Yanyu and Leng, Sicong and Xu, Xinxing and Liu, Yong and Goh, Rick Siow Mong},
+ booktitle = {Advances in Neural Information Processing Systems},
+ pages = {6625--6647},
+ title = {BenchX: A Unified Benchmark Framework for Medical Vision-Language Pretraining on Chest X-Rays},
+ volume = {37},
+ year = {2024}
 }
 ```
